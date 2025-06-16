@@ -11,7 +11,6 @@ from dateutil.parser import parse
 from airtable import Airtable
 import random
 
-Constants (No more placeholders)
 
 AIRTABLE_API_KEY = "pat5066FrEhKfGgm6.163765e4f2e56e31d591c3005be3d4570875d87dec201799e6c870531ee84f18" AIRTABLE_BASE_ID = "apphIwzbnFgC6uUo8" AIRTABLE_TABLE_NAME = "Toon Theory" GROQ_API_KEY = "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" EMAIL_ADDRESS = "hello@toontheory.com" EMAIL_PASSWORD = "5k7KW%A?n7Eev!s" SMTP_SERVER = "smtppro.zoho.com" SMTP_PORT = 465 IMAP_SERVER = "imappro.zoho.com" IMAP_PORT = 993 TIMEZONE = timezone("Africa/Lagos")
 
