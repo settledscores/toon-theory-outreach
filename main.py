@@ -8,9 +8,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pytz import timezone
 from dateutil.parser import parse
-from airtable import Airtable
+from pyairtable import Table
 
-# ENVIRONMENT VARIABLES
+# Environment variables
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = "apphIwzbnFgC6uUo8"
 AIRTABLE_TABLE_NAME = "Toon Theory"
@@ -23,8 +23,8 @@ IMAP_SERVER = "imappro.zoho.com"
 IMAP_PORT = 993
 TIMEZONE = timezone("Africa/Lagos")
 
-# Connect Airtable
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+# Airtable setup
+airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 # Prompt template
 PROMPT_TEMPLATE = """
@@ -112,7 +112,7 @@ def has_replied(recipient_email):
         return bool(data[0].split())
 
 def run_campaign():
-    leads = airtable.get_all()
+    leads = airtable.all()
     now = datetime.now(TIMEZONE)
 
     for lead in leads:
@@ -120,7 +120,7 @@ def run_campaign():
         status = fields.get("status", "").lower()
         email_addr = fields.get("email")
 
-        if status in ["replied", "rejected"]:
+        if status in ["replied", "rejected"] or not email_addr:
             continue
 
         def send_and_update(stage):
@@ -137,12 +137,12 @@ def run_campaign():
             if stage == "initial":
                 update = {
                     "initial date": now_str,
-                    "follow-up 1 date": (now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
+                    "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
                     "status": "sent"
                 }
             elif stage == "followup1":
                 update = {
-                    "follow-up 2 date": (now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
+                    "follow-up 2 date": (now + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
                     "status": "followed up once"
                 }
             elif stage == "followup2":
@@ -157,16 +157,12 @@ def run_campaign():
             follow1 = fields.get("follow-up 1 date")
             follow2 = fields.get("follow-up 2 date")
 
-            if follow1:
-                f1 = parse(follow1)
-                if f1 <= now and not follow2:
-                    send_and_update("followup1")
-                    break
-            if follow2:
-                f2 = parse(follow2)
-                if f2 <= now:
-                    send_and_update("followup2")
-                    break
+            if follow1 and parse(follow1) <= now and not follow2:
+                send_and_update("followup1")
+                break
+            if follow2 and parse(follow2) <= now:
+                send_and_update("followup2")
+                break
         else:
             airtable.update(lead["id"], {"status": "replied"})
 
