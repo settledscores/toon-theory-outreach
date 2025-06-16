@@ -10,7 +10,10 @@ from email.mime.multipart import MIMEMultipart
 from pytz import timezone
 from dateutil.parser import parse
 from airtable import Airtable
-import sys
+from dotenv import load_dotenv
+
+# === Load local .env in development ===
+load_dotenv()
 
 # === ENVIRONMENT CHECK ===
 required_env_vars = [
@@ -26,23 +29,19 @@ required_env_vars = [
     "IMAP_PORT",
 ]
 
-missing_or_invalid = []
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+invalid_ports = [
+    var for var in ["SMTP_PORT", "IMAP_PORT"]
+    if os.getenv(var) and not os.getenv(var).isdigit()
+]
 
-for var in required_env_vars:
-    value = os.environ.get(var)
-    if not value or value.strip() == "":
-        missing_or_invalid.append(var)
-    elif "PORT" in var:
-        try:
-            int(value)
-        except ValueError:
-            missing_or_invalid.append(var + " (not an integer)")
-
-if missing_or_invalid:
-    print("❌ Missing or invalid environment variables:")
-    for var in missing_or_invalid:
-        print(f" - {var}")
-    sys.exit(1)
+if missing_vars or invalid_ports:
+    print("❌ Environment configuration error:")
+    if missing_vars:
+        print(f" - Missing: {', '.join(missing_vars)}")
+    if invalid_ports:
+        print(f" - Invalid (must be integers): {', '.join(invalid_ports)}")
+    exit(1)
 
 # === ENVIRONMENT VARIABLES ===
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
@@ -59,6 +58,7 @@ TIMEZONE = timezone("Africa/Lagos")
 
 # === Airtable connection ===
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+
 
 # === Prompt template ===
 PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
