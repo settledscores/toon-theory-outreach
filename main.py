@@ -9,7 +9,7 @@ from airtable import Airtable
 from bs4 import BeautifulSoup
 import requests
 from dotenv import load_dotenv
-import groq
+import openai
 
 load_dotenv()
 
@@ -25,10 +25,9 @@ SMTP_PORT = 587
 SMTP_USERNAME = 'hello@toontheory.com'
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
-# Groq config
-GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+# Groq config (via OpenAI client)
+openai.api_key = os.getenv('GROQ_API_KEY')
 GROQ_MODEL = "llama3-70b-8192"
-groq.api_key = GROQ_API_KEY
 
 def scrape_visible_text(url):
     try:
@@ -46,7 +45,7 @@ def scrape_visible_text(url):
         return ""
 
 def get_groq_response(prompt):
-    response = groq.ChatCompletion.create(
+    response = openai.ChatCompletion.create(
         model=GROQ_MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful assistant that writes natural, plain-English cold emails using scraped web copy."},
@@ -69,7 +68,8 @@ def send_email(to_address, subject, body):
         print(f"✅ Email sent to {to_address}")
 
 def generate_prompt(web_copy, name, company):
-    return f"""You're helping a whiteboard animation studio write a cold outreach email.
+    return f"""
+You're helping a whiteboard animation studio write a cold outreach email.
 
 Here is their base email:
 
@@ -91,17 +91,18 @@ If you're open to it, I’d love to draft a sample script or sketch out a short 
 
 [Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
 
-Warm regards,
-Trent
-Founder, Toon Theory
-www.toontheory.com
+Warm regards,  
+Trent  
+Founder, Toon Theory  
+www.toontheory.com  
 Whiteboard Animation For The Brands People Trust
 
 Based on the website content below, fill in the missing parts in the email with clear, natural language.
 
 STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
 
-Website content: {web_copy}"""
+Website content: {web_copy}
+"""
 
 def main():
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
@@ -126,6 +127,7 @@ def main():
             print(f"⏩ Already processed: {company}")
             continue
 
+        # Generate and send
         prompt = generate_prompt(web_copy, name, company)
         message = get_groq_response(prompt)
         subject = f"Quick idea for {company}"
@@ -134,9 +136,9 @@ def main():
 
         now = datetime.now()
         airtable.update(record['id'], {
-            'initial date': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'follow-up 1 date': (now + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S'),
-            'follow-up 2 date': (now + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S'),
+            'initial date': now.strftime('%Y-%m-%d'),
+            'follow-up 1 date': (now + timedelta(days=3)).strftime('%Y-%m-%d'),
+            'follow-up 2 date': (now + timedelta(days=7)).strftime('%Y-%m-%d'),
             'status': 'initial sent'
         })
 
