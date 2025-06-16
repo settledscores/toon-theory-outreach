@@ -10,6 +10,39 @@ from email.mime.multipart import MIMEMultipart
 from pytz import timezone
 from dateutil.parser import parse
 from airtable import Airtable
+import sys
+
+# === ENVIRONMENT CHECK ===
+required_env_vars = [
+    "AIRTABLE_API_KEY",
+    "AIRTABLE_BASE_ID",
+    "AIRTABLE_TABLE_NAME",
+    "GROQ_API_KEY",
+    "EMAIL_ADDRESS",
+    "EMAIL_PASSWORD",
+    "SMTP_SERVER",
+    "SMTP_PORT",
+    "IMAP_SERVER",
+    "IMAP_PORT",
+]
+
+missing_or_invalid = []
+
+for var in required_env_vars:
+    value = os.environ.get(var)
+    if not value or value.strip() == "":
+        missing_or_invalid.append(var)
+    elif "PORT" in var:
+        try:
+            int(value)
+        except ValueError:
+            missing_or_invalid.append(var + " (not an integer)")
+
+if missing_or_invalid:
+    print("❌ Missing or invalid environment variables:")
+    for var in missing_or_invalid:
+        print(f" - {var}")
+    sys.exit(1)
 
 # === ENVIRONMENT VARIABLES ===
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
@@ -68,21 +101,17 @@ def scrape_visible_text(url):
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
-        for tag in soup(
-            ["nav", "footer", "header", "script", "style", "a", "img", "svg"]
-        ):
+        for tag in soup(["nav", "footer", "header", "script", "style", "a", "img", "svg"]):
             tag.decompose()
         return soup.get_text(separator=" ", strip=True)
     except Exception as e:
         print(f"❌ Error scraping {url}: {e}")
         return ""
 
-
 def get_combined_webcopy(website):
     home = scrape_visible_text(website)
     services = scrape_visible_text(website.rstrip("/") + "/services")
     return (home + " " + services).strip()
-
 
 # === Email generation ===
 def generate_email_groq(web_copy, name, company):
@@ -104,7 +133,6 @@ def generate_email_groq(web_copy, name, company):
     )
     return response.json()["choices"][0]["message"]["content"]
 
-
 # === Email sending ===
 def send_email(recipient, subject, body):
     msg = MIMEMultipart()
@@ -117,13 +145,11 @@ def send_email(recipient, subject, body):
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(EMAIL_ADDRESS, recipient, msg.as_string())
 
-
 def alert_trent(subject, body):
     try:
         send_email(EMAIL_ADDRESS, subject, body)
     except Exception as e:
         print(f"❌ Failed to send alert: {e}")
-
 
 # === Check for replies ===
 def has_replied(recipient_email):
@@ -136,7 +162,6 @@ def has_replied(recipient_email):
     except Exception as e:
         print(f"❌ IMAP error checking replies: {e}")
         return False
-
 
 # === Campaign runner ===
 def run_campaign():
@@ -158,9 +183,7 @@ def run_campaign():
         def send_and_update(stage):
             try:
                 subject = "Quick idea for your team"
-                web_copy = fields.get("web copy") or get_combined_webcopy(
-                    fields["website"]
-                )
+                web_copy = fields.get("web copy") or get_combined_webcopy(fields["website"])
                 if not fields.get("web copy"):
                     airtable.update(lead["id"], {"web copy": web_copy})
 
@@ -173,16 +196,12 @@ def run_campaign():
                 if stage == "initial":
                     update = {
                         "initial date": now_str,
-                        "follow-up 1 date": (now + timedelta(days=3)).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
+                        "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
                         "status": "sent",
                     }
                 elif stage == "followup1":
                     update = {
-                        "follow-up 2 date": (now + timedelta(days=4)).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
+                        "follow-up 2 date": (now + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
                         "status": "followed up once",
                     }
                 elif stage == "followup2":
@@ -212,7 +231,6 @@ def run_campaign():
         else:
             airtable.update(lead["id"], {"status": "replied"})
 
-
 # === Entry point ===
-if _name_ == "_main_":
+if __name__ == "__main__":
     run_campaign()
