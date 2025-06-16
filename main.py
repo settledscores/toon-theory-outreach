@@ -1,15 +1,13 @@
 import os
-import random
 import smtplib
 import imaplib
-import email
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pytz import timezone
-import openai  # for Groq compatibility
+from dateutil.parser import parse
 from airtable import Airtable
 
 # ENVIRONMENT VARIABLES
@@ -28,7 +26,7 @@ TIMEZONE = timezone("Africa/Lagos")
 # Connect Airtable
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Prompt template with no em dashes
+# Prompt template
 PROMPT_TEMPLATE = """
 You're helping a whiteboard animation studio write a cold outreach email.
 
@@ -60,7 +58,6 @@ Website content:
 {web_copy}
 """
 
-# Scrape homepage and services page
 def scrape_visible_text(url):
     try:
         response = requests.get(url, timeout=10)
@@ -76,7 +73,6 @@ def get_combined_webcopy(website):
     services = scrape_visible_text(website.rstrip("/") + "/services")
     return (home + " " + services).strip()
 
-# Generate personalized email via Groq (Mistral)
 def generate_email_groq(web_copy, name, company):
     prompt = PROMPT_TEMPLATE.format(
         name=name,
@@ -97,7 +93,6 @@ def generate_email_groq(web_copy, name, company):
     )
     return response.json()["choices"][0]["message"]["content"]
 
-# Send email
 def send_email(recipient, subject, body):
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
@@ -109,15 +104,12 @@ def send_email(recipient, subject, body):
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(EMAIL_ADDRESS, recipient, msg.as_string())
 
-# IMAP reply check
 def has_replied(recipient_email):
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
         mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         mail.select("inbox")
         typ, data = mail.search(None, f'(FROM "{recipient_email}")')
         return bool(data[0].split())
-
-# ... [everything above remains unchanged until run_campaign()] ...
 
 def run_campaign():
     leads = airtable.get_all()
@@ -157,7 +149,6 @@ def run_campaign():
                 update = {"status": "followed up twice"}
             airtable.update(lead["id"], update)
 
-        # Determine what to send
         if not fields.get("initial date"):
             send_and_update("initial")
             break
@@ -167,17 +158,17 @@ def run_campaign():
             follow2 = fields.get("follow-up 2 date")
 
             if follow1:
-                f1 = datetime.strptime(follow1, "%Y-%m-%d %H:%M:%S")
+                f1 = parse(follow1)
                 if f1 <= now and not follow2:
                     send_and_update("followup1")
                     break
             if follow2:
-                f2 = datetime.strptime(follow2, "%Y-%m-%d %H:%M:%S")
+                f2 = parse(follow2)
                 if f2 <= now:
                     send_and_update("followup2")
                     break
         else:
             airtable.update(lead["id"], {"status": "replied"})
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     run_campaign()

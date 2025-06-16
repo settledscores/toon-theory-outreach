@@ -1,5 +1,5 @@
-beautifulsoup4
 requests
+beautifulsoup4
+python-dateutil
 pytz
-openai
 pyairtable
