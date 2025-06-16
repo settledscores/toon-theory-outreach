@@ -1,6 +1,5 @@
-requests
-beautifulsoup4
-python-dateutil
-pytz
-airtable-python-wrapper
+openai
 python-dotenv
+airtable-python-wrapper
+beautifulsoup4
+requests
