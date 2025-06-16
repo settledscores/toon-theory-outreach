@@ -8,9 +8,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pytz import timezone
 from dateutil.parser import parse
-from pyairtable import Table
+from airtable import Airtable
 
-# Environment variables
+# ENVIRONMENT VARIABLES
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = "apphIwzbnFgC6uUo8"
 AIRTABLE_TABLE_NAME = "Toon Theory"
@@ -23,8 +23,8 @@ IMAP_SERVER = "imappro.zoho.com"
 IMAP_PORT = 993
 TIMEZONE = timezone("Africa/Lagos")
 
-# Airtable setup
-airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+# Connect Airtable
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # Prompt template
 PROMPT_TEMPLATE = """
@@ -65,7 +65,8 @@ def scrape_visible_text(url):
         for tag in soup(["nav", "footer", "header", "script", "style", "a", "img", "svg"]):
             tag.decompose()
         return soup.get_text(separator=" ", strip=True)
-    except:
+    except Exception as e:
+        print(f"❌ Error scraping {url}: {e}")
         return ""
 
 def get_combined_webcopy(website):
@@ -104,52 +105,79 @@ def send_email(recipient, subject, body):
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(EMAIL_ADDRESS, recipient, msg.as_string())
 
+def alert_trent(subject, body):
+    try:
+        send_email("hello@toontheory.com", subject, body)
+    except Exception as e:
+        print(f"❌ Failed to send alert: {e}")
+
 def has_replied(recipient_email):
-    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
-        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        mail.select("inbox")
-        typ, data = mail.search(None, f'(FROM "{recipient_email}")')
-        return bool(data[0].split())
+    try:
+        with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
+            mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            mail.select("inbox")
+            typ, data = mail.search(None, f'(FROM "{recipient_email}")')
+            return bool(data[0].split())
+    except Exception as e:
+        print(f"❌ IMAP error checking replies: {e}")
+        return False
 
 def run_campaign():
-    leads = airtable.all()
+    leads = airtable.get_all()
     now = datetime.now(TIMEZONE)
+    print(f"🟡 Total leads found: {len(leads)}")
 
     for lead in leads:
-        fields = lead["fields"]
-        status = fields.get("status", "").lower()
+        fields = lead.get("fields", {})
         email_addr = fields.get("email")
+        status = fields.get("status", "").lower()
+        name = fields.get("name", "N/A")
+        company = fields.get("company name", "N/A")
 
-        if status in ["replied", "rejected"] or not email_addr:
+        print(f"\n🔍 Checking lead: {name} at {company}")
+        print(f"Email: {email_addr}, Status: {status}")
+
+        if not email_addr:
+            print("❌ Skipping: No email address")
+            continue
+
+        if status in ["replied", "rejected"]:
+            print("⏭ Skipping: Status is replied/rejected")
             continue
 
         def send_and_update(stage):
-            subject = "Quick idea for your team"
-            web_copy = fields.get("web copy") or get_combined_webcopy(fields["website"])
-            if not fields.get("web copy"):
-                airtable.update(lead["id"], {"web copy": web_copy})
+            try:
+                subject = "Quick idea for your team"
+                web_copy = fields.get("web copy") or get_combined_webcopy(fields["website"])
+                if not fields.get("web copy"):
+                    airtable.update(lead["id"], {"web copy": web_copy})
 
-            message = generate_email_groq(web_copy, fields["name"], fields["company name"])
-            send_email(email_addr, subject, message)
+                message = generate_email_groq(web_copy, name, company)
+                send_email(email_addr, subject, message)
+                alert_trent(f"✅ Sent to {name}", f"Subject: {subject}\n\n{message}")
 
-            update = {}
-            now_str = now.strftime("%Y-%m-%d %H:%M:%S")
-            if stage == "initial":
-                update = {
-                    "initial date": now_str,
-                    "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
-                    "status": "sent"
-                }
-            elif stage == "followup1":
-                update = {
-                    "follow-up 2 date": (now + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
-                    "status": "followed up once"
-                }
-            elif stage == "followup2":
-                update = {"status": "followed up twice"}
-            airtable.update(lead["id"], update)
+                now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+                update = {}
+                if stage == "initial":
+                    update = {
+                        "initial date": now_str,
+                        "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "sent"
+                    }
+                elif stage == "followup1":
+                    update = {
+                        "follow-up 2 date": (now + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "followed up once"
+                    }
+                elif stage == "followup2":
+                    update = {"status": "followed up twice"}
+                airtable.update(lead["id"], update)
+            except Exception as e:
+                alert_trent(f"❌ Failed for {name}", str(e))
+                print(f"❌ Error sending to {name}: {e}")
 
         if not fields.get("initial date"):
+            print("✅ Eligible for initial email")
             send_and_update("initial")
             break
 
@@ -157,14 +185,21 @@ def run_campaign():
             follow1 = fields.get("follow-up 1 date")
             follow2 = fields.get("follow-up 2 date")
 
-            if follow1 and parse(follow1) <= now and not follow2:
-                send_and_update("followup1")
-                break
-            if follow2 and parse(follow2) <= now:
-                send_and_update("followup2")
-                break
+            if follow1:
+                f1 = parse(follow1)
+                if f1 <= now and not follow2:
+                    print("✅ Eligible for follow-up 1")
+                    send_and_update("followup1")
+                    break
+            if follow2:
+                f2 = parse(follow2)
+                if f2 <= now:
+                    print("✅ Eligible for follow-up 2")
+                    send_and_update("followup2")
+                    break
         else:
+            print("✉ Lead has replied, marking as replied")
             airtable.update(lead["id"], {"status": "replied"})
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     run_campaign()
