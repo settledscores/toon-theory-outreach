@@ -1,4 +1,15 @@
-import os import smtplib import imaplib import requests from bs4 import BeautifulSoup from datetime import datetime, timedelta from email.mime.text import MIMEText from email.mime.multipart import MIMEMultipart from pytz import timezone from dateutil.parser import parse from airtable import Airtable import random
+import os
+import smtplib
+import imaplib
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from pytz import timezone
+from dateutil.parser import parse
+from airtable import Airtable
+import random
 
 CONSTANTS
 
