@@ -117,7 +117,8 @@ def has_replied(recipient_email):
         typ, data = mail.search(None, f'(FROM "{recipient_email}")')
         return bool(data[0].split())
 
-# Send logic
+# ... [everything above remains unchanged until run_campaign()] ...
+
 def run_campaign():
     leads = airtable.get_all()
     now = datetime.now(TIMEZONE)
@@ -140,16 +141,16 @@ def run_campaign():
             send_email(email_addr, subject, message)
 
             update = {}
-            today_str = now.strftime("%Y-%m-%d")
+            now_str = now.strftime("%Y-%m-%d %H:%M:%S")
             if stage == "initial":
                 update = {
-                    "initial date": today_str,
-                    "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d"),
+                    "initial date": now_str,
+                    "follow-up 1 date": (now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
                     "status": "sent"
                 }
             elif stage == "followup1":
                 update = {
-                    "follow-up 2 date": (now + timedelta(days=4)).strftime("%Y-%m-%d"),
+                    "follow-up 2 date": (now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
                     "status": "followed up once"
                 }
             elif stage == "followup2":
@@ -165,15 +166,18 @@ def run_campaign():
             follow1 = fields.get("follow-up 1 date")
             follow2 = fields.get("follow-up 2 date")
 
-            if follow1 and datetime.strptime(follow1, "%Y-%m-%d") <= now.date():
-                if not follow2:
+            if follow1:
+                f1 = datetime.strptime(follow1, "%Y-%m-%d %H:%M:%S")
+                if f1 <= now and not follow2:
                     send_and_update("followup1")
                     break
-                elif datetime.strptime(follow2, "%Y-%m-%d") <= now.date():
+            if follow2:
+                f2 = datetime.strptime(follow2, "%Y-%m-%d %H:%M:%S")
+                if f2 <= now:
                     send_and_update("followup2")
                     break
         else:
             airtable.update(lead["id"], {"status": "replied"})
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     run_campaign()
