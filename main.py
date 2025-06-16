@@ -34,13 +34,11 @@ def scrape_visible_text(url):
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Remove scripts, styles, header, nav, and footer
         for tag in soup(['script', 'style', 'header', 'nav', 'footer', 'form']):
             tag.decompose()
 
-        # Get all visible text
         visible_text = ' '.join(chunk.strip() for chunk in soup.stripped_strings)
-        return visible_text[:8000]  # Limit to 8000 characters max
+        return visible_text[:8000]
     except Exception as e:
         print(f"Error scraping {url}: {e}")
         return ""
@@ -62,29 +60,56 @@ def send_email(to_address, subject, body):
     msg['From'] = SMTP_USERNAME
     msg['To'] = to_address
     msg['Subject'] = subject
-
     msg.attach(MIMEText(body, 'plain'))
 
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
         server.starttls()
         server.login(SMTP_USERNAME, SMTP_PASSWORD)
         server.send_message(msg)
-        print(f"Email sent to {to_address}")
+        print(f"✅ Email sent to {to_address}")
 
 def generate_prompt(web_copy, name, company):
     return f"""
-Write a short, plain-English cold email introducing Toon Theory to {name} from {company}. Use this scraped text as the reference to personalize the message:
+You're helping a whiteboard animation studio write a cold outreach email.
 
-{web_copy}
+Here is their base email:
 
-Keep it friendly, under 150 words. Avoid using em dashes. Use a casual, conversational tone.
+Hi {name},
+
+I’ve been following {company} lately, and your ability to make [summary] really stood out.
+
+I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.
+
+With your focus on [angle], I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
+
+Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to: 
+
+- [Use case #1 tailored to website content]
+- [Use case #2 tailored to website content]
+- [Use case #3 tailored to website content]
+
+If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.
+
+[Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
+
+Warm regards,  
+Trent  
+Founder, Toon Theory  
+www.toontheory.com  
+Whiteboard Animation For The Brands People Trust
+
+Based on the website content below, fill in the missing parts in the email with clear, natural language.
+
+STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
+
+Website content: {web_copy}
 """
 
 def main():
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-    records = airtable.get(view=AIRTABLE_VIEW_NAME)['records']
+    records = airtable.get_all(view=AIRTABLE_VIEW_NAME)
 
-    print(f"🟡 Total leads found: {len(records)}")
+    print(f"🔍 Total leads found: {len(records)}")
 
     for record in records:
         fields = record.get('fields', {})
@@ -96,42 +121,40 @@ def main():
         status = fields.get('status', '').lower()
 
         if not all([name, company, email, website]):
-            continue  # Essential info is missing
-
-        if status not in ['', 'not contacted']:
+            print("⚠️ Skipping incomplete lead")
             continue
 
-        # Scrape if web copy is missing
+        if status and status not in ['not contacted', '']:
+            print(f"⏩ Already processed: {company}")
+            continue
+
+        # Scrape if needed
         if not web_copy:
             homepage = scrape_visible_text(website)
-            services_page = scrape_visible_text(website.rstrip('/') + '/services')
-            full_copy = homepage + '\n' + services_page
+            services = scrape_visible_text(website.rstrip('/') + '/services')
+            full_copy = homepage + '\n' + services
             airtable.update(record['id'], {'web copy': full_copy})
             web_copy = full_copy
-            print(f"✅ Scraped and updated web copy for {company}")
+            print(f"🧽 Scraped and saved web copy for {company}")
 
-        # Generate and send email
+        # Generate and send
         prompt = generate_prompt(web_copy, name, company)
         message = get_groq_response(prompt)
-
         subject = f"Quick idea for {company}"
+
         send_email(email, subject, message)
 
-        now_str = datetime.now().strftime('%Y-%m-%d')
-        followup1 = (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')
-        followup2 = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-
+        now = datetime.now()
         airtable.update(record['id'], {
-            'initial date': now_str,
-            'follow-up 1 date': followup1,
-            'follow-up 2 date': followup2,
+            'initial date': now.strftime('%Y-%m-%d'),
+            'follow-up 1 date': (now + timedelta(days=3)).strftime('%Y-%m-%d'),
+            'follow-up 2 date': (now + timedelta(days=7)).strftime('%Y-%m-%d'),
             'status': 'initial sent'
         })
 
-        # Wait random 2–5 minutes
-        delay = random.randint(120, 300)
-        print(f"⏱ Waiting {delay}s before next...")
-        time.sleep(delay)
+        wait_time = random.randint(120, 300)
+        print(f"⏱ Waiting {wait_time}s before next email...")
+        time.sleep(wait_time)
 
 if __name__ == '__main__':
     main()
