@@ -9,7 +9,7 @@ from airtable import Airtable
 from bs4 import BeautifulSoup
 import requests
 from dotenv import load_dotenv
-import openai
+import groq
 
 load_dotenv()
 
@@ -23,7 +23,7 @@ SMTP_PORT = 587
 SMTP_USERNAME = 'hello@toontheory.com'
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
-openai.api_key = os.getenv('GROQ_API_KEY')
+groq.api_key = os.getenv('GROQ_API_KEY')
 GROQ_MODEL = 'llama3-70b-8192'
 
 def scrape_visible_text(url):
@@ -39,7 +39,7 @@ def scrape_visible_text(url):
         return ""
 
 def get_groq_response(prompt):
-    response = openai.ChatCompletion.create(
+    response = groq.ChatCompletion.create(
         model=GROQ_MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful assistant that writes natural, plain-English cold emails using scraped web copy."},
