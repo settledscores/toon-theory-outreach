@@ -1,25 +1,14 @@
-import os
-import smtplib
-import imaplib
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from pytz import timezone
-from dateutil.parser import parse
-from airtable import Airtable
-import random
+import os import smtplib import imaplib import requests from bs4 import BeautifulSoup from datetime import datetime, timedelta from email.mime.text import MIMEText from email.mime.multipart import MIMEMultipart from pytz import timezone from dateutil.parser import parse from airtable import Airtable import random
 
-CONSTANTS
+Constants (No more placeholders)
 
-AIRTABLE_API_KEY = "pat5066FrEhKfGgm6.163765e4f2e56e31d591c3005be3d4570875d87dec201799e6c870531ee84f18" AIRTABLE_BASE_ID = "apphIwzbnFgC6uUo8" AIRTABLE_TABLE_NAME = "Toon Theory" GROQ_API_KEY = os.getenv("GROQ_API_KEY") EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS") EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD") SMTP_SERVER = "smtppro.zoho.com" SMTP_PORT = 465 IMAP_SERVER = "imappro.zoho.com" IMAP_PORT = 993 TIMEZONE = timezone("Africa/Lagos")
+AIRTABLE_API_KEY = "pat5066FrEhKfGgm6.163765e4f2e56e31d591c3005be3d4570875d87dec201799e6c870531ee84f18" AIRTABLE_BASE_ID = "apphIwzbnFgC6uUo8" AIRTABLE_TABLE_NAME = "Toon Theory" GROQ_API_KEY = "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" EMAIL_ADDRESS = "hello@toontheory.com" EMAIL_PASSWORD = "5k7KW%A?n7Eev!s" SMTP_SERVER = "smtppro.zoho.com" SMTP_PORT = 465 IMAP_SERVER = "imappro.zoho.com" IMAP_PORT = 993 TIMEZONE = timezone("Africa/Lagos")
 
 Connect Airtable
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-Prompt template
+Prompt Template
 
 PROMPT_TEMPLATE = """ You're helping a whiteboard animation studio write a cold outreach email.
 
@@ -33,9 +22,15 @@ I run Toon Theory, a whiteboard animation studio based in the UK. We create stra
 
 With your focus on {angle}, I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
 
-Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to: {use_cases}
+Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to: 
 
-If you're open to it, I’d love to share a few tailored samples or sketch out what this could look like for {company}'s brand voice.
+- [Use case #1 tailored to website content]
+- [Use case #2 tailored to website content]
+- [Use case #3 tailored to website content]
+
+If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with [company]'s voice behind it.
+
+[Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
 
 Warm regards, Trent Founder, Toon Theory www.toontheory.com Whiteboard Animation For The Brands People Trust
 
@@ -63,7 +58,6 @@ def has_replied(recipient_email): try: with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_
 
 def run_campaign(): leads = airtable.get_all() now = datetime.now(TIMEZONE) print(f"🟡 Total leads found: {len(leads)}")
 
-# Select 1 lead max, randomly, within 2pm–7pm WAT
 random.shuffle(leads)
 for lead in leads:
     fields = lead.get("fields", {})
