@@ -1,9 +1,7 @@
-name: Generate Cold Emails
+name: Generate Emails
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 10 * * *"  # 10:00 AM UTC daily (adjust if needed)
 
 jobs:
   generate-emails:
@@ -16,10 +14,10 @@ jobs:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
