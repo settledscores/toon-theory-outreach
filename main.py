@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from airtable import Airtable
-from bs4 import BeautifulSoup
-import requests
 from dotenv import load_dotenv
 import openai
 
@@ -25,47 +23,9 @@ SMTP_PORT = 587
 SMTP_USERNAME = 'hello@toontheory.com'
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
-# Groq config (via OpenAI client)
+# Groq config (OpenAI client)
 openai.api_key = os.getenv('GROQ_API_KEY')
 GROQ_MODEL = "llama3-70b-8192"
-
-def scrape_visible_text(url):
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        for tag in soup(['script', 'style', 'header', 'nav', 'footer', 'form']):
-            tag.decompose()
-
-        visible_text = ' '.join(chunk.strip() for chunk in soup.stripped_strings)
-        return visible_text[:8000]
-    except Exception as e:
-        print(f"Error scraping {url}: {e}")
-        return ""
-
-def get_groq_response(prompt):
-    response = openai.ChatCompletion.create(
-        model=GROQ_MODEL,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that writes natural, plain-English cold emails using scraped web copy."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response.choices[0].message.content
-
-def send_email(to_address, subject, body):
-    msg = MIMEMultipart()
-    msg['From'] = SMTP_USERNAME
-    msg['To'] = to_address
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
-        print(f"✅ Email sent to {to_address}")
 
 def generate_prompt(web_copy, name, company):
     return f"""
@@ -104,29 +64,34 @@ STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them wi
 Website content: {web_copy}
 """
 
+def get_groq_response(prompt):
+    response = openai.ChatCompletion.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that writes natural, plain-English cold emails using scraped web copy."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response.choices[0].message.content
+
+def send_email(to_address, subject, body):
+    msg = MIMEMultipart()
+    msg['From'] = SMTP_USERNAME
+    msg['To'] = to_address
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(msg)
+        print(f"✅ Email sent to {to_address}")
+
 def main():
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all(view=AIRTABLE_VIEW_NAME)
     print(f"🔍 Total leads found: {len(records)}")
 
-    # Pass 1: Scrape missing web copy
-    for record in records:
-        fields = record.get('fields', {})
-        company = fields.get('company name')
-        website = fields.get('website')
-        web_copy = fields.get('web copy')
-
-        if website and not web_copy:
-            homepage = scrape_visible_text(website)
-            services = scrape_visible_text(website.rstrip('/') + '/services')
-            full_copy = homepage + '\n' + services
-            airtable.update(record['id'], {'web copy': full_copy})
-            print(f"🧽 Scraped and saved web copy for {company}")
-
-    # Short delay to ensure Airtable has saved
-    time.sleep(5)
-
-    # Pass 2: Send emails
     for record in records:
         fields = record.get('fields', {})
         name = fields.get('name')
@@ -137,7 +102,7 @@ def main():
         status = fields.get('status', '').lower()
 
         if not all([name, company, email, website, web_copy]):
-            print(f"⚠️ Skipping {company or 'lead'} due to incomplete fields")
+            print("⚠️ Skipping incomplete lead")
             continue
 
         if status and status not in ['not contacted', '']:
@@ -145,20 +110,29 @@ def main():
             continue
 
         prompt = generate_prompt(web_copy, name, company)
-        message = get_groq_response(prompt)
+        try:
+            message = get_groq_response(prompt)
+        except Exception as e:
+            print(f"❌ Error generating message for {company}: {e}")
+            continue
+
         subject = f"Quick idea for {company}"
 
-        send_email(email, subject, message)
+        try:
+            send_email(email, subject, message)
+        except Exception as e:
+            print(f"❌ Error sending email to {email}: {e}")
+            continue
 
         now = datetime.now()
         airtable.update(record['id'], {
-            'initial date': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'follow-up 1 date': (now + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S'),
-            'follow-up 2 date': (now + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S'),
+            'initial date': now.strftime('%Y-%m-%d'),
+            'follow-up 1 date': (now + timedelta(days=3)).strftime('%Y-%m-%d'),
+            'follow-up 2 date': (now + timedelta(days=7)).strftime('%Y-%m-%d'),
             'status': 'initial sent'
         })
 
-        wait_time = random.randint(120, 300)
+        wait_time = random.randint(300, 600)
         print(f"⏱ Waiting {wait_time}s before next email...")
         time.sleep(wait_time)
 
