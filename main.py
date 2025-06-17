@@ -14,12 +14,12 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))  # default to 465
 IMAP_SERVER = os.getenv("IMAP_SERVER")
 IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # optional fallback if using Groq
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
@@ -81,10 +81,15 @@ def send_email(to_email, subject, body):
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        server.send_message(msg)
+    try:
+        print(f"🔌 Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT} via SSL...")
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+        print(f"📨 Email successfully sent to {to_email}")
+    except Exception as e:
+        print(f"❗ SMTP Error sending to {to_email}: {e}")
+        raise
 
 def should_send_today(date_str):
     if not date_str:
