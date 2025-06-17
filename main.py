@@ -2,152 +2,126 @@ import os
 import random
 import time
 import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from airtable import Airtable
 from bs4 import BeautifulSoup
 import requests
+from airtable import Airtable
 from dotenv import load_dotenv
 import openai
 
+# Load environment variables
 load_dotenv()
 
-# Airtable config
-AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')
-AIRTABLE_TABLE_NAME = os.getenv('AIRTABLE_TABLE_NAME')
-AIRTABLE_VIEW_NAME = os.getenv('AIRTABLE_VIEW_NAME')
-AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY')
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TIMEZONE_OFFSET = 1  # WAT = UTC+1
 
-# Email config
-SMTP_SERVER = 'smtp.zoho.com'
-SMTP_PORT = 587
-SMTP_USERNAME = 'hello@toontheory.com'
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+openai.api_key = OPENAI_API_KEY
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Groq config (via OpenAI client)
-openai.api_key = os.getenv('GROQ_API_KEY')
-GROQ_MODEL = "llama3-70b-8192"
+def prepend_https(url):
+    return url if url.startswith("http") else f"https://{url.strip()}"
 
 def scrape_visible_text(url):
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        headers = {"User-Agent": "Mozilla/5.0"}
+        resp = requests.get(prepend_https(url), headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        for tag in soup(['script', 'style', 'header', 'nav', 'footer', 'form']):
+        for tag in soup(["nav", "footer", "header", "script", "style", "noscript", "a", "link", "img", "button"]):
             tag.decompose()
 
-        visible_text = ' '.join(chunk.strip() for chunk in soup.stripped_strings)
-        return visible_text[:8000]
+        text = soup.get_text(separator=" ", strip=True)
+        return " ".join(text.split())
     except Exception as e:
-        print(f"Error scraping {url}: {e}")
+        print(f"⚠️ Failed to scrape {url}: {e}")
         return ""
 
-def get_groq_response(prompt):
-    response = openai.ChatCompletion.create(
-        model=GROQ_MODEL,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that writes natural, plain-English cold emails using scraped web copy."},
-            {"role": "user", "content": prompt}
-        ]
+def generate_prompt(name, company, website_copy):
+    return (
+        f"You're writing a short email to {name} from {company}. "
+        f"Their website says: {website_copy[:1200]}... "
+        "You run Toon Theory, a UK-based whiteboard animation studio. "
+        "Write a friendly cold email using clear English, no buzzwords, and no em dashes. Keep it natural and brief."
     )
-    return response.choices[0].message.content
+
+def generate_email_content(prompt):
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You write in clear, concise English with a friendly tone. Avoid em dashes."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7
+    )
+    return response.choices[0].message.content.strip()
 
 def send_email(to_address, subject, body):
-    msg = MIMEMultipart()
-    msg['From'] = SMTP_USERNAME
-    msg['To'] = to_address
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    msg = EmailMessage()
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to_address
+    msg["Subject"] = subject
+    msg.set_content(body)
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
-        print(f"✅ Email sent to {to_address}")
+    with smtplib.SMTP_SSL("smtp.zoho.com", 465) as smtp:
+        smtp.login(SMTP_EMAIL, SMTP_PASSWORD)
+        smtp.send_message(msg)
 
-def generate_prompt(web_copy, name, company):
-    return f"""
-You're helping a whiteboard animation studio write a cold outreach email.
+def send_randomized_email(name, company, email, website, website_copy):
+    prompt = generate_prompt(name, company, website_copy)
+    content = generate_email_content(prompt)
+    subject = content.splitlines()[0].strip()[:60] if content else "Quick hello"
 
-Here is their base email:
+    send_email(email, subject, content)
+    print(f"✅ Sent to {email} — {subject}")
 
-Hi {name},
+def process_leads():
+    leads = airtable.get_all(view="Grid view")
+    print(f"🔍 Total leads found: {len(leads)}")
 
-I’ve been following {company} lately, and your ability to make [summary] really stood out.
+    for record in leads:
+        fields = record["fields"]
+        name = fields.get("name", "").strip()
+        company_name = fields.get("company name", "").strip()
+        email = fields.get("email", "").strip()
+        website = fields.get("website", "").strip()
+        web_copy = fields.get("web copy", "").strip()
 
-I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.
-
-With your focus on [angle], I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
-
-Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
-
-- [Use case #1 tailored to website content]
-- [Use case #2 tailored to website content]
-- [Use case #3 tailored to website content]
-
-If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.
-
-[Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
-
-Warm regards,  
-Trent  
-Founder, Toon Theory  
-www.toontheory.com  
-Whiteboard Animation For The Brands People Trust
-
-Based on the website content below, fill in the missing parts in the email with clear, natural language.
-
-STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
-
-Website content: {web_copy}
-"""
-
-def main():
-    airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-    records = airtable.get_all(view=AIRTABLE_VIEW_NAME)
-
-    print(f"🔍 Total leads found: {len(records)}")
-
-    for record in records:
-        fields = record.get('fields', {})
-        name = fields.get('name')
-        company = fields.get('company name')
-        email = fields.get('email')
-        website = fields.get('website')
-        web_copy = fields.get('web copy')
-        status = fields.get('status', '').lower()
-
-        # Enhanced validation
-        if not all([name, company, email, website]):
+        if not all([name, company_name, email, website, web_copy]):
             print("⚠️ Skipping due to missing required fields")
             continue
-        if not web_copy or len(web_copy.strip()) < 300:
-            print("⚠️ Skipping due to incomplete or poor web copy")
-            continue
-        if status and status not in ['not contacted', '']:
-            print(f"⏩ Already processed: {company}")
-            continue
 
-        # Generate and send
-        prompt = generate_prompt(web_copy, name, company)
-        message = get_groq_response(prompt)
-        subject = f"Quick idea for {company}"
+        # Only send to leads who haven't been contacted yet
+        if "initial date" not in fields:
+            send_randomized_email(name, company_name, email, website, web_copy)
+            today = (datetime.utcnow() + timedelta(hours=TIMEZONE_OFFSET)).strftime("%Y-%m-%d")
+            follow1 = (datetime.utcnow() + timedelta(days=3, hours=TIMEZONE_OFFSET)).strftime("%Y-%m-%d")
+            follow2 = (datetime.utcnow() + timedelta(days=7, hours=TIMEZONE_OFFSET)).strftime("%Y-%m-%d")
+            airtable.update(record["id"], {
+                "initial date": today,
+                "follow-up 1 date": follow1,
+                "follow-up 2 date": follow2,
+                "status": "Sent"
+            })
 
-        send_email(email, subject, message)
+def update_web_copy():
+    leads = airtable.get_all(view="Grid view")
+    for record in leads:
+        fields = record["fields"]
+        website = fields.get("website", "").strip()
+        web_copy = fields.get("web copy", "").strip()
 
-        now = datetime.now()
-        airtable.update(record['id'], {
-            'initial date': now.strftime('%Y-%m-%d'),
-            'follow-up 1 date': (now + timedelta(days=3)).strftime('%Y-%m-%d'),
-            'follow-up 2 date': (now + timedelta(days=7)).strftime('%Y-%m-%d'),
-            'status': 'initial sent'
-        })
+        if website and not web_copy:
+            scraped = scrape_visible_text(website)
+            if scraped:
+                airtable.update(record["id"], {"web copy": scraped})
+                print(f"📝 Updated web copy for {website}")
 
-        wait_time = random.randint(120, 300)
-        print(f"⏱ Waiting {wait_time}s before next email...")
-        time.sleep(wait_time)
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    update_web_copy()
+    process_leads()
