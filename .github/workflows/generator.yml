@@ -1,13 +1,12 @@
-name: Generate Emails
+name: Generate Cold Emails
 
 on:
-  schedule:
-    # 2:03 PM WAT (13:03 UTC) every weekday
-    - cron: "3 13 * * 1-5"
   workflow_dispatch:
+  schedule:
+    - cron: "0 10 * * *"  # 10:00 AM UTC daily (adjust if needed)
 
 jobs:
-  run-email-generator:
+  generate-emails:
     runs-on: ubuntu-latest
 
     env:
@@ -17,10 +16,10 @@ jobs:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.11
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -30,5 +29,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ✍️ Generate cold emails with Groq
+      - name: ✨ Run generator
         run: python generator.py
