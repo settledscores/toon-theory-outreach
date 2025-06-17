@@ -62,8 +62,17 @@ def refresh_access_token():
             'grant_type': 'refresh_token'
         }
     )
-    response.raise_for_status()
-    return response.json()['access_token']
+    try:
+        data = response.json()
+    except Exception as e:
+        raise RuntimeError(f"❌ Failed to decode JSON from Zoho: {e}")
+
+    if 'access_token' not in data:
+        error = data.get('error', 'Unknown')
+        desc = data.get('error_description', 'No description')
+        raise RuntimeError(f"❌ Could not refresh Zoho token. Error: {error}. Description: {desc}. Full response: {data}")
+
+    return data['access_token']
 
 # === Compose email from prompt ===
 def generate_email(name, company, web_copy):
@@ -97,7 +106,7 @@ def main():
     sent_count = 0
 
     for record in records:
-        fields = record['fields']
+        fields = record.get('fields', {})
         if sent_count >= 3:
             break
 
@@ -106,9 +115,15 @@ def main():
             continue
 
         email_body = generate_email(fields['name'], fields['company name'], fields['web copy'])
+
         try:
             print(f"📤 Sending to {fields['name']} ({fields['email']})")
-            send_email(access_token, fields['email'], "Idea for {company}".format(company=fields['company name']), email_body)
+            send_email(
+                access_token,
+                fields['email'],
+                "Idea for {company}".format(company=fields['company name']),
+                email_body
+            )
 
             now = datetime.utcnow()
             airtable.update(record['id'], {
@@ -118,6 +133,7 @@ def main():
                 'status': 'Sent'
             })
             sent_count += 1
+
         except Exception as e:
             print(f"❌ Failed to send to {fields['email']}: {e}")
 
