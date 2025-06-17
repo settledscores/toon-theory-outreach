@@ -15,8 +15,8 @@ AIRTABLE_API_KEY = os.environ['AIRTABLE_API_KEY']
 ZOHO_CLIENT_ID = os.environ['ZOHO_CLIENT_ID']
 ZOHO_CLIENT_SECRET = os.environ['ZOHO_CLIENT_SECRET']
 ZOHO_REFRESH_TOKEN = os.environ['ZOHO_REFRESH_TOKEN']
-ZOHO_FROM_ADDRESS = os.environ['ZOHO_FROM_ADDRESS']
 ZOHO_ACCOUNT_ID = os.environ['ZOHO_ACCOUNT_ID']
+FROM_EMAIL = os.environ['FROM_EMAIL']
 
 PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
 
@@ -79,7 +79,7 @@ def send_email(access_token, to_email, subject, body):
         'Content-Type': 'application/json'
     }
     data = {
-        'fromAddress': ZOHO_FROM_ADDRESS,
+        'fromAddress': FROM_EMAIL,
         'toAddress': to_email,
         'subject': subject,
         'content': body,
