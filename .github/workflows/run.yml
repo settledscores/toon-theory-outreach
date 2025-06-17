@@ -2,9 +2,8 @@ name: Send Cold Emails
 
 on:
   schedule:
-    # Every 10 minutes from 12:30 to 13:00 UTC (1:30–2:00 PM WAT)
-    - cron: "30,40,50 12 * * *"
-    - cron: "0 13 * * *"
+    # Every 5 minutes between 2:00 PM and 7:00 PM WAT (13:00–18:55 UTC)
+    - cron: "0-55/5 13-18 * * 1-5"
   workflow_dispatch:
 
 jobs:
@@ -23,6 +22,11 @@ jobs:
       SMTP_PORT: ${{ secrets.SMTP_PORT }}
       IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
       IMAP_PORT: ${{ secrets.IMAP_PORT }}
+      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}  # optional
+      FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
 
     steps:
       - name: 📥 Checkout repository
