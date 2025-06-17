@@ -2,29 +2,25 @@ import os
 import smtplib
 import imaplib
 import email
-from datetime import datetime, timedelta
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from airtable import Airtable
-from openai import OpenAI
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
 import random
 import time
+import openai
 
-# === Load environment variables ===
-load_dotenv()
+# === Environment ===
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 IMAP_SERVER = os.getenv("IMAP_SERVER")
-IMAP_PORT = int(os.getenv("IMAP_PORT"))
-
-# === Airtable setup ===
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
+IMAP_PORT = int(os.getenv("IMAP_PORT", 993))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # === Prompt template ===
 PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
@@ -62,85 +58,108 @@ STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them wi
 Website content: {web_copy}
 """
 
-# === Helper functions ===
-def generate_email_prompt(name, company, web_copy):
-    return PROMPT_TEMPLATE.format(name=name, company=company, web_copy=web_copy, summary="{summary}", angle="{angle}")
+# === Airtable Setup ===
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-def call_groq(prompt):
-    client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
-    response = client.chat.completions.create(
+# === Generate email ===
+def generate_email(name, company, web_copy):
+    prompt = PROMPT_TEMPLATE.format(name=name, company=company, summary="", angle="", web_copy=web_copy)
+    openai.api_key = GROQ_API_KEY
+    response = openai.ChatCompletion.create(
         model="mixtral-8x7b-32768",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
+        temperature=0.7
     )
     return response.choices[0].message.content.strip()
 
-def send_email(recipient, subject, body):
-    msg = MIMEText(body)
-    msg["Subject"] = subject
+# === Send email ===
+def send_email(to_email, subject, body):
+    msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
-    msg["To"] = recipient
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg)
 
-def check_reply(recipient_email):
+# === Check inbox for replies ===
+def check_replies():
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
         mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         mail.select("inbox")
-        status, messages = mail.search(None, f'FROM "{recipient_email}"')
-        if status == "OK" and messages[0]:
-            return True
-    return False
+        result, data = mail.search(None, '(UNSEEN)')
+        unread_msg_nums = data[0].split()
 
-def get_eligible_leads():
+        for num in unread_msg_nums:
+            result, msg_data = mail.fetch(num, '(RFC822)')
+            raw_email = msg_data[0][1]
+            msg = email.message_from_bytes(raw_email)
+            from_email = email.utils.parseaddr(msg["From"])[1]
+
+            # Update Airtable status to "replied"
+            matching = airtable.search("email", from_email)
+            for match in matching:
+                airtable.update(match["id"], {"status": "replied"})
+                print(f"📩 Reply received from {from_email} — marked as replied.")
+
+# === Main ===
+def main():
+    print("🚀 Starting cold outreach script...\n")
+    check_replies()
+
     records = airtable.get_all()
     eligible = []
+
     for record in records:
-        f = record["fields"]
-        if all(k in f and f[k] for k in ["name", "company name", "email", "website", "web copy"]):
-            status = f.get("status", "").lower()
-            if not status.startswith("sent"):
-                eligible.append(record)
-    return eligible
+        fields = record.get("fields", {})
+        name = fields.get("name")
+        company = fields.get("company name")
+        email_addr = fields.get("email")
+        website = fields.get("website")
+        web_copy = fields.get("web copy")
+        status = fields.get("status", "").lower()
 
-def update_follow_up_dates(record_id, initial_time):
-    follow_up_1 = initial_time + timedelta(days=3)
-    follow_up_2 = follow_up_1 + timedelta(days=4)
-    airtable.update(record_id, {
-        "initial date": initial_time.isoformat(),
-        "follow-up 1 date": follow_up_1.isoformat(),
-        "follow-up 2 date": follow_up_2.isoformat(),
-        "status": "sent initial"
-    })
+        log_parts = []
+        if not name:
+            log_parts.append("missing name")
+        if not company:
+            log_parts.append("missing company name")
+        if not email_addr:
+            log_parts.append("missing email")
+        if not website:
+            log_parts.append("missing website")
+        if not web_copy:
+            log_parts.append("missing web copy")
+        if status.startswith("sent") or status == "replied":
+            log_parts.append(f"status is '{status}'")
 
-# === Main function ===
-def main():
-    leads = get_eligible_leads()
-    if not leads:
+        if log_parts:
+            print(f"⛔ Skipping lead: {email_addr or '[no email]'} — " + ", ".join(log_parts))
+        else:
+            eligible.append((record["id"], name, company, email_addr, web_copy))
+
+    if not eligible:
         print("❌ No eligible leads found.")
         return
 
-    lead = random.choice(leads)
-    f = lead["fields"]
-    record_id = lead["id"]
-    name = f["name"]
-    company = f["company name"]
-    recipient = f["email"]
-    web_copy = f["web copy"]
+    # Pick one lead to send to
+    lead_id, name, company, email_addr, web_copy = random.choice(eligible)
+    print(f"✅ Preparing email for {name} at {company} ({email_addr})...")
 
-    print(f"🟡 Preparing email for {name} at {company} ({recipient})")
+    email_body = generate_email(name, company, web_copy)
+    send_email(email_addr, f"Quick idea for {company}", email_body)
 
-    prompt = generate_email_prompt(name, company, web_copy)
-    email_body = call_groq(prompt)
-
-    subject = f"Quick idea for {company}"
-
-    send_email(recipient, subject, email_body)
-    now = datetime.now()
-    update_follow_up_dates(record_id, now)
-
-    print(f"✅ Email sent to {name} at {company} at {now.strftime('%H:%M:%S')}")
+    now = datetime.utcnow()
+    airtable.update(lead_id, {
+        "status": "sent initial",
+        "initial date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+        "follow-up 2 date": (now + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    print(f"✅ Email sent and Airtable updated for {email_addr}.")
 
 if __name__ == "__main__":
     main()
