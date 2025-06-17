@@ -95,11 +95,14 @@ def send_email(to_email, subject, body):
     except smtplib.SMTPConnectError as conn_err:
         print(f"❗ SMTP Connection error: {conn_err}")
         raise
+    except smtplib.SMTPRecipientsRefused as refused:
+        print(f"❗ Recipient refused: {refused}")
+        raise
     except smtplib.SMTPException as smtp_err:
         print(f"❗ SMTP error: {smtp_err}")
         raise
     except Exception as e:
-        print(f"❗ Unexpected error while sending email: {e}")
+        print(f"❗ Unexpected error while sending email: {type(e).__name__} – {e}")
         raise
 
 def should_send_today(date_str):
