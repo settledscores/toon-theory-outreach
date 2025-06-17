@@ -1,28 +1,29 @@
 import os
+import random
 import smtplib
 import imaplib
 import email
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from openai import OpenAI
 from airtable import Airtable
-from datetime import datetime, timedelta
-import random
-import time
-import openai
 
-# === Environment ===
+# === Setup ===
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+IMAP_SERVER = os.getenv("IMAP_SERVER")
+IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-IMAP_SERVER = os.getenv("IMAP_SERVER")
-IMAP_PORT = int(os.getenv("IMAP_PORT", 993))
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # optional fallback if using Groq
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# === Prompt template ===
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+
 PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
 
 Here is their base email:
@@ -35,7 +36,7 @@ I run Toon Theory, a whiteboard animation studio based in the UK. We create stra
 
 With your focus on {angle}, I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
 
-Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to: 
+Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
 
 - [Use case #1 tailored to website content]
 - [Use case #2 tailored to website content]
@@ -51,28 +52,28 @@ Founder, Toon Theory
 www.toontheory.com  
 Whiteboard Animation For The Brands People Trust
 
-Based on the website content below, fill in the missing parts in the email with clear, natural language.
-
 STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
 
 Website content: {web_copy}
 """
 
-# === Airtable Setup ===
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-
-# === Generate email ===
 def generate_email(name, company, web_copy):
-    prompt = PROMPT_TEMPLATE.format(name=name, company=company, summary="", angle="", web_copy=web_copy)
-    openai.api_key = GROQ_API_KEY
-    response = openai.ChatCompletion.create(
-        model="mixtral-8x7b-32768",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
+    prompt = PROMPT_TEMPLATE.format(
+        name=name,
+        company=company,
+        summary="complex ideas feel simple and actionable",
+        angle="clarity and storytelling",
+        web_copy=web_copy,
+    )
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a senior B2B copywriter."},
+            {"role": "user", "content": prompt}
+        ]
     )
     return response.choices[0].message.content.strip()
 
-# === Send email ===
 def send_email(to_email, subject, body):
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
@@ -85,81 +86,50 @@ def send_email(to_email, subject, body):
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg)
 
-# === Check inbox for replies ===
-def check_replies():
-    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
-        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        mail.select("inbox")
-        result, data = mail.search(None, '(UNSEEN)')
-        unread_msg_nums = data[0].split()
+def should_send_today(date_str):
+    if not date_str:
+        return True
+    date = datetime.strptime(date_str, "%Y-%m-%d")
+    return date.date() <= datetime.now().date()
 
-        for num in unread_msg_nums:
-            result, msg_data = mail.fetch(num, '(RFC822)')
-            raw_email = msg_data[0][1]
-            msg = email.message_from_bytes(raw_email)
-            from_email = email.utils.parseaddr(msg["From"])[1]
-
-            # Update Airtable status to "replied"
-            matching = airtable.search("email", from_email)
-            for match in matching:
-                airtable.update(match["id"], {"status": "replied"})
-                print(f"📩 Reply received from {from_email} — marked as replied.")
-
-# === Main ===
 def main():
     print("🚀 Starting cold outreach script...\n")
-    check_replies()
 
     records = airtable.get_all()
-    eligible = []
-
     for record in records:
         fields = record.get("fields", {})
-        name = fields.get("name")
-        company = fields.get("company name")
-        email_addr = fields.get("email")
-        website = fields.get("website")
-        web_copy = fields.get("web copy")
-        status = fields.get("status", "").lower()
+        name = fields.get("name", "").strip()
+        company = fields.get("company name", "").strip()
+        to_email = fields.get("email", "").strip()
+        web_copy = fields.get("web copy", "").strip()
+        status = fields.get("status", "").strip().lower()
+        initial_date = fields.get("initial date", "")
 
-        log_parts = []
-        if not name:
-            log_parts.append("missing name")
-        if not company:
-            log_parts.append("missing company name")
-        if not email_addr:
-            log_parts.append("missing email")
-        if not website:
-            log_parts.append("missing website")
-        if not web_copy:
-            log_parts.append("missing web copy")
-        if status.startswith("sent") or status == "replied":
-            log_parts.append(f"status is '{status}'")
+        print(f"🔍 Reviewing: {name} | {company} | {to_email} | Status: {status or 'N/A'}")
 
-        if log_parts:
-            print(f"⛔ Skipping lead: {email_addr or '[no email]'} — " + ", ".join(log_parts))
-        else:
-            eligible.append((record["id"], name, company, email_addr, web_copy))
+        if not all([name, company, to_email, web_copy]):
+            print("❌ Skipped: Missing required fields.\n")
+            continue
 
-    if not eligible:
-        print("❌ No eligible leads found.")
-        return
+        if status not in ("", "not contacted") or not should_send_today(initial_date):
+            print("⏩ Skipped: Already contacted or not scheduled.\n")
+            continue
 
-    # Pick one lead to send to
-    lead_id, name, company, email_addr, web_copy = random.choice(eligible)
-    print(f"✅ Preparing email for {name} at {company} ({email_addr})...")
+        print(f"✅ Preparing email for {name} at {company} ({to_email})...")
+        try:
+            email_body = generate_email(name, company, web_copy)
+            send_email(to_email, f"Quick idea for {company}", email_body)
 
-    email_body = generate_email(name, company, web_copy)
-    send_email(email_addr, f"Quick idea for {company}", email_body)
-
-    now = datetime.utcnow()
-    airtable.update(lead_id, {
-        "status": "sent initial",
-        "initial date": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "follow-up 1 date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
-        "follow-up 2 date": (now + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
-    })
-    print(f"✅ Email sent and Airtable updated for {email_addr}.")
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            airtable.update(record["id"], {
+                "initial date": today_str,
+                "follow-up 1 date": (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d"),
+                "follow-up 2 date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "status": "sent"
+            })
+            print("📬 Email sent and Airtable updated.\n")
+        except Exception as e:
+            print(f"❗ Error sending to {to_email}: {e}\n")
 
 if __name__ == "__main__":
     main()
