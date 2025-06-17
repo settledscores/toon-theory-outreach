@@ -1,20 +1,18 @@
 import os
-import random
 import smtplib
 import imaplib
-import email
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from openai import OpenAI
 from airtable import Airtable
 
-# === Setup ===
+# === Environment variables ===
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))  # default to 465
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 IMAP_SERVER = os.getenv("IMAP_SERVER")
 IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
@@ -22,8 +20,10 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# === Airtable client ===
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
+# === Prompt template ===
 PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
 
 Here is their base email:
@@ -82,25 +82,45 @@ def send_email(to_email, subject, body):
     msg.attach(MIMEText(body, "plain"))
 
     try:
-        print(f"🔌 Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT} via SSL...")
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        print(f"🔌 Connecting to {SMTP_SERVER}:{SMTP_PORT} using SSL...")
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=20) as server:
+            print("🔐 Connection established. Logging in...")
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            print("✉️ Sending email...")
             server.send_message(msg)
-        print(f"📨 Email successfully sent to {to_email}")
+            print(f"✅ Email successfully sent to {to_email}")
+    except smtplib.SMTPAuthenticationError as auth_err:
+        print(f"❗ SMTP Authentication failed: {auth_err}")
+        raise
+    except smtplib.SMTPConnectError as conn_err:
+        print(f"❗ SMTP Connection error: {conn_err}")
+        raise
+    except smtplib.SMTPException as smtp_err:
+        print(f"❗ SMTP error: {smtp_err}")
+        raise
     except Exception as e:
-        print(f"❗ SMTP Error sending to {to_email}: {e}")
+        print(f"❗ Unexpected error while sending email: {e}")
         raise
 
 def should_send_today(date_str):
     if not date_str:
         return True
-    date = datetime.strptime(date_str, "%Y-%m-%d")
-    return date.date() <= datetime.now().date()
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d")
+        return date.date() <= datetime.now().date()
+    except Exception as e:
+        print(f"❗ Error parsing date '{date_str}': {e}")
+        return False
 
 def main():
     print("🚀 Starting cold outreach script...\n")
 
-    records = airtable.get_all()
+    try:
+        records = airtable.get_all()
+    except Exception as e:
+        print(f"❗ Error retrieving Airtable records: {e}")
+        return
+
     for record in records:
         fields = record.get("fields", {})
         name = fields.get("name", "").strip()
@@ -125,14 +145,15 @@ def main():
             email_body = generate_email(name, company, web_copy)
             send_email(to_email, f"Quick idea for {company}", email_body)
 
-            today_str = datetime.now().strftime("%Y-%m-%d")
+            today = datetime.now()
             airtable.update(record["id"], {
-                "initial date": today_str,
-                "follow-up 1 date": (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d"),
-                "follow-up 2 date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "initial date": today.strftime("%Y-%m-%d"),
+                "follow-up 1 date": (today + timedelta(days=3)).strftime("%Y-%m-%d"),
+                "follow-up 2 date": (today + timedelta(days=7)).strftime("%Y-%m-%d"),
                 "status": "sent"
             })
             print("📬 Email sent and Airtable updated.\n")
+
         except Exception as e:
             print(f"❗ Error sending to {to_email}: {e}\n")
 
