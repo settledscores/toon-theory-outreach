@@ -11,7 +11,7 @@ AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GROQ_MODEL = "mixtral-8x7b-32768"  # Or another model if preferred
+GROQ_MODEL = "llama3-70b-8192"  # Or another model if preferred
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
