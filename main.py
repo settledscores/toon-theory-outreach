@@ -1,154 +1,146 @@
 import os
-import random
 import smtplib
-from email.mime.text import MIMEText
+import imaplib
+import email
 from datetime import datetime, timedelta
-from time import sleep
-
-import requests
-from bs4 import BeautifulSoup
+from email.mime.text import MIMEText
 from airtable import Airtable
-from dotenv import load_dotenv
 from openai import OpenAI
+from dotenv import load_dotenv
+import random
+import time
 
+# === Load environment variables ===
 load_dotenv()
-
-# Airtable Setup
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-AIRTABLE_VIEW_NAME = os.getenv("AIRTABLE_VIEW_NAME")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
+IMAP_SERVER = os.getenv("IMAP_SERVER")
+IMAP_PORT = int(os.getenv("IMAP_PORT"))
 
-# OpenAI
-openai = OpenAI(api_key=os.getenv("GROQ_API_KEY"))
+# === Airtable setup ===
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, api_key=AIRTABLE_API_KEY)
 
-# Email (Zoho SMTP)
-SMTP_SERVER = "smtp.zoho.com"
-SMTP_PORT = 587
-SMTP_USERNAME = "hello@toontheory.com"
-SMTP_PASSWORD = os.getenv("ZOHO_APP_PASSWORD")
+# === Prompt template ===
+PROMPT_TEMPLATE = """You're helping a whiteboard animation studio write a cold outreach email.
 
-# Google Sheets mode OFF — Airtable only
-USE_AIRTABLE = True
+Here is their base email:
 
-# Timezone
-TZ_OFFSET = timedelta(hours=1)  # WAT (UTC+1)
+Hi {name},
 
-# Random delay range (secs)
-DELAY_RANGE = (1, 5)
+I’ve been following {company} lately, and your ability to make {summary} really stood out.
 
-# Max emails per day
-MAX_EMAILS_PER_DAY = 20
+I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.
 
+With your focus on {angle}, I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
 
-def normalize_url(url):
-    if not url.startswith("http"):
-        return "https://" + url.strip("/")
-    return url.strip("/")
+Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to: 
 
+- [Use case #1 tailored to website content]
+- [Use case #2 tailored to website content]
+- [Use case #3 tailored to website content]
 
-def scrape_visible_text(url):
-    try:
-        res = requests.get(url, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
+If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.
 
-        for tag in soup(["script", "style", "nav", "footer", "header", "a"]):
-            tag.decompose()
+[Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
 
-        return " ".join(soup.stripped_strings)
-    except Exception as e:
-        print(f"⚠️ Scraping failed for {url}: {e}")
-        return ""
+Warm regards,  
+Trent  
+Founder, Toon Theory  
+www.toontheory.com  
+Whiteboard Animation For The Brands People Trust
 
+Based on the website content below, fill in the missing parts in the email with clear, natural language.
 
-def is_valid_lead(record):
-    required = ["name", "company name", "email", "website", "web copy"]
-    missing = [field for field in required if not record.get("fields", {}).get(field)]
-    return (len(missing) == 0, missing)
+STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
 
+Website content: {web_copy}
+"""
 
-def generate_prompt(name, company, web_copy):
-    return f"Write a short, friendly cold outreach email to {name} at {company} based on this web copy: {web_copy}"
+# === Helper functions ===
+def generate_email_prompt(name, company, web_copy):
+    return PROMPT_TEMPLATE.format(name=name, company=company, web_copy=web_copy, summary="{summary}", angle="{angle}")
 
-
-def send_email(recipient, subject, body):
-    msg = MIMEText(body)
-    msg["From"] = SMTP_USERNAME
-    msg["To"] = recipient
-    msg["Subject"] = subject
-
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
-
-
-def process_record(record):
-    fields = record["fields"]
-    name = fields.get("name", "").strip()
-    company = fields.get("company name", "").strip()
-    email = fields.get("email", "").strip()
-    website = fields.get("website", "").strip()
-    web_copy = fields.get("web copy", "").strip()
-
-    # Normalize and scrape if needed
-    if website and not website.startswith("http"):
-        website = normalize_url(website)
-        homepage = scrape_visible_text(website)
-        services = scrape_visible_text(website + "/services")
-        full_copy = homepage + "\n" + services
-        airtable.update(record["id"], {"web copy": full_copy})
-        web_copy = full_copy
-
-    # Validate again after scrape
-    valid, missing = is_valid_lead(record)
-    if not valid:
-        print(f"❌ Skipping {name or '[no name]'} @ {company or '[no company]'} (missing: {', '.join(missing)})")
-        return
-
-    prompt = generate_prompt(name, company, web_copy)
-    response = openai.chat.completions.create(
+def call_groq(prompt):
+    client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+    response = client.chat.completions.create(
         model="mixtral-8x7b-32768",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
     )
-    email_body = response.choices[0].message.content
+    return response.choices[0].message.content.strip()
 
-    subject = f"Quick hello from Toon Theory"
-    send_email(email, subject, email_body)
+def send_email(recipient, subject, body):
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = recipient
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
 
-    now = (datetime.utcnow() + TZ_OFFSET).replace(microsecond=0)
-    followup1 = now + timedelta(days=3)
-    followup2 = followup1 + timedelta(days=4)
+def check_reply(recipient_email):
+    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
+        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        mail.select("inbox")
+        status, messages = mail.search(None, f'FROM "{recipient_email}"')
+        if status == "OK" and messages[0]:
+            return True
+    return False
 
-    airtable.update(record["id"], {
-        "initial date": now.isoformat(),
-        "follow-up 1 date": followup1.isoformat(),
-        "follow-up 2 date": followup2.isoformat(),
-        "status": "sent",
+def get_eligible_leads():
+    records = airtable.get_all()
+    eligible = []
+    for record in records:
+        f = record["fields"]
+        if all(k in f and f[k] for k in ["name", "company name", "email", "website", "web copy"]):
+            status = f.get("status", "").lower()
+            if not status.startswith("sent"):
+                eligible.append(record)
+    return eligible
+
+def update_follow_up_dates(record_id, initial_time):
+    follow_up_1 = initial_time + timedelta(days=3)
+    follow_up_2 = follow_up_1 + timedelta(days=4)
+    airtable.update(record_id, {
+        "initial date": initial_time.isoformat(),
+        "follow-up 1 date": follow_up_1.isoformat(),
+        "follow-up 2 date": follow_up_2.isoformat(),
+        "status": "sent initial"
     })
 
-    print(f"✅ Sent to {name} @ {company} ({email})")
-    sleep(random.randint(*DELAY_RANGE))
-
-
+# === Main function ===
 def main():
-    records = airtable.get(view=AIRTABLE_VIEW_NAME, sort=["initial date"])
-    print(f"🔍 Total leads found: {len(records)}")
+    leads = get_eligible_leads()
+    if not leads:
+        print("❌ No eligible leads found.")
+        return
 
-    sent_today = 0
-    for record in records:
-        if sent_today >= MAX_EMAILS_PER_DAY:
-            break
+    lead = random.choice(leads)
+    f = lead["fields"]
+    record_id = lead["id"]
+    name = f["name"]
+    company = f["company name"]
+    recipient = f["email"]
+    web_copy = f["web copy"]
 
-        fields = record.get("fields", {})
-        if fields.get("status", "").lower() == "sent":
-            continue
+    print(f"🟡 Preparing email for {name} at {company} ({recipient})")
 
-        process_record(record)
-        sent_today += 1
+    prompt = generate_email_prompt(name, company, web_copy)
+    email_body = call_groq(prompt)
 
+    subject = f"Quick idea for {company}"
+
+    send_email(recipient, subject, email_body)
+    now = datetime.now()
+    update_follow_up_dates(record_id, now)
+
+    print(f"✅ Email sent to {name} at {company} at {now.strftime('%H:%M:%S')}")
 
 if __name__ == "__main__":
     main()
