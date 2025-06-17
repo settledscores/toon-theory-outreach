@@ -97,7 +97,6 @@ def main():
         if email_text:
             airtable.update(record["id"], {
                 "email_1": email_text,
-                "status": "Email 1 generated",
                 "initial date": datetime.utcnow().isoformat()
             })
             print(f"✅ Saved email for {name}")
