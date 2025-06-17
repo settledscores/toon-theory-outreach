@@ -2,14 +2,13 @@ name: Send Cold Emails
 
 on:
   schedule:
-    # Every 5 minutes between 2:00 PM and 7:00 PM WAT (13:00–18:55 UTC) on weekdays
+    # Every 5 minutes between 2:00 PM and 7:00 PM WAT (13:00–18:55 UTC)
     - cron: "0-55/5 13-18 * * 1-5"
   workflow_dispatch:
 
 jobs:
   run-email-campaign:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     env:
       AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
@@ -26,9 +25,8 @@ jobs:
       ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
       ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
       ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
-      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
+      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}  # optional
       FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
-      ZOHO_FROM_ADDRESS: ${{ secrets.FROM_EMAIL }}
 
     steps:
       - name: 📥 Checkout repository
@@ -44,44 +42,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ✅ Verify required secrets
-        run: |
-          REQUIRED_VARS=(
-            "AIRTABLE_API_KEY"
-            "AIRTABLE_BASE_ID"
-            "AIRTABLE_TABLE_NAME"
-            "GROQ_API_KEY"
-            "OPENAI_API_KEY"
-            "EMAIL_ADDRESS"
-            "EMAIL_PASSWORD"
-            "SMTP_SERVER"
-            "SMTP_PORT"
-            "IMAP_SERVER"
-            "IMAP_PORT"
-            "ZOHO_CLIENT_ID"
-            "ZOHO_CLIENT_SECRET"
-            "ZOHO_REFRESH_TOKEN"
-            "FROM_EMAIL"
-          )
-          for VAR in "${REQUIRED_VARS[@]}"; do
-            if [[ -z "${!VAR}" ]]; then
-              echo "❌ Required secret $VAR is not set."
-              exit 1
-            fi
-          done
-          echo "✅ All required secrets are present."
-
       - name: 🔌 Test SMTP connection
         run: |
           echo "🧪 Running SMTP connection test..."
-          python -c "
-import smtplib, os
-server = smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT']))
-server.starttls()
-server.login(os.environ['EMAIL_ADDRESS'], os.environ['EMAIL_PASSWORD'])
-server.quit()
-print('✅ SMTP connection successful!')
-"
+          python smtp_test.py
 
       - name: 🚀 Run cold outreach campaign
         run: python main.py
