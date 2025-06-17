@@ -1,21 +1,27 @@
 import os
 import requests
 from airtable import Airtable
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# === Airtable ===
-AIRTABLE_BASE_ID = os.environ['AIRTABLE_BASE_ID']
-AIRTABLE_TABLE_NAME = os.environ['AIRTABLE_TABLE_NAME']
-AIRTABLE_API_KEY = os.environ['AIRTABLE_API_KEY']
+# === Config ===
+AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
+AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
+AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+GROQ_MODEL = "mixtral-8x7b-32768"  # Or another model if preferred
 
-# === Groq ===
-GROQ_API_KEY = os.environ['GROQ_API_KEY']
-GROQ_MODEL = "mixtral-8x7b-32768"
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# === Core Prompt Generator ===
+# === Generate Email ===
 def generate_email_with_template(name, company, web_copy):
+    if not web_copy.strip():
+        web_copy = "The website didn't contain enough useful content to tailor use cases. Keep the email general."
+    else:
+        web_copy = web_copy.strip()[:1000]
+
     prompt = f"""You're helping a whiteboard animation studio write a cold outreach email.
 
 Hi {name},
@@ -65,42 +71,41 @@ Website content:
         res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body)
         res.raise_for_status()
         return res.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
+    except requests.exceptions.HTTPError as e:
         print(f"❌ Error from Groq for {name}: {e}")
+        print("🔍 Response text:", res.text)
         return None
 
-# === Main Script ===
+# === Main Logic ===
 def main():
     print("🚀 Starting email generation...")
-    airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
+    generated_count = 0
 
     for record in records:
         fields = record.get("fields", {})
-        record_id = record["id"]
+        name = fields.get("name", "").strip()
+        company = fields.get("company name", "").strip()
+        web_copy = fields.get("web copy", "").strip()
 
-        # Skip if already has email_1
-        if "email_1" in fields and fields["email_1"].strip():
-            continue
-
-        # Check required fields
-        if not all(key in fields and fields[key].strip() for key in ["name", "company name", "web copy"]):
-            continue
-
-        name = fields["name"]
-        company = fields["company name"]
-        web_copy = fields["web copy"]
+        if not name or not company or not web_copy or "email_1" in fields:
+            continue  # Skip if incomplete or already generated
 
         print(f"✏️ Generating for {name} ({company})...")
 
         email_text = generate_email_with_template(name, company, web_copy)
         if email_text:
-            airtable.update(record_id, {"email_1": email_text})
+            airtable.update(record["id"], {
+                "email_1": email_text,
+                "status": "Email 1 generated",
+                "initial date": datetime.utcnow().isoformat()
+            })
             print(f"✅ Saved email for {name}")
+            generated_count += 1
         else:
             print(f"⚠️ Skipped {name} due to generation error")
 
-    print("🔁 Finished processing all leads.")
+    print(f"🔁 Finished processing all leads. Emails generated: {generated_count}")
 
 if __name__ == "__main__":
     main()
