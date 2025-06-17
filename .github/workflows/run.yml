@@ -1,51 +1,86 @@
-name: Send Cold Emails
+name: run-email-campaign
 
 on:
-  schedule:
-    # Every 5 minutes between 2:00 PM and 7:00 PM WAT (13:00–18:55 UTC)
-    - cron: "0-55/5 13-18 * * 1-5"
   workflow_dispatch:
+  schedule:
+    - cron: '*/17 13-18 * * *'  # every 17 mins from 2pm–7pm WAT
 
 jobs:
-  run-email-campaign:
+  run:
     runs-on: ubuntu-latest
-
-    env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
-      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
-      IMAP_PORT: ${{ secrets.IMAP_PORT }}
-      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
-      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
-      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
-      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}  # optional
-      FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+    timeout-minutes: 20
 
     steps:
-      - name: 📥 Checkout repository
+      - name: ⏬ Checkout repository
         uses: actions/checkout@v3
 
       - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🔌 Test SMTP connection
+      - name: ✅ Verify required secrets
         run: |
-          echo "🧪 Running SMTP connection test..."
-          python smtp_test.py
+          REQUIRED_VARS=(
+            "AIRTABLE_API_KEY"
+            "AIRTABLE_BASE_ID"
+            "AIRTABLE_TABLE_NAME"
+            "GROQ_API_KEY"
+            "OPENAI_API_KEY"
+            "EMAIL_ADDRESS"
+            "EMAIL_PASSWORD"
+            "SMTP_SERVER"
+            "SMTP_PORT"
+            "IMAP_SERVER"
+            "IMAP_PORT"
+            "ZOHO_CLIENT_ID"
+            "ZOHO_CLIENT_SECRET"
+            "ZOHO_REFRESH_TOKEN"
+            "ZOHO_ACCOUNT_ID"
+            "FROM_EMAIL"
+          )
+          for VAR in "${REQUIRED_VARS[@]}"; do
+            if [[ -z "${!VAR}" ]]; then
+              echo "❌ Required secret $VAR is not set."
+              exit 1
+            fi
+          done
+          echo "✅ All required secrets are set."
 
-      - name: 🚀 Run cold outreach campaign
+      - name: 🧪 SMTP auth test
+        run: |
+          echo "Running SMTP auth test..."
+          python -c "
+import smtplib, os
+server = smtplib.SMTP(os.environ['SMTP_SERVER'], int(os.environ['SMTP_PORT']))
+server.starttls()
+server.login(os.environ['EMAIL_ADDRESS'], os.environ['EMAIL_PASSWORD'])
+server.quit()
+print('✅ SMTP connection successful and authenticated!')
+"
+
+      - name: 🚀 Run campaign script
         run: python main.py
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
+          IMAP_PORT: ${{ secrets.IMAP_PORT }}
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          ZOHO_FROM_ADDRESS: ${{ secrets.FROM_EMAIL }}
