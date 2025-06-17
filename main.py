@@ -107,9 +107,26 @@ Website content: {web_copy}
 def main():
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all(view=AIRTABLE_VIEW_NAME)
-
     print(f"🔍 Total leads found: {len(records)}")
 
+    # Pass 1: Scrape missing web copy
+    for record in records:
+        fields = record.get('fields', {})
+        company = fields.get('company name')
+        website = fields.get('website')
+        web_copy = fields.get('web copy')
+
+        if website and not web_copy:
+            homepage = scrape_visible_text(website)
+            services = scrape_visible_text(website.rstrip('/') + '/services')
+            full_copy = homepage + '\n' + services
+            airtable.update(record['id'], {'web copy': full_copy})
+            print(f"🧽 Scraped and saved web copy for {company}")
+
+    # Short delay to ensure Airtable has saved
+    time.sleep(5)
+
+    # Pass 2: Send emails
     for record in records:
         fields = record.get('fields', {})
         name = fields.get('name')
@@ -120,14 +137,13 @@ def main():
         status = fields.get('status', '').lower()
 
         if not all([name, company, email, website, web_copy]):
-            print("⚠️ Skipping incomplete lead")
+            print(f"⚠️ Skipping {company or 'lead'} due to incomplete fields")
             continue
 
         if status and status not in ['not contacted', '']:
             print(f"⏩ Already processed: {company}")
             continue
 
-        # Generate and send
         prompt = generate_prompt(web_copy, name, company)
         message = get_groq_response(prompt)
         subject = f"Quick idea for {company}"
@@ -136,9 +152,9 @@ def main():
 
         now = datetime.now()
         airtable.update(record['id'], {
-            'initial date': now.strftime('%Y-%m-%d'),
-            'follow-up 1 date': (now + timedelta(days=3)).strftime('%Y-%m-%d'),
-            'follow-up 2 date': (now + timedelta(days=7)).strftime('%Y-%m-%d'),
+            'initial date': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'follow-up 1 date': (now + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S'),
+            'follow-up 2 date': (now + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S'),
             'status': 'initial sent'
         })
 
