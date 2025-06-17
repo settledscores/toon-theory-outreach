@@ -1,0 +1,37 @@
+name: Send Cold Emails from Airtable
+
+on:
+  schedule:
+    - cron: "*/17 13-18 * * 1-5"  # Every 17 minutes during 2–7PM WAT
+  workflow_dispatch:
+
+jobs:
+  send-emails:
+    runs-on: ubuntu-latest
+
+    env:
+      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
+      FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Run sender script
+        run: python sender.py
