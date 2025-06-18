@@ -21,6 +21,9 @@ FROM_EMAIL = os.environ['FROM_EMAIL']
 # Lagos timezone
 LAGOS = pytz.timezone('Africa/Lagos')
 
+# Config toggle (set to True to ignore status for testing)
+IGNORE_STATUS = False
+
 def refresh_access_token():
     url = 'https://accounts.zoho.com/oauth/v2/token'
     params = {
@@ -54,7 +57,7 @@ def send_email(access_token, to_email, subject, body):
         'subject': subject,
         'content': body,
         'mailFormat': 'plain',
-        'saveToSent': True  # ⬅️ Ensures email appears in Sent folder
+        'saveToSent': True
     }
     response = requests.post(url, headers=headers, json=data)
 
@@ -77,18 +80,26 @@ def main():
 
     for record in records:
         fields = record.get("fields", {})
+        record_id = record.get("id", "UNKNOWN")
+
         if sent_count >= 3:
+            print("📬 Daily send limit (3) reached.")
             break
 
+        # Required fields check
         required = ['name', 'company name', 'email', 'email 1']
-        if not all(k in fields and fields[k].strip() for k in required):
+        missing = [k for k in required if not fields.get(k) or not fields[k].strip()]
+        if missing:
+            print(f"⏭️ Skipping record {record_id} ({fields.get('email', '[no email]')}) — Missing: {', '.join(missing)}")
             continue
 
-        if fields.get("status"):
+        # Status check (unless override enabled)
+        if not IGNORE_STATUS and fields.get("status"):
+            print(f"⏭️ Skipping {fields['email']} — Already marked as '{fields['status']}'")
             continue
 
         try:
-            print(f"📤 Sending to {fields['name']} ({fields['email']})")
+            print(f"\n📤 Sending to {fields['name']} ({fields['email']})")
             subject = f"Idea for {fields['company name']}"
             body = fields['email 1']
             send_email(access_token, fields['email'], subject, body)
@@ -96,10 +107,11 @@ def main():
             now = datetime.now(LAGOS)
             airtable.update(record['id'], {
                 'initial date': now.isoformat(),
-                'follow-up 1 date': (now + timedelta(minutes=5)).isoformat(),
-                'follow-up 2 date': (now + timedelta(minutes=10)).isoformat(),
+                'follow-up 1 date': (now + timedelta(days=3)).isoformat(),
+                'follow-up 2 date': (now + timedelta(days=7)).isoformat(),
                 'status': 'Sent'
             })
+            print(f"✅ Updated Airtable for {fields['email']}")
             sent_count += 1
 
         except Exception as e:
