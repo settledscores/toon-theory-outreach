@@ -1,117 +1,85 @@
 import os
 import smtplib
-import imaplib
-import email
-from email.mime.text import MIMEText
+import ssl
+from email.message import EmailMessage
 from datetime import datetime
 from airtable import Airtable
 from dotenv import load_dotenv
+import pytz
 
+# Load .env (optional, for local testing)
 load_dotenv()
 
-# Airtable setup
+# Timezone
+LAGOS = pytz.timezone('Africa/Lagos')
+
+# Environment variables
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-
-# Email setup
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-FROM_EMAIL = os.getenv("FROM_EMAIL")
 
-# IMAP setup
-IMAP_SERVER = os.getenv("IMAP_SERVER")
-IMAP_PORT = int(os.getenv("IMAP_PORT"))
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT_STR = os.getenv("SMTP_PORT")
 
-# --- Reply Detection ---
-def check_replies():
-    mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
-    mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-    mail.select("inbox")
+if not SMTP_PORT_STR:
+    raise RuntimeError("❌ SMTP_PORT is not set or is empty")
 
-    result, data = mail.search(None, '(UNSEEN FROM "*")')
-    if result != "OK":
-        return []
+SMTP_PORT = int(SMTP_PORT_STR)
 
-    msg_ids = data[0].split()
-    replied = set()
+# Airtable setup
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-    for msg_id in msg_ids:
-        result, msg_data = mail.fetch(msg_id, "(RFC822)")
-        if result != "OK":
-            continue
-        raw_email = msg_data[0][1]
-        msg = email.message_from_bytes(raw_email)
-        from_addr = email.utils.parseaddr(msg.get("From"))[1]
-        if from_addr:
-            replied.add(from_addr.lower())
+def send_email(to_email, subject, body):
+    msg = EmailMessage()
+    msg['From'] = FROM_EMAIL
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.set_content(body)
 
-    mail.logout()
-    return list(replied)
+    context = ssl.create_default_context()
 
-# --- Send Email ---
-def send_email(to_address, subject, body):
-    msg = MIMEText(body, "plain")
-    msg["Subject"] = subject
-    msg["From"] = FROM_EMAIL
-    msg["To"] = to_address
-
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg)
+        print(f"✅ Email sent to {to_email}")
 
-# --- Get Leads to Send ---
-def get_initial_leads():
-    leads = airtable.get_all(view="Grid view")
-    ready = []
-
-    for lead in leads:
-        fields = lead.get("fields", {})
-        if not all(k in fields for k in ["name", "company name", "email", "website", "web copy"]):
-            continue
-        if fields.get("status", "").lower() == "replied":
-            continue
-        if "initial date" not in fields:
-            ready.append(lead)
-
-    return ready
-
-# --- Main Run ---
 def main():
-    print("📬 Initial sender starting...")
+    print("🚀 Starting email sender...")
+    records = airtable.get_all()
+    sent_count = 0
 
-    # 1. Detect replies
-    replied = check_replies()
-    for addr in replied:
-        records = airtable.search("email", addr)
-        for record in records:
-            airtable.update(record["id"], {"status": "Replied"})
-            print(f"✅ Marked {addr} as Replied")
+    for record in records:
+        fields = record.get("fields", {})
+        required_fields = ['name', 'company name', 'email', 'email 1']
 
-    # 2. Send initial emails
-    leads = get_initial_leads()
-    for lead in leads:
-        fields = lead["fields"]
-        to_email = fields["email"]
-        name = fields["name"]
-        company = fields["company name"]
+        if sent_count >= 3:
+            break
 
-        subject = f"Quick idea for {company}"
-        body = f"Hi {name},\n\n(Your email content here...)\n\nBest,\nToon Theory"
+        if not all(k in fields and fields[k].strip() for k in required_fields):
+            continue
+
+        if fields.get("status"):
+            continue
 
         try:
+            to_email = fields['email']
+            subject = f"Idea for {fields['company name']}"
+            body = fields['email 1']
             send_email(to_email, subject, body)
-            now = datetime.now().strftime("%Y-%m-%d")
-            airtable.update(lead["id"], {
-                "initial date": now,
-                "status": "Sent"
+
+            now = datetime.now(LAGOS)
+            airtable.update(record['id'], {
+                'initial date': now.isoformat(),
+                'status': 'Sent'
             })
-            print(f"📤 Sent to {to_email}")
+
+            sent_count += 1
+
         except Exception as e:
-            print(f"❌ Error sending to {to_email}: {e}")
+            print(f"❌ Failed to send to {fields.get('email')}: {e}")
 
 if __name__ == "__main__":
     main()
