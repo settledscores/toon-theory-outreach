@@ -2,8 +2,8 @@ name: Send Cold Emails from Airtable
 
 on:
   schedule:
-    - cron: "*/17 13-18 * * 1-5"  # Every 17 minutes during 2–7PM WAT
-  workflow_dispatch:
+    - cron: "*/17 13-18 * * 1-5"  # Every 17 minutes, Monday to Friday, 2pm–7pm WAT
+  workflow_dispatch:             # Allows manual triggering from GitHub UI
 
 jobs:
   send-emails:
