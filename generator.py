@@ -11,7 +11,7 @@ AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GROQ_MODEL = "llama3-70b-8192"  # Or another model if preferred
+GROQ_MODEL = "llama3-70b-8192"
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
@@ -22,8 +22,18 @@ def generate_email_with_template(name, company, web_copy):
     else:
         web_copy = web_copy.strip()[:1000]
 
-    prompt = f"""You're helping a whiteboard animation studio write a cold outreach email.
+    prompt = f"""
+You are Trent, the founder of Toon Theory, a whiteboard animation studio. You are writing a natural, conversational cold email to {name} at {company} based on the context below. The tone should be warm, confident, and helpful; not salesy. Avoid buzzwords. Aim for a Flesch reading score of 80+.
 
+STRICT INSTRUCTIONS:
+- DO NOT start with any explanation, comment, or label like \"Here is an email\" or \"Here’s a version\".
+- DO NOT use em dashes. Replace them with commas, semicolons, or periods. This is non-negotiable.
+- ONLY return the plain text of the email as it would appear in an actual sent message.
+
+INPUT CONTEXT:
+{web_copy}
+
+Now write the email based on this structure:
 Hi {name},
 
 I’ve been following {company} lately, and your ability to make complex topics approachable really stood out.
@@ -33,7 +43,6 @@ I run Toon Theory, a whiteboard animation studio based in the UK. We create stra
 With your focus on clarity and communication, I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
 
 Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
-
 - [Use case #1 tailored to website content]
 - [Use case #2 tailored to website content]
 - [Use case #3 tailored to website content]
@@ -42,10 +51,11 @@ If you're open to it, I’d love to draft a sample script or sketch out a short 
 
 [Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
 
-STRICT RULE: Do not use em dashes (—) under any circumstances. Replace them with commas, semicolons, or full stops. This is non-negotiable.
-
-Website content:
-{web_copy}
+Warm regards,  
+Trent  
+Founder, Toon Theory  
+www.toontheory.com  
+Whiteboard Animation For The Brands People Trust
 """
 
     headers = {
@@ -89,7 +99,7 @@ def main():
         web_copy = fields.get("web copy", "").strip()
 
         if not name or not company or not web_copy or "email_1" in fields:
-            continue  # Skip if incomplete or already generated
+            continue
 
         print(f"✏️ Generating for {name} ({company})...")
 
@@ -108,3 +118,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
