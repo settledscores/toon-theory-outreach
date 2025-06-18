@@ -1,121 +1,117 @@
 import os
-import requests
-from datetime import datetime, timedelta
+import smtplib
+import imaplib
+import email
+from email.mime.text import MIMEText
+from datetime import datetime
 from airtable import Airtable
 from dotenv import load_dotenv
-import pytz
 
-# Load environment variables
 load_dotenv()
 
-# Airtable and Zoho configuration
-AIRTABLE_BASE_ID = os.environ['AIRTABLE_BASE_ID']
-AIRTABLE_TABLE_NAME = os.environ['AIRTABLE_TABLE_NAME']
-AIRTABLE_API_KEY = os.environ['AIRTABLE_API_KEY']
-ZOHO_CLIENT_ID = os.environ['ZOHO_CLIENT_ID']
-ZOHO_CLIENT_SECRET = os.environ['ZOHO_CLIENT_SECRET']
-ZOHO_REFRESH_TOKEN = os.environ['ZOHO_REFRESH_TOKEN']
-ZOHO_ACCOUNT_ID = os.environ['ZOHO_ACCOUNT_ID']
-FROM_EMAIL = os.environ['FROM_EMAIL']
+# Airtable setup
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Lagos timezone
-LAGOS = pytz.timezone('Africa/Lagos')
+# Email setup
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 
-# Config toggle (set to True to ignore status for testing)
-IGNORE_STATUS = False
+# IMAP setup
+IMAP_SERVER = os.getenv("IMAP_SERVER")
+IMAP_PORT = int(os.getenv("IMAP_PORT"))
 
-def refresh_access_token():
-    url = 'https://accounts.zoho.com/oauth/v2/token'
-    params = {
-        'refresh_token': ZOHO_REFRESH_TOKEN,
-        'client_id': ZOHO_CLIENT_ID,
-        'client_secret': ZOHO_CLIENT_SECRET,
-        'grant_type': 'refresh_token'
-    }
-    response = requests.post(url, params=params)
+# --- Reply Detection ---
+def check_replies():
+    mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
+    mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    mail.select("inbox")
 
-    try:
-        data = response.json()
-    except Exception:
-        raise RuntimeError(f"❌ Non-JSON response: {response.text}")
+    result, data = mail.search(None, '(UNSEEN FROM "*")')
+    if result != "OK":
+        return []
 
-    if 'access_token' not in data:
-        print("🔎 Debug response from Zoho:", data)
-        raise RuntimeError(f"❌ Could not refresh token: {data}")
+    msg_ids = data[0].split()
+    replied = set()
 
-    return data['access_token']
+    for msg_id in msg_ids:
+        result, msg_data = mail.fetch(msg_id, "(RFC822)")
+        if result != "OK":
+            continue
+        raw_email = msg_data[0][1]
+        msg = email.message_from_bytes(raw_email)
+        from_addr = email.utils.parseaddr(msg.get("From"))[1]
+        if from_addr:
+            replied.add(from_addr.lower())
 
-def send_email(access_token, to_email, subject, body):
-    url = f'https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages'
-    headers = {
-        'Authorization': f'Zoho-oauthtoken {access_token}',
-        'Content-Type': 'application/json'
-    }
-    data = {
-        'fromAddress': FROM_EMAIL,
-        'toAddress': to_email,
-        'subject': subject,
-        'content': body,
-        'mailFormat': 'plain',
-        'saveToSent': True
-    }
-    response = requests.post(url, headers=headers, json=data)
+    mail.logout()
+    return list(replied)
 
-    if response.status_code != 200:
-        print(f"❌ Zoho error ({response.status_code}): {response.text}")
-    else:
-        print(f"✅ Zoho sent OK: {response.json()}")
+# --- Send Email ---
+def send_email(to_address, subject, body):
+    msg = MIMEText(body, "plain")
+    msg["Subject"] = subject
+    msg["From"] = FROM_EMAIL
+    msg["To"] = to_address
 
-    response.raise_for_status()
-    return response.json()
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
 
+# --- Get Leads to Send ---
+def get_initial_leads():
+    leads = airtable.get_all(view="Grid view")
+    ready = []
+
+    for lead in leads:
+        fields = lead.get("fields", {})
+        if not all(k in fields for k in ["name", "company name", "email", "website", "web copy"]):
+            continue
+        if fields.get("status", "").lower() == "replied":
+            continue
+        if "initial date" not in fields:
+            ready.append(lead)
+
+    return ready
+
+# --- Main Run ---
 def main():
-    print("🚀 Starting email sender...")
-    print("🔐 Loaded refresh token:", ZOHO_REFRESH_TOKEN[:8] + "..." if ZOHO_REFRESH_TOKEN else "Not found")
+    print("📬 Initial sender starting...")
 
-    airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-    records = airtable.get_all()
-    access_token = refresh_access_token()
-    sent_count = 0
+    # 1. Detect replies
+    replied = check_replies()
+    for addr in replied:
+        records = airtable.search("email", addr)
+        for record in records:
+            airtable.update(record["id"], {"status": "Replied"})
+            print(f"✅ Marked {addr} as Replied")
 
-    for record in records:
-        fields = record.get("fields", {})
-        record_id = record.get("id", "UNKNOWN")
+    # 2. Send initial emails
+    leads = get_initial_leads()
+    for lead in leads:
+        fields = lead["fields"]
+        to_email = fields["email"]
+        name = fields["name"]
+        company = fields["company name"]
 
-        if sent_count >= 3:
-            print("📬 Daily send limit (3) reached.")
-            break
-
-        # Required fields check
-        required = ['name', 'company name', 'email', 'email 1']
-        missing = [k for k in required if not fields.get(k) or not fields[k].strip()]
-        if missing:
-            print(f"⏭️ Skipping record {record_id} ({fields.get('email', '[no email]')}) — Missing: {', '.join(missing)}")
-            continue
-
-        # Status check (unless override enabled)
-        if not IGNORE_STATUS and fields.get("status"):
-            print(f"⏭️ Skipping {fields['email']} — Already marked as '{fields['status']}'")
-            continue
+        subject = f"Quick idea for {company}"
+        body = f"Hi {name},\n\n(Your email content here...)\n\nBest,\nToon Theory"
 
         try:
-            print(f"\n📤 Sending to {fields['name']} ({fields['email']})")
-            subject = f"Idea for {fields['company name']}"
-            body = fields['email 1']
-            send_email(access_token, fields['email'], subject, body)
-
-            now = datetime.now(LAGOS)
-            airtable.update(record['id'], {
-                'initial date': now.isoformat(),
-                'follow-up 1 date': (now + timedelta(days=3)).isoformat(),
-                'follow-up 2 date': (now + timedelta(days=7)).isoformat(),
-                'status': 'Sent'
+            send_email(to_email, subject, body)
+            now = datetime.now().strftime("%Y-%m-%d")
+            airtable.update(lead["id"], {
+                "initial date": now,
+                "status": "Sent"
             })
-            print(f"✅ Updated Airtable for {fields['email']}")
-            sent_count += 1
-
+            print(f"📤 Sent to {to_email}")
         except Exception as e:
-            print(f"❌ Failed to send to {fields['email']}: {e}")
+            print(f"❌ Error sending to {to_email}: {e}")
 
 if __name__ == "__main__":
     main()
