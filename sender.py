@@ -3,9 +3,12 @@ import requests
 from datetime import datetime, timedelta
 from airtable import Airtable
 from dotenv import load_dotenv
+import pytz
 
+# Load environment variables
 load_dotenv()
 
+# Airtable and Zoho configuration
 AIRTABLE_BASE_ID = os.environ['AIRTABLE_BASE_ID']
 AIRTABLE_TABLE_NAME = os.environ['AIRTABLE_TABLE_NAME']
 AIRTABLE_API_KEY = os.environ['AIRTABLE_API_KEY']
@@ -14,6 +17,9 @@ ZOHO_CLIENT_SECRET = os.environ['ZOHO_CLIENT_SECRET']
 ZOHO_REFRESH_TOKEN = os.environ['ZOHO_REFRESH_TOKEN']
 ZOHO_ACCOUNT_ID = os.environ['ZOHO_ACCOUNT_ID']
 FROM_EMAIL = os.environ['FROM_EMAIL']
+
+# Lagos timezone
+LAGOS = pytz.timezone('Africa/Lagos')
 
 def refresh_access_token():
     url = 'https://accounts.zoho.com/oauth/v2/token'
@@ -24,7 +30,7 @@ def refresh_access_token():
         'grant_type': 'refresh_token'
     }
     response = requests.post(url, params=params)
-    
+
     try:
         data = response.json()
     except Exception:
@@ -33,7 +39,7 @@ def refresh_access_token():
     if 'access_token' not in data:
         print("🔎 Debug response from Zoho:", data)
         raise RuntimeError(f"❌ Could not refresh token: {data}")
-    
+
     return data['access_token']
 
 def send_email(access_token, to_email, subject, body):
@@ -47,15 +53,23 @@ def send_email(access_token, to_email, subject, body):
         'toAddress': to_email,
         'subject': subject,
         'content': body,
-        'mailFormat': 'plain'
+        'mailFormat': 'plain',
+        'saveToSent': True  # ⬅️ Ensures email appears in Sent folder
     }
     response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code != 200:
+        print(f"❌ Zoho error ({response.status_code}): {response.text}")
+    else:
+        print(f"✅ Zoho sent OK: {response.json()}")
+
     response.raise_for_status()
     return response.json()
 
 def main():
+    print("🚀 Starting email sender...")
     print("🔐 Loaded refresh token:", ZOHO_REFRESH_TOKEN[:8] + "..." if ZOHO_REFRESH_TOKEN else "Not found")
-    
+
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
     access_token = refresh_access_token()
@@ -70,7 +84,7 @@ def main():
         if not all(k in fields and fields[k].strip() for k in required):
             continue
 
-        if fields.get("status"):  # Already sent or handled
+        if fields.get("status"):
             continue
 
         try:
@@ -79,11 +93,11 @@ def main():
             body = fields['email 1']
             send_email(access_token, fields['email'], subject, body)
 
-            now = datetime.utcnow()
+            now = datetime.now(LAGOS)
             airtable.update(record['id'], {
                 'initial date': now.isoformat(),
-                'follow-up 1 date': (now + timedelta(days=3)).isoformat(),
-                'follow-up 2 date': (now + timedelta(days=7)).isoformat(),
+                'follow-up 1 date': (now + timedelta(minutes=5)).isoformat(),
+                'follow-up 2 date': (now + timedelta(minutes=10)).isoformat(),
                 'status': 'Sent'
             })
             sent_count += 1
@@ -92,5 +106,4 @@ def main():
             print(f"❌ Failed to send to {fields['email']}: {e}")
 
 if __name__ == "__main__":
-    print("🚀 Starting email sender...")
     main()
