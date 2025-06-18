@@ -9,12 +9,12 @@ import pytz
 # Load environment variables
 load_dotenv()
 
-# Airtable configuration
+# Airtable config
 AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 
-# Email configuration
+# Email config
 SMTP_SERVER = os.environ["SMTP_SERVER"]
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
@@ -65,16 +65,20 @@ def main():
             send_email(fields["email"], subject, body)
 
             now = datetime.now(LAGOS)
-            airtable.update(record["id"], {
+            update_payload = {
                 "initial date": now.isoformat(),
                 "follow-up 1 date": (now + timedelta(days=3)).isoformat(),
                 "follow-up 2 date": (now + timedelta(days=7)).isoformat(),
                 "status": "Sent"
-            })
+            }
+            print(f"📝 Updating Airtable record: {record['id']}")
+            print(f"➡️ Payload: {update_payload}")
+            result = airtable.update(record["id"], update_payload)
+            print(f"✅ Airtable update result: {result}")
             sent_count += 1
 
         except Exception as e:
-            print(f"❌ Failed to send to {fields['email']}: {e}")
+            print(f"❌ Failed for {fields.get('email')}: {e}")
 
 if __name__ == "__main__":
     main()
