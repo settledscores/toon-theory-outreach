@@ -3,7 +3,7 @@ name: Send Cold Emails from Airtable
 on:
   schedule:
     - cron: "*/17 13-18 * * 1-5"  # Every 17 minutes, Monday to Friday, 2pm–7pm WAT
-  workflow_dispatch:             # Allows manual triggering from GitHub UI
+  workflow_dispatch:             # Allow manual run
 
 jobs:
   send-emails:
@@ -13,11 +13,11 @@ jobs:
       AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
       AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
       AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
-      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
-      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
-      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
-      ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
+      EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
 
     steps:
       - name: 📥 Checkout repository
