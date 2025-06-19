@@ -92,7 +92,7 @@ def main():
             )
             output = response.choices[0].message.content.strip()
             *use_lines, summary = output.strip().split("\n")
-            bullet_text = "\n".join(line for line in use_lines if line.startswith("-"))
+            bullet_text = "\n".join(line for line in use_lines if line.strip().startswith("-"))
 
             update_fields(record["id"], bullet_text, summary)
             print("✅ Updated Airtable")
