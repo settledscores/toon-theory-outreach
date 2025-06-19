@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from airtable import Airtable
 from datetime import datetime
 from dotenv import load_dotenv
@@ -21,29 +22,43 @@ SUBJECT_LINES = [
     "Subject: Noticed something at {company}, had a thought"
 ]
 
-def clean_input(text):
+def clean_niche_summary(text):
     lines = text.strip().splitlines()
-    cleaned = [
-        line.strip("•*- ").strip()
+    filtered = [
+        line.strip()
         for line in lines
-        if line and not line.lower().startswith((
-            "here is", "this is", "the following", "below is", "our services", "a list of"
-        ))
+        if line and not re.match(r"(?i)^(about|our|the way|say hello|providers|from strategic|empowering|hr solutions)", line.strip())
     ]
-    return " ".join(cleaned).strip()
+    # Use the first paragraph with 20+ words
+    for line in filtered:
+        if len(line.split()) >= 20:
+            return line.strip()
+    return filtered[0] if filtered else ""
 
-def format_use_cases(use_case_text):
+def format_services(text):
+    items = [
+        line.strip("•*- ").strip().rstrip(",.")
+        for line in text.strip().splitlines()
+        if line.strip() and not line.lower().startswith(("here is", "this is", "our services", "examples include"))
+    ]
+    if len(items) == 0:
+        return ""
+    elif len(items) == 1:
+        return items[0]
+    return ", ".join(items[:-1]) + ", and " + items[-1]
+
+def format_use_cases(text):
     lines = [
         line.strip("•*- ").strip().rstrip(",.")
-        for line in use_case_text.strip().splitlines()
-        if line.strip()
+        for line in text.strip().splitlines()
+        if line.strip() and not line.lower().startswith(("here are", "use cases", "examples include"))
     ]
     if not lines:
         return ""
     joined = (
-        f"Showing {lines[0].lower()},\n"
+        f"Showing how {lines[0].lower()},\n"
         + (f"Explaining {lines[1].lower()},\n" if len(lines) > 1 else "")
-        + (f"Or {lines[2][0].lower() + lines[2][1:]}..." if len(lines) > 2 else "")
+        + (f"Or walking someone through {lines[2].lower()}..." if len(lines) > 2 else "")
     )
     return joined
 
@@ -57,11 +72,11 @@ def generate_email(name, company, mini_scrape, niche_summary, use_cases, service
 
 Hi {name},
 
-I’ve been following {company} lately, {niche_summary} and your ability to make data feel approachable, and even fun, for small businesses {niche_summary} really struck a chord with me.
+I’ve been following {company} lately, and your ability to make data feel approachable, and even fun, for small businesses really struck a chord with me. {niche_summary}
 
 I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.
 
-With your strong emphasis on {services} making dashboards actionable and client-friendly, {services} I think there’s real potential to add a layer of visual storytelling that helps even more business owners “get it” faster.
+With your strong emphasis on {services}, I think there’s real potential to add a layer of visual storytelling that helps even more business owners “get it” faster.
 
 Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
 
@@ -89,9 +104,9 @@ def main():
         name = fields.get("name", "").strip()
         company = fields.get("company name", "").strip()
         mini_scrape = fields.get("mini scrape", "").strip()
-        niche_summary = clean_input(fields.get("niche summary", ""))
-        use_cases = clean_input(fields.get("use cases", ""))
-        services = clean_input(fields.get("services", ""))
+        niche_summary = clean_niche_summary(fields.get("niche summary", ""))
+        use_cases = fields.get("use cases", "")
+        services = format_services(fields.get("services", ""))
 
         if not all([name, company, mini_scrape, niche_summary, use_cases, services]):
             continue
