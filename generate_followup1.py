@@ -19,35 +19,34 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 def generate_followup_email(name, company, web_copy):
     web_copy = web_copy.strip()[:1000]
 
-    prompt = f"""
-You are Trent, founder of Toon Theory, a whiteboard animation studio. You're writing a follow-up cold email to {name} at {company}, based on the context below. This is the first follow-up, sent 3 days after the initial message. Keep it light, conversational, and warm. Do not be pushy or robotic. No buzzwords. No fluff.
+        prompt = f"""
+You are Trent, founder of Toon Theory, a whiteboard animation studio. You're writing a **first follow-up cold email** to {name} at {company}. This follow-up comes **3 days after** the initial message.
+
+Your goal is to:
+- Check in naturally without sounding scripted
+- Briefly reference the earlier message without repeating it
+- Show how Toon Theory could specifically help based on their site
+- Offer a no-pressure, no-cost sample or 10s teaser
+- Close warmly and with a nod to their mission, tone, or values
 
 INSTRUCTIONS:
-- Do not include any explanation or commentary.
-- Do not use em dashes (—). Avoid them at all costs. Use semicolons, commas, or periods instead. This is non-negotiable.
-- Return the email as if it was a real message: subject line on top, followed by body text.
-- Rotate both subject lines and email body structure each time. Vary your phrasing.
-- Keep Flesch score above 80. Keep it human and clean.
-- The email should reference that this is a follow-up in natural terms.
+- DO NOT include any explanation, commentary, or labels in your output.
+- DO NOT use em dashes under any circumstances. Use semicolons, commas, or periods instead. This is non-negotiable.
+- DO NOT repeat body structures. Vary sentence order, phrasing, and tone naturally.
+- Rotate **subject lines** on every output. Pick one randomly from this list:
 
-Randomly pick **one** subject line:
-- Subject: Just checking in, {name}
-- Subject: Wondering if this idea stuck with you
-- Subject: Circling back on this
-- Subject: Thought I’d follow up, {name}
-- Subject: Still thinking about {company}
+Subject: Just checking in, {name}  
+Subject: Wondering if this idea stuck with you  
+Subject: Circling back on this  
+Subject: Thought I’d follow up, {name}  
+Subject: Still thinking about {company}  
 
-Message should follow a structure like:
-- Light check-in tone
-- Reference to previous message or idea
-- Short recap of how Toon Theory could help
-- Offer a sample script or short demo again
-- Close with a warm line that connects to the company's tone
+Your message should sound like a real person thoughtfully following up — warm, brief, conversational. Not robotic, not fluffy. Flesch score above 80.
 
-Use this template below **as inspiration only**, not strict format:
+Use this **as inspiration**, not as a fixed template:
 
 ---
-Subject: Just checking in, {name}
+Subject: Thought I’d follow up, {name}
 
 Hi {name},
 
@@ -66,11 +65,12 @@ www.toontheory.com
 Whiteboard Animation For The Brands People Trust
 ---
 
-Website context:
+Here’s their website context (use it to personalize use cases and tone):  
 {web_copy}
 
-DO NOT label the output. Just return the full message as plain text.
+Only return the complete message — subject line on top, followed by the email body. Do not include labels or descriptions.
 """
+
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
