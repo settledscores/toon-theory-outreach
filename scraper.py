@@ -2,16 +2,16 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 import os
-from airtable import Airtable
+from pyairtable import Table
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Airtable setup
+# Airtable setup using pyairtable
 AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 # Prioritized list: higher priority comes first
 SERVICE_PATHS = [
@@ -60,7 +60,7 @@ def scrape_service_content(website):
 
 # Airtable loop
 def main():
-    records = airtable.get_all()
+    records = airtable.all()
     updated_count = 0
 
     for record in records:
