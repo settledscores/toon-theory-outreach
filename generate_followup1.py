@@ -115,8 +115,8 @@ def main():
         if not name or not company or not web_copy:
             continue
 
-        # Skip if email_2 already exists
-        if "email_2" in fields:
+        # Skip if email 2 already exists
+        if "email 2" in fields:
             continue
 
         print(f"✏️ Generating follow-up for {name} at {company}...")
@@ -124,7 +124,7 @@ def main():
         email_text = generate_followup_email(name, company, web_copy)
         if email_text:
             airtable.update(record["id"], {
-                "email_2": email_text,
+                "email 2": email_text,
                 "follow-up 1 date": datetime.utcnow().isoformat()
             })
             print(f"✅ Saved follow-up 1 for {name}")
