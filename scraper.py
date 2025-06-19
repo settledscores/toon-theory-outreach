@@ -1,85 +1,82 @@
-from urllib.parse import urljoin, urlparse
+import os
 import requests
 from bs4 import BeautifulSoup
-import os
-from pyairtable import Table
+from airtable import Airtable
 from dotenv import load_dotenv
+from urllib.parse import urljoin, urlparse
 
 load_dotenv()
 
 # Airtable setup
-AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
-AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
-AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
-airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Prioritized service-related paths
-SERVICE_PATHS = [
-    "/services", "/solutions", "/what-we-do",  # High priority
-    "/offerings", "/capabilities", "/expertise"  # Lower priority
+COMMON_SERVICE_PATHS = [
+    "",  # homepage
+    "services",
+    "what-we-do",
+    "solutions",
+    "offerings",
+    "capabilities",
+    "how-it-works",
 ]
 
-# Extracts visible body text from an HTML document
-def extract_visible_text(html_content):
-    soup = BeautifulSoup(html_content, "html.parser")
-    for tag in soup(["script", "style", "nav", "footer", "noscript", "header", "form", "svg", "img", "a"]):
+def fetch_visible_text(html):
+    soup = BeautifulSoup(html, "html.parser")
+
+    for tag in soup(["script", "style", "nav", "footer", "header", "noscript", "form", "aside"]):
         tag.decompose()
-    return " ".join(soup.stripped_strings)
 
-# Tries all service-like URLs, returns best match based on length
-def scrape_service_content(website):
-    if not website.startswith("http"):
-        website = "https://" + website
+    text = soup.get_text(separator=" ", strip=True)
+    return " ".join(text.split())
 
-    parsed = urlparse(website)
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-    best_text = ""
-    best_url = None
-
-    for path in SERVICE_PATHS:
-        full_url = urljoin(base_url, path)
+def try_scrape_url(base_url):
+    for path in COMMON_SERVICE_PATHS:
+        full_url = urljoin(base_url + "/", path)
         try:
             response = requests.get(full_url, timeout=10)
-            if response.ok:
-                text = extract_visible_text(response.text)
-                if len(text) > 300:
-                    print(f"✅ Found content at {full_url} ({len(text)} chars)")
-                    if len(text) > len(best_text):
-                        best_text = text
-                        best_url = full_url
+            if response.status_code == 200:
+                content = fetch_visible_text(response.text)
+                if len(content.split()) > 50:
+                    return content
         except Exception as e:
-            print(f"⚠️ Failed to fetch {full_url}: {e}")
+            continue
+    return ""
 
-    if best_text:
-        print(f"🏆 Best match: {best_url}")
-        return best_text
-    else:
-        print(f"❌ No service content found for {website}")
-        return None
+def normalize_url(url):
+    if not url.startswith("http"):
+        return "https://" + url.strip("/")
+    return url.strip("/")
 
-# Main Airtable loop
 def main():
-    records = airtable.all()
+    records = airtable.get_all()
     updated_count = 0
 
     for record in records:
         fields = record.get("fields", {})
-        website = fields.get("website", "").strip()
+        website = fields.get("website", "")
+        web_copy = fields.get("web copy", "")
 
-        if not website or fields.get("services"):
-            continue
+        if not website or web_copy:
+            continue  # Skip if no website or already scraped
 
-        print(f"\n🔍 Scraping services for: {website}")
-        content = scrape_service_content(website)
-        if content:
-            airtable.update(record["id"], {"services": content})
-            print(f"✅ Updated: {website}")
-            updated_count += 1
-        else:
-            print(f"⛔ No valid content for {website}")
+        norm_url = normalize_url(website)
+        print(f"🌐 Scraping: {norm_url}")
 
-    print(f"\n🎯 Done. Updated services for {updated_count} records.")
+        try:
+            text = try_scrape_url(norm_url)
+            if text:
+                airtable.update(record["id"], {"web copy": text})
+                print(f"✅ Updated: {website}")
+                updated_count += 1
+            else:
+                print(f"⚠️ No usable content for {website}")
+        except Exception as e:
+            print(f"❌ Failed to scrape {website}: {e}")
+
+    print(f"\n🔚 Finished scraping. {updated_count} records updated.")
 
 if __name__ == "__main__":
     main()
