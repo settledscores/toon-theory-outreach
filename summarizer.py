@@ -29,9 +29,7 @@ def truncate_text(text, limit=MAX_INPUT_LENGTH):
 
 def generate_prompt(cleaned_text):
     return f"""
-This is raw text scraped from a company website. Clean it up by removing repeated, filler, or irrelevant lines. 
-Return only the meaningful text — no commentary, summaries, bullet points, or explanations. 
-Do not include phrases like "I removed..." or any notes. Output only cleaned website text.
+Here is text scraped from a company's website. Clean it up by removing repeated, filler, or irrelevant content. Preserve the core ideas and meaningful sentences. Do not summarize yet — just reduce noise.
 
 Text:
 {cleaned_text}
@@ -65,13 +63,7 @@ def main():
             response = client.chat.completions.create(
                 model="llama3-70b-8192",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a web content cleaner. Return only cleaned-up company website text. "
-                            "Do not explain, summarize, or list what you removed. Output only the cleaned content itself."
-                        ),
-                    },
+                    {"role": "system", "content": "You are a content cleaner."},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
