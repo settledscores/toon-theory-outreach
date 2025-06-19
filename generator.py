@@ -15,12 +15,13 @@ GROQ_MODEL = "llama3-70b-8192"
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# === Email Generator ===
-def generate_email_with_variation(name, company, web_copy):
-    web_copy = web_copy.strip()[:1000]
+
+def generate_email_with_variation(name, company, mini_scrape, services):
+    mini_scrape = mini_scrape.strip()[:1200]
+    services = services.strip()[:800]
 
     prompt = f"""
-You are Trent, the founder of Toon Theory, a whiteboard animation studio. You're writing a warm, conversational cold email to {name} at {company}, using the website context below. The tone should be clear, human, and helpful — not salesy. No buzzwords. No filler. No em dashes.
+You are Trent, the founder of Toon Theory, a whiteboard animation studio. You're writing a warm, conversational cold email to {name} at {company}, using the context below. The tone should be clear, human, and helpful — not salesy. No buzzwords. No filler. No em dashes.
 
 Rotate both the subject line and body structure on every email you write. Use clean punctuation. Keep it short, natural, and easy to read.
 
@@ -30,15 +31,6 @@ Randomly choose one subject line and place it as the first line of the message:
 - Subject: Something that might help {company}
 - Subject: Curious if this could help {company}
 - Subject: Noticed something at {company}, had a thought
-
-Then write the body of the email with varied phrasing. Do not repeat the same pattern in every message. Mix up the following:
-- How the message starts (no fixed “I’ve been following…”)
-- How Toon Theory is introduced
-- The way use cases are presented (bullets, inline, or described)
-- How the no-cost demo/sample is offered
-- The closing sentence (connect it to the brand tone)
-
-Use the following template as inspiration, not a fixed structure:
 
 ---
 Hi {name},
@@ -50,19 +42,22 @@ I run Toon Theory, a whiteboard animation studio based in the UK. We create stra
 With your focus on clarity and communication, I think there’s real potential to add a layer of visual storytelling that helps even more people “get it” faster.
 
 Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
-- [Use case #1 tailored to website content]
-- [Use case #2 tailored to website content]
-- [Use case #3 tailored to website content]
+- [Use case #1 tailored to the services]
+- [Use case #2 tailored to the services]
+- [Use case #3 tailored to the services]
 
 If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.
 
 [Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
 ---
 
-Here’s the context from their website:
-{web_copy}
+Website summary:
+{mini_scrape}
 
-Return only the complete message — subject line first, then body. Do not include commentary. Do not label anything. Aim for a Flesch score of 80 and above. Do not use em dashes (—) at all costs. Swap all em dashes to semi-colons, periods or commas. This is non-negotiable.
+Their services:
+{services}
+
+Return only the complete message — subject line first, then body. Do not include commentary. Do not label anything. Do not explain your choices. Do not mention that the list came from the services section. Use the service info to fill in the use cases. No em dashes allowed — ever. Use commas, periods, or semicolons instead.
 """
 
     headers = {
@@ -75,7 +70,7 @@ Return only the complete message — subject line first, then body. Do not inclu
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that writes short, clear cold emails with natural tone and no em dashes. You rotate subject lines and vary message structure every time."
+                "content": "You are a helpful assistant that writes cold emails. Always vary structure. Never use em dashes."
             },
             {
                 "role": "user",
@@ -93,7 +88,7 @@ Return only the complete message — subject line first, then body. Do not inclu
         print("🔍 Response content:", res.text if 'res' in locals() else "No response")
         return None
 
-# === Main Script ===
+
 def main():
     print("🚀 Starting email generation...")
     records = airtable.get_all()
@@ -103,14 +98,15 @@ def main():
         fields = record.get("fields", {})
         name = fields.get("name", "").strip()
         company = fields.get("company name", "").strip()
-        web_copy = fields.get("web copy", "").strip()
+        mini_scrape = fields.get("mini scrape", "").strip()
+        services = fields.get("services", "").strip()
 
-        if not name or not company or not web_copy or "email 1" in fields:
+        if not name or not company or not mini_scrape or not services or "email 1" in fields:
             continue
 
         print(f"✏️ Generating for {name} ({company})...")
 
-        email_text = generate_email_with_variation(name, company, web_copy)
+        email_text = generate_email_with_variation(name, company, mini_scrape, services)
         if email_text:
             airtable.update(record["id"], {
                 "email 1": email_text,
@@ -122,6 +118,7 @@ def main():
             print(f"⚠️ Skipped {name} due to generation error")
 
     print(f"🔁 Finished processing. Emails generated: {generated_count}")
+
 
 if __name__ == "__main__":
     main()
