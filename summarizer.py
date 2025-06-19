@@ -2,7 +2,7 @@ import os
 import re
 from airtable import Airtable
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 
 load_dotenv()
 
@@ -12,14 +12,14 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Groq / OpenAI setup
-openai.api_key = os.getenv("GROQ_API_KEY")
+# OpenAI (Groq-compatible) setup
+client = OpenAI(api_key=os.getenv("GROQ_API_KEY"))
 
-MAX_INPUT_LENGTH = 14000  # to keep room for prompt tokens and response
+MAX_INPUT_LENGTH = 14000  # keep room for prompt and response tokens
 
 
 def clean_text(text):
-    text = re.sub(r"\s+", " ", text)  # Collapse whitespace
+    text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 
@@ -60,7 +60,7 @@ def main():
         prompt = generate_prompt(truncated)
 
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are a content cleaner."},
