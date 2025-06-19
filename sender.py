@@ -1,7 +1,7 @@
 import os
 import smtplib
 from email.mime.text import MIMEText
-from datetime import datetime, timedelta
+from datetime import datetime
 from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
@@ -19,7 +19,7 @@ SMTP_SERVER = os.environ["SMTP_SERVER"]
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
-SMTP_PORT = 465  # Hardcoded for SSL
+SMTP_PORT = 465  # SSL
 
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
@@ -48,14 +48,15 @@ def main():
             break
 
         fields = record.get("fields", {})
-        missing = [k for k in ["name", "company name", "email", "email 1"] if not fields.get(k)]
+        required = ["name", "company name", "email", "email 1"]
+        missing = [k for k in required if not fields.get(k)]
 
         if missing:
             print(f"⏭️ Skipping record — missing fields: {', '.join(missing)}")
             continue
 
-        if fields.get("status"):
-            print(f"⏭️ Skipping {fields['name']} — already marked as sent")
+        if fields.get("initial status"):
+            print(f"⏭️ Skipping {fields['name']} — already marked as sent (initial status present)")
             continue
 
         try:
@@ -67,10 +68,9 @@ def main():
             now = datetime.now(LAGOS)
             update_payload = {
                 "initial date": now.isoformat(),
-                "follow-up 1 date": (now + timedelta(days=3)).isoformat(),
-                "follow-up 2 date": (now + timedelta(days=7)).isoformat(),
-                "status": "Sent"
+                "initial status": "Sent"
             }
+
             print(f"📝 Updating Airtable record: {record['id']}")
             print(f"➡️ Payload: {update_payload}")
             result = airtable.update(record["id"], update_payload)
