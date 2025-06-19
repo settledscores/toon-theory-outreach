@@ -15,25 +15,32 @@ GROQ_MODEL = "llama3-70b-8192"
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# === Generate Email ===
-def generate_email_with_template(name, company, web_copy):
-    if not web_copy.strip():
-        web_copy = "The website didn't contain enough useful content to tailor use cases. Keep the email general."
-    else:
-        web_copy = web_copy.strip()[:1000]
+# === Email Generator ===
+def generate_email_with_variation(name, company, web_copy):
+    web_copy = web_copy.strip()[:1000]
 
     prompt = f"""
-You are Trent, the founder of Toon Theory, a whiteboard animation studio. You are writing a natural, conversational cold email to {name} at {company} based on the context below. The tone should be warm, confident, and helpful; not salesy. Avoid buzzwords. Aim for a Flesch reading score of 80+.
+You are Trent, the founder of Toon Theory, a whiteboard animation studio. You're writing a warm, conversational cold email to {name} at {company}, using the website context below. The tone should be clear, human, and helpful — not salesy. No buzzwords. No filler. No em dashes.
 
-STRICT INSTRUCTIONS:
-- DO NOT start with any explanation, comment, or label like \"Here is an email\" or \"Here’s a version\".
-- DO NOT use em dashes. Replace them with commas, semicolons, or periods. This is non-negotiable.
-- ONLY return the plain text of the email as it would appear in an actual sent message.
+Rotate both the subject line and body structure on every email you write. Use clean punctuation. Keep it short, natural, and easy to read.
 
-INPUT CONTEXT:
-{web_copy}
+Randomly choose one subject line and place it as the first line of the message:
+- Subject: Quick idea for {company}
+- Subject: A thought for your next project at {company}
+- Subject: Something that might help {company}
+- Subject: Curious if this could help {company}
+- Subject: Noticed something at {company}, had a thought
 
-Now write the email based on this structure:
+Then write the body of the email with varied phrasing. Do not repeat the same pattern in every message. Mix up the following:
+- How the message starts (no fixed “I’ve been following…”)
+- How Toon Theory is introduced
+- The way use cases are presented (bullets, inline, or described)
+- How the no-cost demo/sample is offered
+- The closing sentence (connect it to the brand tone)
+
+Use the following template as inspiration, not a fixed structure:
+
+---
 Hi {name},
 
 I’ve been following {company} lately, and your ability to make complex topics approachable really stood out.
@@ -50,12 +57,12 @@ Our animations are fully done-for-you (script, voiceover, storyboard, everything
 If you're open to it, I’d love to draft a sample script or sketch out a short ten-second demo to demonstrate one of these use cases, all at no cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.
 
 [Dynamic closer based on brand tone or mission. For example: “Thanks for making data feel human, it’s genuinely refreshing.” Or “Thanks for making healthcare more accessible, it's inspiring.”]
+---
 
-Warm regards,  
-Trent  
-Founder, Toon Theory  
-www.toontheory.com  
-Whiteboard Animation For The Brands People Trust
+Here’s the context from their website:
+{web_copy}
+
+Return only the complete message — subject line first, then body. Do not include commentary. Do not label anything. Do not use em dashes (—). Swap all em dashes to semi-colons, periods or commas. This is non-negotiable.
 """
 
     headers = {
@@ -68,7 +75,7 @@ Whiteboard Animation For The Brands People Trust
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful assistant writing short, custom cold emails for a whiteboard animation studio. Avoid em dashes."
+                "content": "You are a helpful assistant that writes short, clear cold emails with natural tone and no em dashes. You rotate subject lines and vary message structure every time."
             },
             {
                 "role": "user",
@@ -81,12 +88,12 @@ Whiteboard Animation For The Brands People Trust
         res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body)
         res.raise_for_status()
         return res.json()["choices"][0]["message"]["content"].strip()
-    except requests.exceptions.HTTPError as e:
+    except Exception as e:
         print(f"❌ Error from Groq for {name}: {e}")
-        print("🔍 Response text:", res.text)
+        print("🔍 Response content:", res.text if 'res' in locals() else "No response")
         return None
 
-# === Main Logic ===
+# === Main Script ===
 def main():
     print("🚀 Starting email generation...")
     records = airtable.get_all()
@@ -103,7 +110,7 @@ def main():
 
         print(f"✏️ Generating for {name} ({company})...")
 
-        email_text = generate_email_with_template(name, company, web_copy)
+        email_text = generate_email_with_variation(name, company, web_copy)
         if email_text:
             airtable.update(record["id"], {
                 "email_1": email_text,
@@ -114,8 +121,7 @@ def main():
         else:
             print(f"⚠️ Skipped {name} due to generation error")
 
-    print(f"🔁 Finished processing all leads. Emails generated: {generated_count}")
+    print(f"🔁 Finished processing. Emails generated: {generated_count}")
 
 if __name__ == "__main__":
     main()
-
