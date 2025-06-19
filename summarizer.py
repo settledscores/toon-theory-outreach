@@ -12,14 +12,15 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Groq client setup
+# Groq setup
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-MAX_INPUT_LENGTH = 14000  # buffer for prompt + response
+MAX_INPUT_LENGTH = 14000  # Leave space for tokens in prompt + response
 
 
 def clean_text(text):
-    return re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+", " ", text)  # Collapse multiple spaces
+    return text.strip()
 
 
 def truncate_text(text, limit=MAX_INPUT_LENGTH):
@@ -28,12 +29,10 @@ def truncate_text(text, limit=MAX_INPUT_LENGTH):
 
 def generate_prompt(cleaned_text):
     return f"""
-Here is text scraped from a company's website. Clean it up, keep only meaningful sentences, and remove repeated or filler content. Do not summarize yet; just clean and shorten while preserving context.
+Here is text scraped from a company's website. Clean it up by removing repeated, filler, or irrelevant content. Preserve the core ideas and meaningful sentences. Do not summarize yet — just reduce noise.
 
 Text:
 {cleaned_text}
-
-Output:
 """
 
 
@@ -57,11 +56,12 @@ def main():
 
         cleaned = clean_text(full_text)
         truncated = truncate_text(cleaned)
+
         prompt = generate_prompt(truncated)
 
         try:
             response = client.chat.completions.create(
-                model="mixtral-8x7b-32768",  # or llama3-70b-8192
+                model="llama3-70b-8192",
                 messages=[
                     {"role": "system", "content": "You are a content cleaner."},
                     {"role": "user", "content": prompt},
@@ -69,8 +69,8 @@ def main():
                 temperature=0.3,
                 max_tokens=1000,
             )
-            result = response.choices[0].message.content.strip()
-            update_mini_scrape(record["id"], result)
+            cleaned_output = response.choices[0].message.content.strip()
+            update_mini_scrape(record["id"], cleaned_output)
             updated += 1
             print("✅ Updated mini scrape")
         except Exception as e:
