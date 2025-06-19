@@ -19,7 +19,7 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 def generate_followup_email(name, company, web_copy):
     web_copy = web_copy.strip()[:1000]
 
-        prompt = f"""
+    prompt = f"""
 You are Trent, founder of Toon Theory, a whiteboard animation studio. You're writing a **first follow-up cold email** to {name} at {company}. This follow-up comes **3 days after** the initial message.
 
 Your goal is to:
@@ -71,7 +71,6 @@ Here’s their website context (use it to personalize use cases and tone):
 Only return the complete message — subject line on top, followed by the email body. Do not include labels or descriptions.
 """
 
-
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -115,7 +114,7 @@ def main():
         if not name or not company or not web_copy:
             continue
 
-        # Skip if email 2 already exists
+        # Skip if "email 2" already exists
         if "email 2" in fields:
             continue
 
