@@ -16,44 +16,50 @@ GROQ_MODEL = "llama3-70b-8192"
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 
-def generate_email_with_variation(name, company, niche_summary, services, use_cases):
-    # Trim field sizes
-    niche_summary = niche_summary.strip()[:800]
-    services = services.strip()[:800]
-    use_case_lines = [
-        uc.strip().lstrip("-•").rstrip(".")
-        for uc in use_cases.splitlines()
-        if uc.strip()
-    ]
+def first_sentence(text):
+    return text.split(".")[0].strip() + "." if "." in text else text.strip()
 
-    use_case_1 = f"Use Case #1: {use_case_lines[0]}" if len(use_case_lines) > 0 else ""
-    use_case_2 = f"Use Case #2: {use_case_lines[1]}" if len(use_case_lines) > 1 else ""
-    use_case_3 = f"Use Case #3: {use_case_lines[2]}" if len(use_case_lines) > 2 else ""
+
+def generate_email(name, company, mini_scrape, niche_summary, services, use_cases):
+    short_niche = first_sentence(niche_summary)
+    short_services = first_sentence(services)
+    top_use_cases = [uc.strip("• ").strip() for uc in use_cases.strip().splitlines() if uc.strip()]
+    top_use_cases = top_use_cases[:3]
+
+    # Backup if use cases are fewer than 3
+    while len(top_use_cases) < 3:
+        top_use_cases.append("Explain a key aspect of your service clearly")
 
     prompt = f"""
-You're Trent, founder of Toon Theory. Write a short, warm cold email to {name} at {company} based only on the Airtable fields below.
+You are Trent, founder of Toon Theory, writing a warm, conversational cold email to {name} at {company}. Follow the template exactly. The tone is natural and human, not salesy. No buzzwords. No filler. No em dashes. Structure is fixed. Just replace the brackets.
 
-Do not repeat anything. Do not make anything up. Keep it under 200 words, clear and helpful.
+Template:
+---
+Subject: A thought for your next project at {company}
 
-Niche Summary: {niche_summary}
+Hi {name},
 
-Services: {services}
+I’ve been following {company} lately, {short_niche} and your ability to make data feel approachable, and even fun, for small businesses {short_niche} really struck a chord with me.
 
-Use Cases:
-{use_case_1}
-{use_case_2}
-{use_case_3}
+I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.
 
-Format:
-- Begin with: Subject: A thought for your next project at {company}
-- Greet them by name
-- Refer naturally to the niche summary
-- Describe Toon Theory clearly in one sentence
-- Mention relevance to their services
-- List only the 3 numbered use cases — do not alter them
-- End with a grateful closer referencing their mission or tone
-- Never use em dashes
-- No commentary or labels — return only the email
+With your strong emphasis on {short_services} making dashboards actionable and client-friendly, {short_services} I think there’s real potential to add a layer of visual storytelling that helps even more business owners “get it” faster.
+
+Our animations are fully done-for-you (script, voiceover, storyboard, everything) and often used by folks like you to:
+
+1. {top_use_cases[0]}
+2. {top_use_cases[1]}
+3. {top_use_cases[2]}
+
+If you're open to it, I’d love to share a few tailored samples or sketch out what this could look like for {company}’s brand voice.
+
+{short_niche} Thanks for making data feel human, it’s genuinely refreshing. {short_niche}
+
+Warm regards,  
+Trent  
+Founder, Toon Theory  
+www.toontheory.com  
+Whiteboard Animation For The Brands People Trust
 """
 
     headers = {
@@ -64,13 +70,7 @@ Format:
     body = {
         "model": GROQ_MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You write clean, friendly, accurate cold emails. Only use the info provided. "
-                    "Do not invent or repeat content. Format exactly as asked. Never use em dashes."
-                )
-            },
+            {"role": "system", "content": "You are a helpful assistant that formats cold emails. Never invent. Never rephrase. Follow the template exactly."},
             {"role": "user", "content": prompt}
         ]
     }
@@ -94,19 +94,19 @@ def main():
         fields = record.get("fields", {})
         name = fields.get("name", "").strip()
         company = fields.get("company name", "").strip()
+        mini_scrape = fields.get("mini scrape", "").strip()
         niche_summary = fields.get("niche summary", "").strip()
         services = fields.get("services", "").strip()
         use_cases = fields.get("use cases", "").strip()
 
-        if not name or not company or not niche_summary or not services or not use_cases:
+        if not all([name, company, mini_scrape, niche_summary, services, use_cases]):
             continue
-
         if "email 1" in fields:
             continue
 
         print(f"✏️ Generating for {name} ({company})...")
+        email_text = generate_email(name, company, mini_scrape, niche_summary, services, use_cases)
 
-        email_text = generate_email_with_variation(name, company, niche_summary, services, use_cases)
         if email_text:
             airtable.update(record["id"], {
                 "email 1": email_text,
@@ -117,7 +117,7 @@ def main():
         else:
             print(f"⚠️ Skipped {name} due to generation error")
 
-    print(f"\n🎯 Done. Emails generated: {generated_count}")
+    print(f"\n🎯 Finished. Emails generated: {generated_count}")
 
 
 if __name__ == "__main__":
