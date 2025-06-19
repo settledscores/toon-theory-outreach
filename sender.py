@@ -56,7 +56,7 @@ def main():
             continue
 
         if fields.get("initial status"):
-            print(f"⏭️ Skipping {fields['name']} — already marked as sent (initial status present)")
+            print(f"⏭️ Skipping {fields['name']} — already marked as sent or failed")
             continue
 
         try:
@@ -79,6 +79,16 @@ def main():
 
         except Exception as e:
             print(f"❌ Failed for {fields.get('email')}: {e}")
+            now = datetime.now(LAGOS)
+            fail_payload = {
+                "initial date": now.isoformat(),
+                "initial status": "Failed"
+            }
+            try:
+                airtable.update(record["id"], fail_payload)
+                print(f"⚠️ Logged failure for {fields.get('name')} in Airtable")
+            except Exception as update_error:
+                print(f"❌ Could not update Airtable after failure: {update_error}")
 
 if __name__ == "__main__":
     main()
