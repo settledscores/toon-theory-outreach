@@ -105,7 +105,7 @@ def main():
         company = fields.get("company name", "").strip()
         web_copy = fields.get("web copy", "").strip()
 
-        if not name or not company or not web_copy or "email_1" in fields:
+        if not name or not company or not web_copy or "email 1" in fields:
             continue
 
         print(f"✏️ Generating for {name} ({company})...")
@@ -113,7 +113,7 @@ def main():
         email_text = generate_email_with_variation(name, company, web_copy)
         if email_text:
             airtable.update(record["id"], {
-                "email_1": email_text,
+                "email 1": email_text,
                 "initial date": datetime.utcnow().isoformat()
             })
             print(f"✅ Saved email for {name}")
