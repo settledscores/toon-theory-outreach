@@ -1,6 +1,6 @@
 openai
 python-dotenv
-airtable-python-wrapper
+pyairtable
 beautifulsoup4
 requests
-pytz      # 👈 Add this line
+pytz
