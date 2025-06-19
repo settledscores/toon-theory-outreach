@@ -1,5 +1,5 @@
 import os
-import requests
+import random
 from airtable import Airtable
 from datetime import datetime
 from dotenv import load_dotenv
@@ -10,8 +10,6 @@ load_dotenv()
 AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
-GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GROQ_MODEL = "llama3-70b-8192"
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
@@ -23,8 +21,23 @@ SUBJECT_LINES = [
     "Subject: Noticed something at {company}, had a thought"
 ]
 
+def clean_input(text):
+    lines = text.strip().splitlines()
+    cleaned = [
+        line.strip("•*- ").strip()
+        for line in lines
+        if line and not line.lower().startswith((
+            "here is", "this is", "the following", "below is", "our services", "a list of"
+        ))
+    ]
+    return " ".join(cleaned).strip()
+
 def format_use_cases(use_case_text):
-    lines = [line.strip("•- ").strip().rstrip(",.") for line in use_case_text.strip().splitlines() if line.strip()]
+    lines = [
+        line.strip("•*- ").strip().rstrip(",.")
+        for line in use_case_text.strip().splitlines()
+        if line.strip()
+    ]
     if not lines:
         return ""
     joined = (
@@ -35,9 +48,9 @@ def format_use_cases(use_case_text):
     return joined
 
 def generate_email(name, company, mini_scrape, niche_summary, use_cases, services):
-    subject = random_subject(company)
+    subject = random.choice(SUBJECT_LINES).format(company=company)
     use_case_block = format_use_cases(use_cases)
-    closer_line = f"{niche_summary.strip() or services.strip()} Thanks for making data feel human, it’s genuinely refreshing."
+    closer_line = "Thanks for making HR feel human — it’s genuinely refreshing."
 
     body = f"""
 {subject}
@@ -66,10 +79,6 @@ Whiteboard Animation For The Brands People Trust
 """
     return body.strip()
 
-def random_subject(company):
-    import random
-    return random.choice(SUBJECT_LINES).format(company=company)
-
 def main():
     print("🚀 Starting email generation...")
     records = airtable.get_all()
@@ -80,9 +89,9 @@ def main():
         name = fields.get("name", "").strip()
         company = fields.get("company name", "").strip()
         mini_scrape = fields.get("mini scrape", "").strip()
-        niche_summary = fields.get("niche summary", "").strip()
-        use_cases = fields.get("use cases", "").strip()
-        services = fields.get("services", "").strip()
+        niche_summary = clean_input(fields.get("niche summary", ""))
+        use_cases = clean_input(fields.get("use cases", ""))
+        services = clean_input(fields.get("services", ""))
 
         if not all([name, company, mini_scrape, niche_summary, use_cases, services]):
             continue
