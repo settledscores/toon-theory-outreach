@@ -4,3 +4,4 @@ airtable-python-wrapper
 beautifulsoup4
 requests
 pytz      # 👈 Add this line
+groq
