@@ -19,7 +19,7 @@ MAX_INPUT_LENGTH = 14000  # to keep room for prompt tokens and response
 
 
 def clean_text(text):
-    text = re.sub(r"\\s+", " ", text)  # Collapse whitespace
+    text = re.sub(r"\s+", " ", text)  # Collapse whitespace
     return text.strip()
 
 
@@ -28,16 +28,12 @@ def truncate_text(text, limit=MAX_INPUT_LENGTH):
 
 
 def generate_prompt(cleaned_text):
-    return f"""
-Here is text scraped from a company's website. Clean it up, keep only meaningful sentences, and remove repeated or filler content. Do not summarize yet, just clean and shorten while preserving context.
+    return f"""Here is text scraped from a company's website. Clean it up, keep only meaningful sentences, and remove repeated or filler content. Do not summarize yet, just clean and shorten while preserving context.
 
 Text:
-"""
 {cleaned_text}
-"""
-Output:
-"""
-"""
+
+Output:"""
 
 
 def update_mini_scrape(record_id, text):
