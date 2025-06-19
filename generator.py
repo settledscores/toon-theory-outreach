@@ -62,7 +62,7 @@ If you're open to it, I’d love to draft a sample script or sketch out a short 
 Here’s the context from their website:
 {web_copy}
 
-Return only the complete message — subject line first, then body. Do not include commentary. Do not label anything. Do not use em dashes (—). Swap all em dashes to semi-colons, periods or commas. This is non-negotiable.
+Return only the complete message — subject line first, then body. Do not include commentary. Do not label anything. Aim for a Flesch score of 80 and above. Do not use em dashes (—) at all costs. Swap all em dashes to semi-colons, periods or commas. This is non-negotiable.
 """
 
     headers = {
