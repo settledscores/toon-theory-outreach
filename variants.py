@@ -1,5 +1,6 @@
 import os
 import random
+import requests
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -8,6 +9,7 @@ load_dotenv()
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
@@ -79,7 +81,7 @@ paragraph6_variants = [
 ]
 
 signature_variants = [
-    "Warm regards,\nTrent\nFounder, Toon Theory\nwww.toontheory.com",
+    "Warm regards,\nTrent\nFounder, Toon Theory\nwww.toontheory.com\nWhiteboard Animation For The Brands People Trust",
     "All the best,\nTrent\nToon Theory\nwww.toontheory.com",
     "Cheers,\nTrent\nwww.toontheory.com",
     "Thanks for your time,\nTrent\nFounder at Toon Theory\nwww.toontheory.com",
@@ -91,18 +93,31 @@ signature_variants = [
     "Looking forward,\nTrent\nwww.toontheory.com"
 ]
 
+def groq_shorten(summary):
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "llama3-8b-8192",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": f"Summarize the following company description into one short, clear sentence without any preamble or labels:\n\n{summary}"}
+                ],
+                "temperature": 0.2
+            }
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"⚠️ Groq API error: {e}")
+        return ""
+
 def update_record_fields(record_id, updates):
     airtable.update(record_id, updates)
-
-def parse_use_cases(use_case_field):
-    # Handles list or comma-separated string for use cases
-    if isinstance(use_case_field, list):
-        return [str(u).strip() for u in use_case_field if str(u).strip()]
-    elif isinstance(use_case_field, str):
-        # Split on commas, remove empty strings, strip spaces
-        return [u.strip() for u in use_case_field.split(",") if u.strip()]
-    else:
-        return []
 
 def main():
     records = airtable.get_all()
@@ -111,10 +126,9 @@ def main():
     for record in records:
         record_id = record["id"]
         fields = record.get("fields", {})
-
-        name = fields.get("name") or fields.get("contact name") or "there"
-
         updates = {}
+
+        name = fields.get("name", "there")
 
         if not fields.get("subject"):
             updates["subject"] = random.choice(subject_variants)
@@ -126,13 +140,6 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
         if not fields.get("paragraph 3 service tiein"):
             updates["paragraph 3 service tiein"] = random.choice(paragraph3_variants)
-
-        # Parse use cases and forcibly update all 3 use case fields regardless of existing content
-        use_cases = parse_use_cases(fields.get("use case", []))
-        updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
-        updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
-        updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
-
         if not fields.get("paragraph 5 invitation"):
             updates["paragraph 5 invitation"] = random.choice(paragraph5_variants)
         if not fields.get("paragraph 6 closer"):
@@ -140,11 +147,15 @@ def main():
         if not fields.get("signature"):
             updates["signature"] = random.choice(signature_variants)
 
+        if not fields.get("niche summary paragraph") and fields.get("niche summary"):
+            short_summary = groq_shorten(fields["niche summary"])
+            if short_summary:
+                updates["niche summary paragraph"] = short_summary
+
         if updates:
             update_record_fields(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
-            print(f"   Use cases set to: {updates['paragraph 4 use case 1']}, {updates['paragraph 4 use case 2']}, {updates['paragraph 4 use case 3']}")
 
     print(f"\n🎯 Done. {updated_count} records updated.")
 
