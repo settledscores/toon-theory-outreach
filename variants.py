@@ -94,6 +94,16 @@ signature_variants = [
 def update_record_fields(record_id, updates):
     airtable.update(record_id, updates)
 
+def parse_use_cases(use_case_field):
+    # Handles list or comma-separated string for use cases
+    if isinstance(use_case_field, list):
+        return [str(u).strip() for u in use_case_field if str(u).strip()]
+    elif isinstance(use_case_field, str):
+        # Split on commas, remove empty strings, strip spaces
+        return [u.strip() for u in use_case_field.split(",") if u.strip()]
+    else:
+        return []
+
 def main():
     records = airtable.get_all()
     updated_count = 0
@@ -101,8 +111,9 @@ def main():
     for record in records:
         record_id = record["id"]
         fields = record.get("fields", {})
-        name = fields.get("company name", "there")
-        
+
+        name = fields.get("name") or fields.get("contact name") or "there"
+
         updates = {}
 
         if not fields.get("subject"):
@@ -115,14 +126,14 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
         if not fields.get("paragraph 3 service tiein"):
             updates["paragraph 3 service tiein"] = random.choice(paragraph3_variants)
+
+        # Use case handling
+        use_cases = parse_use_cases(fields.get("use case", []))
         if not (fields.get("paragraph 4 use case 1") and fields.get("paragraph 4 use case 2") and fields.get("paragraph 4 use case 3")):
-            # Parse use case field and assign up to 3 use cases
-            use_cases_raw = fields.get("use case", "")
-            # Assume comma separated
-            use_cases = [uc.strip() for uc in use_cases_raw.split(",") if uc.strip()]
             updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
             updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
             updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
+
         if not fields.get("paragraph 5 invitation"):
             updates["paragraph 5 invitation"] = random.choice(paragraph5_variants)
         if not fields.get("paragraph 6 closer"):
