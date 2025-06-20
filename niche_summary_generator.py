@@ -15,9 +15,16 @@ client = Groq(api_key=GROQ_API_KEY)
 
 def generate_short_niche_summary(mini_scrape, services):
     prompt = f"""
-Generate a lowercase, concise phrase (maximum 6 words) that describes what this company does, starting with a present participle (e.g., helping, providing, empowering, supporting, guiding, connecting).
+You are writing an ultra-short niche summary (no more than 6 words) for a company.
 
-Only use present participles (no third-person verbs). Do not use full sentences. Do not add labels or introductions.
+Rules:
+- Start with a present participle (e.g. helping, simplifying, empowering, enabling, connecting)
+- Keep it lowercase and without punctuation
+- Do not use vague or generic phrases like "empowering businesses"
+- Be specific about what the company does and for whom
+- Avoid repeating the same verb twice
+- Avoid marketing fluff or filler words
+- No labels, introductions, or explanations — just the phrase
 
 Mini scrape:
 {mini_scrape}
