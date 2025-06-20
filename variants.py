@@ -69,16 +69,10 @@ paragraph3_variants = [
 ]
 
 paragraph5_variants = [
-    "If this sounds interesting, I’d love to chat more about it.",
-    "Let me know if you’d like to see a few custom ideas I think could really work for you.",
-    "If you’re curious, I’d be happy to share a few relevant samples and see if it aligns with your vision.",
-    "No pressure, but if you think this could help, I’d be happy to brainstorm some ideas together.",
-    "I can put together a few ideas if you're open to seeing how this could fit your needs.",
-    "It’d be fun to explore this idea with you if you’re up for it.",
-    "Let me know if you’re open to a quick chat about how this could work for you.",
-    "I’m happy to sketch out some ideas and see what resonates. Just let me know.",
-    "If you think this is worth a shot, I’d love to share more tailored ideas with you.",
-    "I’d love to put together a short demo if this piques your interest."
+    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. All at zero cost to you. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
+    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings at zero cost to you. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
+    "I'd be happy to draft a no-cost, ten-second demo around something core to your brand. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
+    "Would you be open to seeing a quick storyboard or ten-second test idea built with [company name] in mind? Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
 ]
 
 paragraph6_variants = [
@@ -91,7 +85,6 @@ signature_variants = [
     "Warm regards,\nTrent\nFounder, Toon Theory\nwww.toontheory.com",
     "All the best,\nTrent\nToon Theory\nwww.toontheory.com",
     "Cheers,\nTrent\nwww.toontheory.com",
-    "Thanks for your time,\nTrent\nFounder at Toon Theory\nwww.toontheory.com",
     "Take care,\nTrent\nToon Theory\nwww.toontheory.com",
     "Catch you soon,\nTrent\nToon Theory\nwww.toontheory.com",
     "Sincerely,\nTrent\nToon Theory\nwww.toontheory.com",
