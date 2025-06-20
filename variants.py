@@ -79,15 +79,15 @@ paragraph6_variants = [
 ]
 
 signature_variants = [
-    "Warm regards,\nTrent\nFounder, Toon Theory\nwww.toontheory.com\nWhiteboard Animation For The Brands People Trust",
+    "Warm regards,\nTrent\nFounder, Toon Theory\nwww.toontheory.com",
     "All the best,\nTrent\nToon Theory\nwww.toontheory.com",
     "Cheers,\nTrent\nwww.toontheory.com",
-    "Thanks for your time,\nTrent\nFounder at Toon Theory",
+    "Thanks for your time,\nTrent\nFounder at Toon Theory\nwww.toontheory.com",
     "Take care,\nTrent\nToon Theory\nwww.toontheory.com",
-    "Catch you soon,\nTrent\nToon Theory",
-    "Sincerely,\nTrent\nToon Theory",
-    "Kind regards,\nTrent\nToon Theory",
-    "Hope to chat soon,\nTrent\nToon Theory",
+    "Catch you soon,\nTrent\nToon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent\nToon Theory\nwww.toontheory.com",
+    "Kind regards,\nTrent\nToon Theory\nwww.toontheory.com",
+    "Hope to chat soon,\nTrent\nToon Theory\nwww.toontheory.com",
     "Looking forward,\nTrent\nwww.toontheory.com"
 ]
 
@@ -127,12 +127,11 @@ def main():
         if not fields.get("paragraph 3 service tiein"):
             updates["paragraph 3 service tiein"] = random.choice(paragraph3_variants)
 
-        # Use case handling
+        # Parse use cases and forcibly update all 3 use case fields regardless of existing content
         use_cases = parse_use_cases(fields.get("use case", []))
-        if not (fields.get("paragraph 4 use case 1") and fields.get("paragraph 4 use case 2") and fields.get("paragraph 4 use case 3")):
-            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
-            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
-            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
+        updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
+        updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
+        updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
 
         if not fields.get("paragraph 5 invitation"):
             updates["paragraph 5 invitation"] = random.choice(paragraph5_variants)
@@ -145,6 +144,7 @@ def main():
             update_record_fields(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
+            print(f"   Use cases set to: {updates['paragraph 4 use case 1']}, {updates['paragraph 4 use case 2']}, {updates['paragraph 4 use case 3']}")
 
     print(f"\n🎯 Done. {updated_count} records updated.")
 
