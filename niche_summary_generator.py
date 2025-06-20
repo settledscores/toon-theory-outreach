@@ -15,7 +15,9 @@ client = Groq(api_key=GROQ_API_KEY)
 
 def generate_short_niche_summary(mini_scrape, services):
     prompt = f"""
-Generate a short summary (maximum 6 words) of what this company does. Avoid labels, prefaces, or fluff. No introductions, just the value.
+Generate a lowercase, concise phrase (maximum 6 words) that describes what this company does, starting with a present participle (e.g., helping, providing, empowering, supporting, guiding, connecting).
+
+Only use present participles (no third-person verbs). Do not use full sentences. Do not add labels or introductions.
 
 Mini scrape:
 {mini_scrape}
@@ -23,19 +25,19 @@ Mini scrape:
 Services:
 {services}
 
-Respond with just the 6-word phrase. Nothing else.
+Respond with only the phrase, nothing else. No punctuation.
 """
 
     response = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[
-            {"role": "system", "content": "You are a precise summarizer. Output only 6 words maximum."},
+            {"role": "system", "content": "You generate ultra-brief, lowercase niche summaries using present participles only."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.2,
         max_tokens=30,
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content.strip().lower()
 
 def main():
     print("🚀 Generating short niche summaries...")
