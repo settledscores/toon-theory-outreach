@@ -43,20 +43,20 @@ paragraph1_variants = [
 ]
 
 paragraph2_variants = [
-    "Our animations are fully done-for-you: script, voiceover, storyboard, the whole thing; so you don’t have to lift a finger.",
-    "We handle everything: scripting, storyboarding, illustrations and narration; so your team can focus on doing what they do best.",
-    "You get a strategic video that feels custom-built for your message; no templates or fluff; professionally scripted, voiced, and illustrated; ready to go.",
-    "We make the whole process easy, from concept to delivery, with zero effort on your side.",
-    "Everything’s included: concept, writing, narration, illustrations; no extra work required from your team.",
-    "Each explainer is crafted from scratch to match your voice, story, and audience. You get an end-to-end solution that feels like part of your brand, not just an add-on."
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. Our animations are fully done-for-you: script, voiceover, storyboard, the whole thing; so you don’t have to lift a finger.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. We handle everything: scripting, storyboarding, illustrations and narration; so your team can focus on doing what they do best.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. You get a strategic video that feels custom-built for your message; no templates or fluff; professionally scripted, voiced, and illustrated; ready to go.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. We make the whole process easy, from concept to delivery, with zero effort on your side.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. Everything’s included: concept, writing, narration, illustrations; no extra work required from your team.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education. Each explainer is crafted from scratch to match your voice, story, and audience. You get an end-to-end solution that feels like part of your brand, not just an add-on."
 ]
 
 paragraph3_variants = [
-    "If you already prioritize clear communication and meaningful results, then I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.",
-    "If you already prioritize streamlining complex ideas, we could help bring that to life visually for even greater impact.",
-    "If you already prioritize client satisfaction; adding a visual layer might help drive home your value faster and clearer.",
-    "If you're already simplifying things for your audience, why not let visuals do some of the heavy lifting too?",
-    "If you already prioritize clarity and quality, video could be the next smart move in boosting engagement and trust."
+    "If you already prioritize clear communication and meaningful results, then I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our videos are often used by folks like you to:",
+    "If you already prioritize streamlining complex ideas, we could help bring that to life visually for even greater impact. Our videos are often used by folks like you to:",
+    "If you already prioritize client satisfaction; animated storytelling might help drive home your value faster and clearer. Our videos are often used by folks like you to:",
+    "If you're already simplifying things for your audience, why not let animated storytelling do some of the heavy lifting too? Our videos are often used by folks like you to:",
+    "If you already prioritize clarity and quality, animated storytelling could be the next smart move in boosting engagement and trust. Our videos are often used by folks like you to:"
 ]
 
 paragraph5_variants = [
@@ -104,6 +104,7 @@ def main():
         name = fields.get("company name", "there")
         
         updates = {}
+
         if not fields.get("subject"):
             updates["subject"] = random.choice(subject_variants)
         if not fields.get("salutation"):
@@ -114,13 +115,21 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
         if not fields.get("paragraph 3 service tiein"):
             updates["paragraph 3 service tiein"] = random.choice(paragraph3_variants)
+        if not (fields.get("paragraph 4 use case 1") and fields.get("paragraph 4 use case 2") and fields.get("paragraph 4 use case 3")):
+            # Parse use case field and assign up to 3 use cases
+            use_cases_raw = fields.get("use case", "")
+            # Assume comma separated
+            use_cases = [uc.strip() for uc in use_cases_raw.split(",") if uc.strip()]
+            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
+            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
+            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
         if not fields.get("paragraph 5 invitation"):
             updates["paragraph 5 invitation"] = random.choice(paragraph5_variants)
         if not fields.get("paragraph 6 closer"):
             updates["paragraph 6 closer"] = random.choice(paragraph6_variants)
         if not fields.get("signature"):
             updates["signature"] = random.choice(signature_variants)
-        
+
         if updates:
             update_record_fields(record_id, updates)
             updated_count += 1
