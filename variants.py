@@ -2,7 +2,6 @@ import os
 from airtable import Airtable
 from dotenv import load_dotenv
 
-# Load .env credentials
 load_dotenv()
 
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
@@ -11,7 +10,6 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Variant content
 subject_variants = """Let’s make your message stick
 A quick thought for your next project
 Helping your ideas pop visually
@@ -45,22 +43,23 @@ I’m happy to sketch out some ideas and see what resonates. Just let me know.
 If you think this is worth a shot, I’d love to share more tailored ideas with you.
 I’d love to put together a few visuals if this piques your interest."""
 
-# Main update loop
 def update_records():
     records = airtable.get_all()
     count = 0
+
     for record in records:
         record_id = record["id"]
         fields = record.get("fields", {})
 
-        if not all(k in fields for k in ["subject variants", "opener variants", "closer variants"]):
+        # Only update if one or more fields are missing
+        if not all(f in fields for f in ["subject variants", "opener variants", "closer variants"]):
             airtable.update(record_id, {
                 "subject variants": subject_variants,
                 "opener variants": opener_variants,
                 "closer variants": closer_variants,
             })
-            count += 1
             print(f"✅ Updated record {record_id}")
+            count += 1
 
     print(f"\n🎯 Done. {count} records updated.")
 
