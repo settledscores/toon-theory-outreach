@@ -15,15 +15,26 @@ client = Groq(api_key=GROQ_API_KEY)
 
 def generate_short_niche_summary(mini_scrape, services):
     prompt = f"""
-You are writing a short, specific niche summary (no more than 12 words) describing what a company does.
+You are writing a short, specific niche summary (max 12 words) that describes exactly what a company does and for whom.
 
-Requirements:
-- Start with a present participle (e.g. helping, building, making, enabling, streamlining, supporting)
-- Use only lowercase
-- No punctuation or filler phrases
-- Focus on what the company **actually does** and **for whom**
-- Avoid vague phrases like "empowering businesses" or "delivering success"
-- No intros, labels, preambles, or explanations — just the phrase
+✅ Requirements:
+- Start with a present participle verb (e.g. helping, building, making, enabling, supporting, streamlining)
+- Use lowercase only
+- No punctuation
+- Avoid fluff like "empowering businesses" or "delivering success"
+- Be clear, not clever
+- No preambles or labels — just return the phrase
+
+Here are some examples:
+
+helping startups access clean no strings funding  
+making data approachable and even fun for small teams  
+streamlining hr processes for scaling businesses  
+providing saas engineers with expert data driven insights  
+building logistics software for african retailers  
+supporting founders with tailored financial ops strategy  
+
+Now generate one like this based on the inputs below.
 
 Mini scrape:
 {mini_scrape}
