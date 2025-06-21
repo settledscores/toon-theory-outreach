@@ -5,6 +5,7 @@ from groq import Groq
 
 load_dotenv()
 
+# Airtable + Groq Setup
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
@@ -51,13 +52,14 @@ Respond with only the phrase, nothing else. No punctuation.
             {"role": "system", "content": "You generate ultra-brief, lowercase niche summaries using present participles only."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.2,
+        temperature=0.3,
         max_tokens=30,
     )
     return response.choices[0].message.content.strip().lower()
 
+
 def main():
-    print("🚀 Generating short niche summaries...")
+    print("🚀 Generating two short niche summaries...")
     records = airtable.get_all()
     updated_count = 0
 
@@ -65,23 +67,36 @@ def main():
         fields = record.get("fields", {})
         mini_scrape = fields.get("mini scrape", "").strip()
         services = fields.get("services", "").strip()
-        short_summary = fields.get("niche summary paragraph", "").strip()
+        summary_1 = fields.get("niche summary paragraph", "").strip()
+        summary_2 = fields.get("niche summary paragraph 2", "").strip()
 
-        if not mini_scrape or not services or short_summary:
+        # Skip if we don't have content or already populated summaries
+        if not mini_scrape or not services or summary_1 or summary_2:
             continue
 
-        name = fields.get("company name", "[unknown]")
-        print(f"🔍 Processing: {name}")
+        print(f"🔍 Processing: {fields.get('company name', '[unknown]')}")
 
         try:
-            summary = generate_short_niche_summary(mini_scrape, services)
-            airtable.update(record["id"], {"niche summary paragraph": summary})
-            print(f"✅ Updated: {summary}")
+            first = generate_short_niche_summary(mini_scrape, services)
+            second = generate_short_niche_summary(mini_scrape, services)
+
+            if first == second:
+                second += " "  # Slightly force uniqueness without breaking formatting
+
+            airtable.update(record["id"], {
+                "niche summary paragraph": first,
+                "niche summary paragraph 2": second
+            })
+
+            print(f"✅ Summary 1: {first}")
+            print(f"✅ Summary 2: {second}")
             updated_count += 1
+
         except Exception as e:
             print(f"❌ Error: {e}")
 
     print(f"\n🎯 Done. {updated_count} records updated.")
+
 
 if __name__ == "__main__":
     main()
