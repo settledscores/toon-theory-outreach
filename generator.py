@@ -1,7 +1,6 @@
 import os
 import random
 from airtable import Airtable
-from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -79,8 +78,7 @@ Our videos are often used by folks like you to:
 
         airtable.update(record["id"], {
             "email 1": email_body,
-            "subject": subject.strip(),
-            "initial date": datetime.utcnow().isoformat()
+            "subject": subject.strip()
         })
 
         print(f"✅ Composed email for: {fields.get('name', '[No Name]')} | {subject}")
