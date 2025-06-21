@@ -15,7 +15,7 @@ subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
     "Helping your message stick visually",
-    "Turn complex into simple (in 90 seconds)",
+    "Turn complex into simple (in 90 seconds or less)",
     "Your story deserves to be told differently",
     "How about a different approach to your messaging?",
     "Making your message unforgettable",
