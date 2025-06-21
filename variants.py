@@ -1,24 +1,23 @@
 import os
 import random
 import re
-import openai
 from airtable import Airtable
 from dotenv import load_dotenv
+from groq import Groq
 
-# --- Load environment ---
 load_dotenv()
 
+# Airtable setup
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# --- Airtable + Groq Setup ---
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-openai.api_key = GROQ_API_KEY
-openai.api_base = "https://api.groq.com/openai/v1"
 
-# --- Text Variants ---
+# Groq setup
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=GROQ_API_KEY)
+
+# --- Variants ---
 subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -109,37 +108,22 @@ signature_variants = [
     "Looking forward,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-# --- Utility Functions ---
-def update_record_fields(record_id, updates):
-    airtable.update(record_id, updates)
-
-def parse_use_cases(field):
-    if isinstance(field, list):
-        raw = "\n".join(field)
-    else:
-        raw = str(field or "")
-    bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
-    return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
-
-def generate_smart_gerund(prompt):
+# --- Groq-powered gerund conversion ---
+def generate_smart_gerund(phrase):
     try:
-        response = openai.ChatCompletion.create(
-            model="mixtral-8x7b-32768",
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Convert this sentence into a lowercase gerund phrase. Do not prefix, explain, or summarize anything. Just output raw text.\n\n{prompt}"
-                }
-            ],
-            temperature=0.4,
+        prompt = f"Convert this sentence into a lowercase gerund phrase. No intro, no summary, no explanations, no summary, enforce strict all-lowercase policy. Just the raw phrase:\n\n{phrase}"
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
             max_tokens=50
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"⚠️ Error generating gerund for '{prompt}': {e}")
+        print(f"⚠️ Error with Groq: {e}")
         return ""
 
-# --- Main Script ---
+# --- Main Logic ---
 def main():
     records = airtable.get_all()
     updated_count = 0
@@ -171,24 +155,22 @@ def main():
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
             phrase = random.choice(paragraph3_intro_phrases)
-            base = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
-            alt = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
-            updates["paragraph 3 service tiein"] = random.choice([base, alt])
+            main_variant = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
+            alternate = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
+            updates["paragraph 3 service tiein"] = random.choice([main_variant, alternate])
 
-        use_cases = parse_use_cases(fields.get("use case"))
+        # Grab use cases
+        uc1 = fields.get("paragraph 4 use case 1", "").strip()
+        uc2 = fields.get("paragraph 4 use case 2", "").strip()
+        uc3 = fields.get("paragraph 4 use case 3", "").strip()
 
-        if not fields.get("paragraph 4 use case 1") and len(use_cases) > 0:
-            updates["paragraph 4 use case 1"] = use_cases[0]
-        if not fields.get("paragraph 4 use case 2") and len(use_cases) > 1:
-            updates["paragraph 4 use case 2"] = use_cases[1]
-        if not fields.get("paragraph 4 use case 3") and len(use_cases) > 2:
-            updates["paragraph 4 use case 3"] = use_cases[2]
-
-        for i in range(1, 4):
-            use_case_field = f"paragraph 4 use case {i}"
-            inline_field = f"{use_case_field} inline"
-            if not fields.get(inline_field) and fields.get(use_case_field):
-                updates[inline_field] = generate_smart_gerund(fields[use_case_field])
+        # Use Groq to generate inline versions
+        if uc1 and not fields.get("paragraph 4 use case 1 inline"):
+            updates["paragraph 4 use case 1 inline"] = generate_smart_gerund(uc1)
+        if uc2 and not fields.get("paragraph 4 use case 2 inline"):
+            updates["paragraph 4 use case 2 inline"] = generate_smart_gerund(uc2)
+        if uc3 and not fields.get("paragraph 4 use case 3 inline"):
+            updates["paragraph 4 use case 3 inline"] = generate_smart_gerund(uc3)
 
         if not fields.get("paragraph 4b benefits"):
             updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
@@ -206,7 +188,7 @@ def main():
             updates["signature"] = random.choice(signature_variants)
 
         if updates:
-            update_record_fields(record_id, updates)
+            airtable.update(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
             print(f"   → Fields updated: {list(updates.keys())}")
