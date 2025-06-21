@@ -11,17 +11,6 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-subject_variants = [
-    "Let’s make your message stick",
-    "A quick thought for your next project",
-    "Helping your ideas stick visually",
-    "Turn complex into simple (in 90 seconds)",
-    "Your story deserves to be told differently",
-    "How about a different approach to your messaging?",
-    "Making your ideas unforgettable",
-    "Need a visual upgrade for your next launch?"
-]
-
 salutation_variants = [
     "Hi {name},", "Hey {name},", "Hello {name},",
     "Hi there {name},", "Hey there {name},",
