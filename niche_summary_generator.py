@@ -1,5 +1,6 @@
 import os
 import time
+import re
 from difflib import SequenceMatcher
 from airtable import Airtable
 from dotenv import load_dotenv
@@ -16,18 +17,16 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 client = Groq(api_key=GROQ_API_KEY)
 
-# List of abbreviations to preserve
-ACRONYMS = ["CPA", "GTM", "HR", "M&A", "R&D", "UX", "UI", "API", "SaaS", "SEO", "B2B", "B2C", "DTC", "CRM"]
-
-# Ensure acronyms are properly cased
-def fix_abbreviations(text):
-    for acronym in ACRONYMS:
-        text = text.replace(acronym.lower(), acronym)
-    return text
-
 # Calculate similarity ratio
 def similarity_ratio(a, b):
     return SequenceMatcher(None, a, b).ratio()
+
+# Find and preserve acronyms from original content
+def preserve_custom_acronyms(text, context):
+    tokens = set(re.findall(r"\b[A-Z]{2,}\b", context))
+    for acronym in tokens:
+        text = re.sub(rf"\b{acronym.lower()}\b", acronym, text)
+    return text
 
 # Generate one summary
 def generate_short_niche_summary(mini_scrape, services):
@@ -36,7 +35,7 @@ You are writing a short, specific niche summary (max 12 words) that describes ex
 
 ✅ Requirements:
 - Start with a present participle verb (e.g. helping, building, making, enabling, supporting, streamlining)
-- Use lowercase only except for industry acronyms (e.g. CPA, GTM, M&A, SaaS)
+- Use lowercase only except for acronyms already used in the text below (e.g. CPA, GTM)
 - No punctuation
 - Avoid fluff like "empowering businesses" or "delivering success"
 - Be clear, not clever
@@ -65,13 +64,15 @@ Respond with only the phrase. No punctuation, no comments.
     response = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[
-            {"role": "system", "content": "You generate ultra-brief, lowercase niche summaries using present participles only. Preserve acronyms like CPA, M&A, GTM, SaaS, etc."},
+            {"role": "system", "content": "You generate ultra-brief, lowercase niche summaries using present participles only. Preserve acronyms that appear in the original content."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.3,
+        temperature=0.6,
         max_tokens=30,
     )
-    return fix_abbreviations(response.choices[0].message.content.strip())
+
+    raw_summary = response.choices[0].message.content.strip()
+    return preserve_custom_acronyms(raw_summary, mini_scrape + " " + services)
 
 # Main script
 def main():
@@ -121,3 +122,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
