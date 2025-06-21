@@ -1,18 +1,24 @@
 import os
 import random
 import re
+import openai
 from airtable import Airtable
 from dotenv import load_dotenv
 
+# --- Load environment ---
 load_dotenv()
 
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+# --- Airtable + Groq Setup ---
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+openai.api_key = GROQ_API_KEY
+openai.api_base = "https://api.groq.com/openai/v1"
 
-# --- Variants ---
+# --- Text Variants ---
 subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -103,7 +109,7 @@ signature_variants = [
     "Looking forward,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-# --- Helpers ---
+# --- Utility Functions ---
 def update_record_fields(record_id, updates):
     airtable.update(record_id, updates)
 
@@ -115,13 +121,25 @@ def parse_use_cases(field):
     bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
     return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
 
-def generate_inline_use_case(phrase):
-    phrase = phrase.strip().lower()
-    phrase = re.sub(r"^(show|teach|demonstrate|help|explain|break down|illustrate|highlight)\s+", "", phrase)
-    phrase = re.sub(r"^how to\s+", "", phrase)
-    return f"showing how to {phrase}"
+def generate_smart_gerund(prompt):
+    try:
+        response = openai.ChatCompletion.create(
+            model="mixtral-8x7b-32768",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Convert this sentence into a lowercase gerund phrase. Do not prefix, explain, or summarize anything. Just output raw text.\n\n{prompt}"
+                }
+            ],
+            temperature=0.4,
+            max_tokens=50
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"⚠️ Error generating gerund for '{prompt}': {e}")
+        return ""
 
-# --- Main Logic ---
+# --- Main Script ---
 def main():
     records = airtable.get_all()
     updated_count = 0
@@ -153,9 +171,9 @@ def main():
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
             phrase = random.choice(paragraph3_intro_phrases)
-            combined = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
-            alternate = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
-            updates["paragraph 3 service tiein"] = random.choice([combined, alternate])
+            base = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
+            alt = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
+            updates["paragraph 3 service tiein"] = random.choice([base, alt])
 
         use_cases = parse_use_cases(fields.get("use case"))
 
@@ -166,14 +184,11 @@ def main():
         if not fields.get("paragraph 4 use case 3") and len(use_cases) > 2:
             updates["paragraph 4 use case 3"] = use_cases[2]
 
-        # New inline fields for follow-ups
-        if use_cases:
-            if not fields.get("paragraph 4 use case 1 inline") and len(use_cases) > 0:
-                updates["paragraph 4 use case 1 inline"] = generate_inline_use_case(use_cases[0])
-            if not fields.get("paragraph 4 use case 2 inline") and len(use_cases) > 1:
-                updates["paragraph 4 use case 2 inline"] = generate_inline_use_case(use_cases[1])
-            if not fields.get("paragraph 4 use case 3 inline") and len(use_cases) > 2:
-                updates["paragraph 4 use case 3 inline"] = generate_inline_use_case(use_cases[2])
+        for i in range(1, 4):
+            use_case_field = f"paragraph 4 use case {i}"
+            inline_field = f"{use_case_field} inline"
+            if not fields.get(inline_field) and fields.get(use_case_field):
+                updates[inline_field] = generate_smart_gerund(fields[use_case_field])
 
         if not fields.get("paragraph 4b benefits"):
             updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
