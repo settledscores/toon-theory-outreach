@@ -1,10 +1,10 @@
-name: Generate Niche Summary
+name: Generate Niche Summary 1
 
 on:
   workflow_dispatch:
 
 jobs:
-  generate-niche-summary:
+  generate-niche-summary-1:
     runs-on: ubuntu-latest
 
     env:
@@ -27,5 +27,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: ✨ Run niche summary generator
-        run: python niche_summary_generator.py
+      - name: ✨ Run niche summary generator 1
+        run: python niche_summary_generator_1.py
