@@ -9,8 +9,10 @@ load_dotenv()
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
+# --- Variants ---
 subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -46,10 +48,9 @@ paragraph1_templates = [
 ]
 
 paragraph2_variants = [
-    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education."
 ]
 
-# Combined variants from intro + dynamic field + hardcoded templates
 paragraph3_intro_phrases = [
     "With your mission centered on", 
     "Since you're focused on"
@@ -102,17 +103,25 @@ signature_variants = [
     "Looking forward,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
+# --- Helpers ---
 def update_record_fields(record_id, updates):
     airtable.update(record_id, updates)
 
-def parse_use_cases(use_case_field):
-    if isinstance(use_case_field, list):
-        raw = "\n".join(use_case_field)
+def parse_use_cases(field):
+    if isinstance(field, list):
+        raw = "\n".join(field)
     else:
-        raw = str(use_case_field or "")
+        raw = str(field or "")
     bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
     return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
 
+def generate_inline_use_case(phrase):
+    phrase = phrase.strip().lower()
+    phrase = re.sub(r"^(show|teach|demonstrate|help|explain|break down|illustrate|highlight)\s+", "", phrase)
+    phrase = re.sub(r"^how to\s+", "", phrase)
+    return f"showing how to {phrase}"
+
+# --- Main Logic ---
 def main():
     records = airtable.get_all()
     updated_count = 0
@@ -131,12 +140,11 @@ def main():
             updates["subject"] = random.choice(subject_variants)
 
         if not fields.get("salutation"):
-            updates["salutation"] = random.choice(salutation_variants).replace("{name}", name)
+            updates["salutation"] = random.choice(salutation_variants).format(name=name)
 
         if not fields.get("paragraph 1 niche opener"):
             if summary_1:
-                template = random.choice(paragraph1_templates)
-                updates["paragraph 1 niche opener"] = template.format(company=company, summary=summary_1)
+                updates["paragraph 1 niche opener"] = random.choice(paragraph1_templates).format(company=company, summary=summary_1)
             else:
                 updates["paragraph 1 niche opener"] = random.choice(default_paragraph1_variants)
 
@@ -144,22 +152,28 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
-            variants = []
-
-            # Combine intro + template
             phrase = random.choice(paragraph3_intro_phrases)
-            variants.append(random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2))
+            combined = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
+            alternate = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
+            updates["paragraph 3 service tiein"] = random.choice([combined, alternate])
 
-            # Add one of the hardcoded variants too
-            variants.append(random.choice(paragraph3_additional_variants).format(summary_2=summary_2))
+        use_cases = parse_use_cases(fields.get("use case"))
 
-            updates["paragraph 3 service tiein"] = random.choice(variants)
+        if not fields.get("paragraph 4 use case 1") and len(use_cases) > 0:
+            updates["paragraph 4 use case 1"] = use_cases[0]
+        if not fields.get("paragraph 4 use case 2") and len(use_cases) > 1:
+            updates["paragraph 4 use case 2"] = use_cases[1]
+        if not fields.get("paragraph 4 use case 3") and len(use_cases) > 2:
+            updates["paragraph 4 use case 3"] = use_cases[2]
 
-        if not fields.get("paragraph 4 use case 1") and not fields.get("paragraph 4 use case 2") and not fields.get("paragraph 4 use case 3"):
-            use_cases = parse_use_cases(fields.get("use case"))
-            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
-            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
-            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
+        # New inline fields for follow-ups
+        if use_cases:
+            if not fields.get("paragraph 4 use case 1 inline") and len(use_cases) > 0:
+                updates["paragraph 4 use case 1 inline"] = generate_inline_use_case(use_cases[0])
+            if not fields.get("paragraph 4 use case 2 inline") and len(use_cases) > 1:
+                updates["paragraph 4 use case 2 inline"] = generate_inline_use_case(use_cases[1])
+            if not fields.get("paragraph 4 use case 3 inline") and len(use_cases) > 2:
+                updates["paragraph 4 use case 3 inline"] = generate_inline_use_case(use_cases[2])
 
         if not fields.get("paragraph 4b benefits"):
             updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
