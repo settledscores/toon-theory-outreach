@@ -3,21 +3,14 @@ import random
 import re
 from airtable import Airtable
 from dotenv import load_dotenv
-from groq import Groq
 
 load_dotenv()
 
-# Airtable setup
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# Groq setup
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=GROQ_API_KEY)
-
-# --- Variants ---
 subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -53,9 +46,10 @@ paragraph1_templates = [
 ]
 
 paragraph2_variants = [
-    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education."
+    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
 ]
 
+# Combined variants from intro + dynamic field + hardcoded templates
 paragraph3_intro_phrases = [
     "With your mission centered on", 
     "Since you're focused on"
@@ -108,22 +102,17 @@ signature_variants = [
     "Looking forward,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-# --- Groq-powered gerund conversion ---
-def generate_smart_gerund(phrase):
-    try:
-        prompt = f"Convert this sentence into a lowercase gerund phrase. No intro, no summary, no explanations, no summary, enforce strict all-lowercase policy. Just the raw phrase:\n\n{phrase}"
-        response = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=50
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"⚠️ Error with Groq: {e}")
-        return ""
+def update_record_fields(record_id, updates):
+    airtable.update(record_id, updates)
 
-# --- Main Logic ---
+def parse_use_cases(use_case_field):
+    if isinstance(use_case_field, list):
+        raw = "\n".join(use_case_field)
+    else:
+        raw = str(use_case_field or "")
+    bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
+    return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
+
 def main():
     records = airtable.get_all()
     updated_count = 0
@@ -142,11 +131,12 @@ def main():
             updates["subject"] = random.choice(subject_variants)
 
         if not fields.get("salutation"):
-            updates["salutation"] = random.choice(salutation_variants).format(name=name)
+            updates["salutation"] = random.choice(salutation_variants).replace("{name}", name)
 
         if not fields.get("paragraph 1 niche opener"):
             if summary_1:
-                updates["paragraph 1 niche opener"] = random.choice(paragraph1_templates).format(company=company, summary=summary_1)
+                template = random.choice(paragraph1_templates)
+                updates["paragraph 1 niche opener"] = template.format(company=company, summary=summary_1)
             else:
                 updates["paragraph 1 niche opener"] = random.choice(default_paragraph1_variants)
 
@@ -154,23 +144,22 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
+            variants = []
+
+            # Combine intro + template
             phrase = random.choice(paragraph3_intro_phrases)
-            main_variant = random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2)
-            alternate = random.choice(paragraph3_additional_variants).format(summary_2=summary_2)
-            updates["paragraph 3 service tiein"] = random.choice([main_variant, alternate])
+            variants.append(random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2))
 
-        # Grab use cases
-        uc1 = fields.get("paragraph 4 use case 1", "").strip()
-        uc2 = fields.get("paragraph 4 use case 2", "").strip()
-        uc3 = fields.get("paragraph 4 use case 3", "").strip()
+            # Add one of the hardcoded variants too
+            variants.append(random.choice(paragraph3_additional_variants).format(summary_2=summary_2))
 
-        # Use Groq to generate inline versions
-        if uc1 and not fields.get("paragraph 4 use case 1 inline"):
-            updates["paragraph 4 use case 1 inline"] = generate_smart_gerund(uc1)
-        if uc2 and not fields.get("paragraph 4 use case 2 inline"):
-            updates["paragraph 4 use case 2 inline"] = generate_smart_gerund(uc2)
-        if uc3 and not fields.get("paragraph 4 use case 3 inline"):
-            updates["paragraph 4 use case 3 inline"] = generate_smart_gerund(uc3)
+            updates["paragraph 3 service tiein"] = random.choice(variants)
+
+        if not fields.get("paragraph 4 use case 1") and not fields.get("paragraph 4 use case 2") and not fields.get("paragraph 4 use case 3"):
+            use_cases = parse_use_cases(fields.get("use case"))
+            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
+            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
+            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
 
         if not fields.get("paragraph 4b benefits"):
             updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
@@ -188,7 +177,7 @@ def main():
             updates["signature"] = random.choice(signature_variants)
 
         if updates:
-            airtable.update(record_id, updates)
+            update_record_fields(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
             print(f"   → Fields updated: {list(updates.keys())}")
