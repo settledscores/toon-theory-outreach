@@ -49,13 +49,17 @@ paragraph2_variants = [
     "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
 ]
 
+# Combined variants from intro + dynamic field + hardcoded templates
 paragraph3_intro_phrases = [
     "With your mission centered on", 
     "Since you're focused on"
 ]
 
 paragraph3_variants = [
-    "{phrase} {summary_2}, animated storytelling could supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
+    "{phrase} {summary_2}, animated storytelling could supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:"
+]
+
+paragraph3_additional_variants = [
     "With your focus on {summary_2}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
     "With your focus on {summary_2}, animated storytelling could help supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
     "With your focus on {summary_2}, animated storytelling might help drive home your message faster and clearer. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
@@ -140,14 +144,22 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
-            template = random.choice(paragraph3_variants)
-            phrase = random.choice(paragraph3_intro_phrases)
-            updates["paragraph 3 service tiein"] = template.format(phrase=phrase, summary_2=summary_2)
+            variants = []
 
-        use_cases = parse_use_cases(fields.get("use case"))
-        updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
-        updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
-        updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
+            # Combine intro + template
+            phrase = random.choice(paragraph3_intro_phrases)
+            variants.append(random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2))
+
+            # Add one of the hardcoded variants too
+            variants.append(random.choice(paragraph3_additional_variants).format(summary_2=summary_2))
+
+            updates["paragraph 3 service tiein"] = random.choice(variants)
+
+        if not fields.get("paragraph 4 use case 1") and not fields.get("paragraph 4 use case 2") and not fields.get("paragraph 4 use case 3"):
+            use_cases = parse_use_cases(fields.get("use case"))
+            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
+            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
+            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
 
         if not fields.get("paragraph 4b benefits"):
             updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
@@ -168,7 +180,7 @@ def main():
             update_record_fields(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
-            print(f"   → Use cases: {updates.get('paragraph 4 use case 1')}, {updates.get('paragraph 4 use case 2')}, {updates.get('paragraph 4 use case 3')}")
+            print(f"   → Fields updated: {list(updates.keys())}")
 
     print(f"\n🎯 Done. {updated_count} records updated.")
 
