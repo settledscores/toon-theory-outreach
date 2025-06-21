@@ -55,7 +55,11 @@ paragraph3_intro_phrases = [
 ]
 
 paragraph3_variants = [
-    "{phrase} {summary_2}, animated storytelling could supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:"
+    "{phrase} {summary_2}, animated storytelling could supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
+    "With your focus on {summary_2}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
+    "With your focus on {summary_2}, animated storytelling could help supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
+    "With your focus on {summary_2}, animated storytelling might help drive home your message faster and clearer. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
+    "With your focus on {summary_2}, animated storytelling could be the next smart move in boosting engagement and trust. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:"
 ]
 
 paragraph4b_variants = [
@@ -136,8 +140,8 @@ def main():
             updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
 
         if not fields.get("paragraph 3 service tiein") and summary_2:
-            phrase = random.choice(paragraph3_intro_phrases)
             template = random.choice(paragraph3_variants)
+            phrase = random.choice(paragraph3_intro_phrases)
             updates["paragraph 3 service tiein"] = template.format(phrase=phrase, summary_2=summary_2)
 
         use_cases = parse_use_cases(fields.get("use case"))
