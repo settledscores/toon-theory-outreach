@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from airtable import Airtable
 from dotenv import load_dotenv
 from groq import Groq
@@ -62,7 +63,7 @@ Mini Scrape:
 
 
 def main():
-    print("🚀 Generating use cases...")
+    print("🚀 Generating use cases (10 req/min throttle)...")
     records = airtable.get_all()
     updated_count = 0
 
@@ -87,6 +88,8 @@ def main():
             print("✅ Use case field updated")
         else:
             print("⚠️ Skipped due to generation issue")
+
+        time.sleep(6)  # Limit to 10 requests per minute
 
     print(f"\n🎯 Done. {updated_count} records updated.")
 
