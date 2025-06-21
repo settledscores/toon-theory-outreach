@@ -1,114 +1,102 @@
 import os
-import re
 import time
+import random
 from airtable import Airtable
 from dotenv import load_dotenv
 from groq import Groq
+from difflib import SequenceMatcher
 
 load_dotenv()
 
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 client = Groq(api_key=GROQ_API_KEY)
 
-ABBREVIATION_REGEX = re.compile(r"\b([A-Z]{2,5})\b", re.IGNORECASE)
-
 def extract_abbreviations(text):
-    """Extract uppercase abbreviations from text (like CPA, GTM, etc)."""
-    return set(re.findall(r"\b[A-Z]{2,5}\b", text.upper()))
+    return set(word.strip() for word in text.split() if word.isupper() and len(word) >= 2)
 
-def generate_summary_prompt(mini_scrape, services):
+def capitalize_abbreviations(summary, allowed_abbrs):
+    words = summary.split()
+    return " ".join(word.upper() if word.upper() in allowed_abbrs else word.lower() for word in words)
+
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio() > 0.4
+
+def generate_summary(prompt):
+    response = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[
+            {"role": "system", "content": "You write tone-rich, identity-focused niche summaries (max 12 words). Use lowercase. No punctuation. Start with a present participle verb like freeing, unlocking, bringing."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.6,
+        max_tokens=50,
+    )
+    return response.choices[0].message.content.strip().lower()
+
+def build_prompt(mini_scrape, services):
     return f"""
-You are writing a short, specific niche summary (max 12 words) that describes exactly what a company does and for whom.
+Write a short, creative summary describing how a company changes lives or unlocks value.
 
-✅ Rules:
-- Start with a present participle verb (e.g. helping, building, streamlining)
-- Use lowercase only **except** for abbreviations already present in the text (like CPA, GTM, M&A, etc)
+- Use lowercase only
+- Max 12 words
 - No punctuation
-- Avoid generic fluff
-- Be direct and descriptive
-- Respond with only the phrase — no commentary or labels
-
-Examples:
-helping startups access clean no strings funding
-streamlining hr processes for scaling businesses
-supporting founders with tailored financial ops strategy
+- Start with a present participle verb like freeing, unlocking, bringing
+- Aim for a friendly tone and high Flesch score
+- Do not duplicate existing summaries
+- Return only the phrase
 
 Mini scrape:
 {mini_scrape}
 
 Services:
 {services}
-
-Respond with a short phrase only. No punctuation.
 """
-
-def lowercase_with_exceptions(text, exceptions):
-    def preserve(match):
-        word = match.group(0)
-        return word if word.upper() in exceptions else word.lower()
-    return re.sub(r'\b\w+\b', preserve, text)
-
-def is_similar(summary1, summary2):
-    from difflib import SequenceMatcher
-    return SequenceMatcher(None, summary1, summary2).ratio() > 0.4
-
-def generate_niche_summary(mini_scrape, services, original_summary=None):
-    prompt = generate_summary_prompt(mini_scrape, services)
-
-    response = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[
-            {"role": "system", "content": "You generate ultra-brief, lowercase niche summaries with abbreviations preserved."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.6,
-        max_tokens=30,
-    )
-
-    summary = response.choices[0].message.content.strip()
-    exceptions = extract_abbreviations(mini_scrape + services)
-    cleaned = lowercase_with_exceptions(summary, exceptions)
-
-    if original_summary and is_similar(cleaned, original_summary):
-        raise ValueError("Generated summary is too similar to the original")
-
-    return cleaned
 
 def main():
     print("🚀 Generating summary paragraph 2...")
     records = airtable.get_all()
-    updated_count = 0
-    delay = 60 / 25  # Limit to 25 requests per minute
+    updated = 0
 
     for record in records:
         fields = record.get("fields", {})
-        record_id = record["id"]
-        mini_scrape = fields.get("mini scrape", "").strip()
-        services = fields.get("services", "").strip()
-        summary1 = fields.get("niche summary paragraph", "").strip()
-        summary2 = fields.get("niche summary paragraph 2", "").strip()
-
-        if not mini_scrape or not services:
+        summary1 = fields.get("niche summary paragraph", "")
+        summary2 = fields.get("niche summary paragraph 2", "")
+        if summary2:
             continue
 
-        try:
-            summary = generate_niche_summary(mini_scrape, services, original_summary=summary1)
-            airtable.update(record_id, {"niche summary paragraph 2": summary})
-            print(f"✅ Updated record: {summary}")
-            updated_count += 1
-        except ValueError as ve:
-            print(f"⚠️ Skipping duplicate-like summary: {ve}")
-        except Exception as e:
-            print(f"❌ Error: {e}")
+        mini_scrape = fields.get("mini scrape", "")
+        services = fields.get("services", "")
+        if not mini_scrape or not services or not summary1:
+            continue
 
-        time.sleep(delay)
+        abbrs = extract_abbreviations(mini_scrape + " " + services)
+        prompt = build_prompt(mini_scrape, services)
+        retries = 2
 
-    print(f"\n🎯 Done. {updated_count} records updated.")
+        for _ in range(retries):
+            try:
+                summary = generate_summary(prompt)
+                summary = capitalize_abbreviations(summary, abbrs)
+
+                if not similar(summary, summary1):
+                    airtable.update(record["id"], {"niche summary paragraph 2": summary})
+                    print(f"✅ Updated record: {summary}")
+                    updated += 1
+                    break
+                else:
+                    print("⚠️ Skipped: summary too similar")
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                time.sleep(random.uniform(2, 5))
+
+        time.sleep(random.uniform(2.5, 3.5))  # Throttle
+
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     main()
