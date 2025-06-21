@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -8,7 +9,6 @@ load_dotenv()
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 subject_variants = [
@@ -23,11 +23,8 @@ subject_variants = [
 ]
 
 salutation_variants = [
-    "Hi {name},",
-    "Hey {name},",
-    "Hello {name},",
-    "Hi there {name},",
-    "Hey there {name},",
+    "Hi {name},", "Hey {name},", "Hello {name},",
+    "Hi there {name},", "Hey there {name},",
     "Hey {name}, just a quick note."
 ]
 
@@ -42,7 +39,6 @@ default_paragraph1_variants = [
     "You’ve got a great thing going, but here’s something I think could elevate it even more."
 ]
 
-# Template variations for customized paragraph 1
 paragraph1_templates = [
     "I’ve been following {company} lately, and your focus on {summary} really struck a chord with me.",
     "I came across {company} recently—your approach to {summary} genuinely caught my eye.",
@@ -72,7 +68,7 @@ paragraph5_variants = [
     "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. All at zero cost to you. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
     "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings at zero cost to you. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
     "I'd be happy to draft a no-cost, ten-second demo around something core to your brand. Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
-    "Would you be open to seeing a quick storyboard or ten-second test idea built with [company name] in mind? Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it.",
+    "Would you be open to seeing a quick storyboard or ten-second test idea built with [company name] in mind? Absolutely no pressure, just keen to see what this could look like with [company name]'s voice behind it."
 ]
 
 paragraph6_variants = [
@@ -98,11 +94,11 @@ def update_record_fields(record_id, updates):
 
 def parse_use_cases(use_case_field):
     if isinstance(use_case_field, list):
-        return [str(u).strip() for u in use_case_field if str(u).strip()]
-    elif isinstance(use_case_field, str):
-        return [u.strip() for u in use_case_field.split(",") if u.strip()]
+        raw = "\n".join(use_case_field)
     else:
-        return []
+        raw = str(use_case_field or "")
+    bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
+    return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
 
 def main():
     records = airtable.get_all()
@@ -136,7 +132,7 @@ def main():
         if not fields.get("paragraph 3 service tiein"):
             updates["paragraph 3 service tiein"] = random.choice(paragraph3_variants)
 
-        use_cases = parse_use_cases(fields.get("use case", []))
+        use_cases = parse_use_cases(fields.get("use case"))
         updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
         updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
         updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
@@ -154,7 +150,7 @@ def main():
             update_record_fields(record_id, updates)
             updated_count += 1
             print(f"✅ Updated record: {record_id}")
-            print(f"   Use cases set to: {updates['paragraph 4 use case 1']}, {updates['paragraph 4 use case 2']}, {updates['paragraph 4 use case 3']}")
+            print(f"   → Use cases: {updates.get('paragraph 4 use case 1')}, {updates.get('paragraph 4 use case 2')}, {updates.get('paragraph 4 use case 3')}")
 
     print(f"\n🎯 Done. {updated_count} records updated.")
 
