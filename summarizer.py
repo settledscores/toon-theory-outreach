@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+from io import BytesIO
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -12,27 +13,30 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# ApyHub setup
+# ApyHub Document Summarizer API
 APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
-APYHUB_ENDPOINT = "https://api.apyhub.com/generate/summary/text"  # ✅ Corrected endpoint
+APYHUB_ENDPOINT = "https://api.apyhub.com/ai/summarize-documents/file"
 
 HEADERS = {
-    "Content-Type": "application/json",
     "apy-token": APYHUB_API_KEY
 }
-
-MAX_INPUT_LENGTH = 10000
 
 def clean_text(text):
     return re.sub(r"\s+", " ", text).strip()
 
-def truncate_text(text, limit=MAX_INPUT_LENGTH):
-    return text[:limit]
-
-def summarize_with_apyhub(text):
+def summarize_with_apyhub_doc(text):
     try:
-        payload = { "text": text }
-        response = requests.post(APYHUB_ENDPOINT, headers=HEADERS, json=payload)
+        buffer = BytesIO(text.encode('utf-8'))
+        buffer.name = "webcopy.txt"
+
+        files = {
+            "file": ("webcopy.txt", buffer, "text/plain")
+        }
+        data = {
+            "summary_length": "medium"
+        }
+
+        response = requests.post(APYHUB_ENDPOINT, headers=HEADERS, files=files, data=data)
 
         if response.status_code == 200:
             return response.json().get("data", "").strip()
@@ -40,7 +44,7 @@ def summarize_with_apyhub(text):
             print(f"⚠️ ApyHub error: {response.status_code} - {response.text}")
             return ""
     except Exception as e:
-        print(f"❌ Exception while summarizing: {e}")
+        print(f"❌ Exception during summary: {e}")
         return ""
 
 def update_mini_scrape(record_id, summary):
@@ -61,8 +65,7 @@ def main():
         print(f"🧹 Summarizing for: {fields.get('website', '[no website]')}")
 
         cleaned = clean_text(full_text)
-        truncated = truncate_text(cleaned)
-        summary = summarize_with_apyhub(truncated)
+        summary = summarize_with_apyhub_doc(cleaned)
 
         if summary:
             update_mini_scrape(record["id"], summary)
