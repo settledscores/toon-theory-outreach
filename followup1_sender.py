@@ -1,3 +1,4 @@
+# followup1_sender_test.py
 import os
 import smtplib
 import random
@@ -7,6 +8,8 @@ from datetime import datetime, timedelta
 from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
+import imaplib
+import email
 
 # Load environment variables
 load_dotenv()
@@ -21,12 +24,12 @@ SMTP_SERVER = os.environ["SMTP_SERVER"]
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
-SMTP_PORT = 465  # SSL
+SMTP_PORT = 465
+IMAP_SERVER = os.environ["IMAP_SERVER"]
 
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
 
-# Subject line rotation (30 variants)
 SUBJECT_LINES = [
     "just checking in, {name}", "thought I’d follow up, {name}", "quick ping, {name}",
     "any thoughts on this, {name}?", "circling back, {name}", "still thinking of {company}",
@@ -41,23 +44,29 @@ SUBJECT_LINES = [
     "quick one for {company}", "a thought worth sharing", "follow-up from Toon Theory"
 ]
 
-def get_next_valid_date(start_date):
-    next_date = start_date + timedelta(days=1)
-    while next_date.weekday() in [4, 5, 6]:  # Skip Fri, Sat, Sun
-        next_date += timedelta(days=1)
-    return next_date
+last_sent_time = None
 
-def calculate_followup_date(initial_iso):
-    initial_date = datetime.fromisoformat(initial_iso)
-    count = 0
-    next_date = initial_date
-    while count < 3:
-        next_date += timedelta(days=1)
-        if next_date.weekday() < 4:  # Mon-Thu only
-            count += 1
-    return next_date
+def replied_to_message_id(message_id):
+    try:
+        with imaplib.IMAP4_SSL(IMAP_SERVER) as imap:
+            imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            imap.select("INBOX")
+            result, data = imap.search(None, f'HEADER In-Reply-To "{message_id}"')
+            return bool(data[0].split())
+    except Exception as e:
+        print(f"⚠️ IMAP check failed: {e}")
+        return False
 
 def send_threaded_email(to_email, subject, body, in_reply_to):
+    global last_sent_time
+    if last_sent_time:
+        diff = (datetime.now() - last_sent_time).total_seconds()
+        if diff < 300:
+            wait = 300 - diff
+            print(f"⏳ Waiting {int(wait)}s before next send...")
+            import time
+            time.sleep(wait)
+
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
@@ -70,9 +79,10 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
         server.sendmail(FROM_EMAIL, [to_email], msg.as_string())
 
     print(f"✅ Sent follow-up 1 to {to_email}")
+    last_sent_time = datetime.now()
 
 def main():
-    print("🚀 Starting Follow-up 1 sender...")
+    print("🚀 Follow-up 1 Sender Test Mode (weekend + 5min interval)")
 
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
@@ -84,48 +94,30 @@ def main():
 
         fields = record.get("fields", {})
         required = ["name", "company name", "email", "email 2", "initial date", "message id"]
-        missing = [k for k in required if not fields.get(k)]
-
-        if missing:
-            print(f"⏭️ Skipping — missing fields: {', '.join(missing)}")
+        if any(not fields.get(k) for k in required):
             continue
 
         if fields.get("follow-up 1 status"):
-            print(f"⏭️ Skipping {fields['name']} — already sent follow-up 1")
             continue
 
-        try:
-            initial_iso = fields["initial date"]
-            target_date = calculate_followup_date(initial_iso)
-            now = datetime.now(LAGOS)
+        if fields.get("reply") in ["after initial", "after follow-up 1", "after follow-up 2"]:
+            print(f"⛔ Skipping {fields['name']} — reply already received")
+            continue
 
-            if now.date() != target_date.date():
-                print(f"🕒 Not time yet for {fields['name']} — waiting until {target_date.date()}")
-                continue
+        if replied_to_message_id(fields["message id"]):
+            airtable.update(record["id"], {"reply": "after initial"})
+            print(f"📩 Reply detected for {fields['name']}. Skipping.")
+            continue
 
-            name = fields["name"]
-            company = fields["company name"]
-            subject = random.choice(SUBJECT_LINES).format(name=name, company=company)
-            body = fields["email 2"]
-            to_email = fields["email"]
-            message_id = fields["message id"]
+        subject = random.choice(SUBJECT_LINES).format(name=fields["name"], company=fields["company name"])
+        send_threaded_email(fields["email"], subject, fields["email 2"], fields["message id"])
 
-            send_threaded_email(to_email, subject, body, message_id)
-
-            update_payload = {
-                "follow-up 1 date": now.isoformat(),
-                "follow-up 1 status": "Sent"
-            }
-            airtable.update(record["id"], update_payload)
-            print(f"✅ Airtable updated for: {name}")
-            sent_count += 1
-
-        except Exception as e:
-            print(f"❌ Failed for {fields.get('email')}: {e}")
-            try:
-                airtable.update(record["id"], {"follow-up 1 status": "Failed"})
-            except:
-                pass
+        now = datetime.now(LAGOS)
+        airtable.update(record["id"], {
+            "follow-up 1 date": now.isoformat(),
+            "follow-up 1 status": "Sent"
+        })
+        sent_count += 1
 
 if __name__ == "__main__":
     main()
