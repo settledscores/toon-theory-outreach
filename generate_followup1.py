@@ -1,137 +1,110 @@
 import os
-import requests
+import random
 from airtable import Airtable
-from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# === Config ===
-AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
-AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
-AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
-GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GROQ_MODEL = "llama3-70b-8192"
-
+# Airtable setup
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# === Follow-Up Generator ===
-def generate_followup_email(name, company, web_copy):
-    web_copy = web_copy.strip()[:1000]
-
-    prompt = f"""
-You are Trent, founder of Toon Theory, a whiteboard animation studio. You're writing a **first follow-up cold email** to {name} at {company}. This follow-up comes **3 days after** the initial message.
-
-Your goal is to:
-- Check in naturally without sounding scripted
-- Briefly reference the earlier message without repeating it
-- Show how Toon Theory could specifically help based on their site
-- Offer a no-pressure, no-cost sample or 10s teaser
-- Close warmly and with a nod to their mission, tone, or values
-
-INSTRUCTIONS:
-- DO NOT include any explanation, commentary, or labels in your output.
-- DO NOT use em dashes under any circumstances. Use semicolons, commas, or periods instead. This is non-negotiable.
-- DO NOT repeat body structures. Vary sentence order, phrasing, and tone naturally.
-- Rotate **subject lines** on every output. Pick one randomly from this list:
-
-Subject: Just checking in, {name}  
-Subject: Wondering if this idea stuck with you  
-Subject: Circling back on this  
-Subject: Thought I’d follow up, {name}  
-Subject: Still thinking about {company}  
-
-Your message should sound like a real person thoughtfully following up — warm, brief, conversational. Not robotic, not fluffy. Flesch score above 80.
-
-Use this **as inspiration**, not as a fixed template:
-
----
-Subject: Thought I’d follow up, {name}
-
-Hi {name},
+TEMPLATES = [
+    """Hi {name},
 
 Hope your week’s going well. Just wanted to follow up on the note I sent a few days ago about Toon Theory.
 
-We create animated explainer videos that help companies like {company} break down complex messages and turn them into something clear and engaging.
+We create animated explainer videos that help businesses like {company} break down the dense copy and turn them into something clear and engaging.
 
-I still think there’s potential to try this out with one of your core offerings. I’d still be more than happy to draft a short sample or sketch a no-cost ten-second demo to show what kind of potential this could have.
+I still think there’s potential to try this out with one of your core offerings. Such as {use_case_3} or {use_case_2}
+
+I’d still be more than happy to draft a script or sketch a ten-second demo to show what kind of potential this could have. All at zero cost to you.
 
 Either way, thanks for doing what you do best. Hope to hear from you soon.
 
-Warm regards,  
-Trent  
-Founder, Toon Theory  
-www.toontheory.com  
-Whiteboard Animation For The Brands People Trust
----
+{signature}
+""",
+    """Hi {name},
 
-Here’s their website context (use it to personalize use cases and tone):  
-{web_copy}
+Just wanted to follow up on my last note in case it got buried.
 
-Only return the complete message — subject line on top, followed by the email body. Do not include labels or descriptions.
+I genuinely think animated storytelling could help bring ideas like {use_case_1} or {use_case_2} into sharper focus for your audience.
+
+We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. I’d be happy to draft a quick demo at no cost, just to show what it could look like in action. 
+
+Let me know if you’re open to that. No pressure at all; just a genuine offer to collaborate.
+
+{signature}
+""",
+    """Hi {name},
+
+Hope your week’s going well so far.
+
+I wanted to follow up on my last email about Toon Theory; the animation studio I run. We create whiteboard explainer videos that simplify complex ideas, especially for companies like {company} doing meaningful work.
+
+If you’re still exploring ways to make things like {use_case_1} or {use_case_3} more engaging, I’d be happy to sketch a sample or share a quick storyboard. No charge. No pressure. Just a thoughtful way to explore the idea visually. 
+
+Let me know if you’re curious. I’ll make it easy.
+
+{signature}
+""",
+    """Hi {name},
+
+I figured I’d follow up on my previous note from a couple days back just in case it got buried.
+
+I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I keep thinking: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
+
+If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you, just something to get the ideas flowing.
+
+Either way, thanks again for all the work you’re putting out; it really makes a difference. 
+
+{signature}
+""",
+    """Hi {name}
+
+Just wanted to follow up on my earlier note about using short explainer videos to showcase what {company} can do
+
+I know you’re busy, so no pressure; but I’d still love to share a quick teaser tailored to one of your core offerings. Such as {use_case_2} or {use_case_3} 
+
+Even a 10-second sketch can give you a feel for how whiteboard animation could simplify the way you communicate amongst teams or how you provide industry-specific insights to your clients.
+
+Let me know if you’d be open to taking a look; no commitment at all, just a creative starting point.
+
+{signature}
 """
+]
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+def generate_email_2(fields):
+    template = random.choice(TEMPLATES)
+    return template.format(
+        name=fields.get("name", "[name]").strip(),
+        company=fields.get("company name", "[company]").strip(),
+        use_case_1=fields.get("inline 1", "[use case 1]").strip(),
+        use_case_2=fields.get("inline 2", "[use case 2]").strip(),
+        use_case_3=fields.get("inline 3", "[use case 3]").strip(),
+        signature=fields.get("signature", "[signature]").strip()
+    )
 
-    body = {
-        "model": GROQ_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that writes short, natural cold follow-up emails. Avoid em dashes at all times. Rotate subject lines and phrasing every time."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    }
-
-    try:
-        res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body)
-        res.raise_for_status()
-        return res.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"❌ Error from Groq for {name}: {e}")
-        print("🔍 Response content:", res.text if 'res' in locals() else "No response")
-        return None
-
-# === Main Script ===
 def main():
-    print("📨 Starting follow-up 1 generation...")
     records = airtable.get_all()
-    generated_count = 0
+    updated = 0
 
     for record in records:
         fields = record.get("fields", {})
-        name = fields.get("name", "").strip()
-        company = fields.get("company name", "").strip()
-        web_copy = fields.get("web copy", "").strip()
-
-        if not name or not company or not web_copy:
+        if "email 2" in fields and fields["email 2"].strip():
             continue
 
-        # Skip if "email 2" already exists
-        if "email 2" in fields:
+        if not all(k in fields for k in ["name", "company name", "inline 1", "inline 2", "inline 3", "signature"]):
             continue
 
-        print(f"✏️ Generating follow-up for {name} at {company}...")
+        email_2_content = generate_email_2(fields)
+        airtable.update(record["id"], {"email 2": email_2_content})
+        print(f"✅ Updated email 2 for: {fields.get('name')}")
+        updated += 1
 
-        email_text = generate_followup_email(name, company, web_copy)
-        if email_text:
-            airtable.update(record["id"], {
-                "email 2": email_text,
-                "follow-up 1 date": datetime.utcnow().isoformat()
-            })
-            print(f"✅ Saved follow-up 1 for {name}")
-            generated_count += 1
-        else:
-            print(f"⚠️ Skipped {name} due to generation error")
-
-    print(f"🔁 Finished follow-up 1 generation. Total created: {generated_count}")
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     main()
