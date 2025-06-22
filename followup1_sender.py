@@ -2,14 +2,15 @@
 import os
 import smtplib
 import random
+import imaplib
+import email
 from email.mime.text import MIMEText
 from email.utils import make_msgid
 from datetime import datetime, timedelta
 from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
-import imaplib
-import email
+import time
 
 # Load environment variables
 load_dotenv()
@@ -30,6 +31,7 @@ IMAP_SERVER = os.environ["IMAP_SERVER"]
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
 
+# Subject line variations
 SUBJECT_LINES = [
     "just checking in, {name}", "thought I’d follow up, {name}", "quick ping, {name}",
     "any thoughts on this, {name}?", "circling back, {name}", "still thinking of {company}",
@@ -64,8 +66,9 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
         if diff < 300:
             wait = 300 - diff
             print(f"⏳ Waiting {int(wait)}s before next send...")
-            import time
             time.sleep(wait)
+
+    message_id_2 = make_msgid()
 
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -73,6 +76,7 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
     msg["To"] = to_email
     msg["In-Reply-To"] = in_reply_to
     msg["References"] = in_reply_to
+    msg["Message-ID"] = message_id_2
 
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -80,6 +84,7 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
 
     print(f"✅ Sent follow-up 1 to {to_email}")
     last_sent_time = datetime.now()
+    return message_id_2.strip("<>")
 
 def main():
     print("🚀 Follow-up 1 Sender Test Mode (weekend + 5min interval)")
@@ -109,13 +114,21 @@ def main():
             print(f"📩 Reply detected for {fields['name']}. Skipping.")
             continue
 
-        subject = random.choice(SUBJECT_LINES).format(name=fields["name"], company=fields["company name"])
-        send_threaded_email(fields["email"], subject, fields["email 2"], fields["message id"])
+        subject = random.choice(SUBJECT_LINES).format(
+            name=fields["name"],
+            company=fields["company name"]
+        )
+        to_email = fields["email"]
+        body = fields["email 2"]
+        in_reply_to = fields["message id"]
+
+        msg_id_2 = send_threaded_email(to_email, subject, body, in_reply_to)
 
         now = datetime.now(LAGOS)
         airtable.update(record["id"], {
             "follow-up 1 date": now.isoformat(),
-            "follow-up 1 status": "Sent"
+            "follow-up 1 status": "Sent",
+            "message id 2": msg_id_2
         })
         sent_count += 1
 
