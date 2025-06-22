@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
+import imaplib
+import email
 
 # Load environment variables
 load_dotenv()
@@ -16,10 +18,10 @@ load_dotenv()
 AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
 AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # Email config
 SMTP_SERVER = os.environ["SMTP_SERVER"]
+IMAP_SERVER = os.environ["IMAP_SERVER"]
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
@@ -28,133 +30,115 @@ SMTP_PORT = 465  # SSL
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
 
-# Weekday-safe scheduling
-def is_safe_weekday(dt):
-    weekday = dt.weekday()
-    return weekday not in [4, 5, 6]  # 4=Friday, 5=Saturday, 6=Sunday
-
-def find_next_safe_day(base_date, offset_days):
-    next_date = base_date + timedelta(days=offset_days)
-    while not is_safe_weekday(next_date):
-        next_date += timedelta(days=1)
-    return next_date
-
-# Rotating subject lines
+# Subject line rotation
 SUBJECT_LINES = [
-    "Just circling back, {name}",
-    "Following up quickly, {name}",
-    "Still up for a creative idea, {name}?",
-    "Checking in from Toon Theory, {name}",
-    "Wondering your thoughts, {name}",
-    "Wanted to loop back on this",
-    "Are you open to this idea?",
-    "We can show it, not just tell it",
-    "Still curious if you’re exploring visuals?",
-    "One last idea to try",
-    "Animation could bring this to life",
-    "Still on the table if you're curious",
-    "A gentle nudge, {name}",
-    "You might like this one, {name}",
-    "Hope your week's going well, {name}",
-    "Here’s that visual idea again",
-    "Still happy to sketch something up",
-    "How’s this for timing, {name}?",
-    "Just checking back in here",
-    "Worth one more shot?",
-    "Still worth exploring this?",
-    "This could help {company}",
-    "Let’s bring one idea to life visually",
-    "Circling back with a thought",
-    "Have a second to revisit this?"
+    "just following up, {name}", "quick check in, {name}", "pinging you again, {name}",
+    "any thoughts on that idea?", "back with that animation thought", "quick idea for {company}",
+    "sketching this again for {company}", "second thought, {name}", "visual idea, round 2",
+    "didn’t want you to miss this", "this might still be useful", "let me know your thoughts",
+    "worth another peek?", "wanted to loop back", "a visual reminder, {name}",
+    "still thinking of {company}", "just one more sketch for you", "this could be a fit",
+    "still here if you're curious", "picking up where we left off", "another visual nudge",
+    "idea: simplify with a sketch", "animation still on the table?", "still up for a quick collab?",
+    "this could bring clarity to {company}"
 ]
 
-def send_email(to_email, subject, body, in_reply_to=None):
+def fetch_replied_ids():
+    replied_ids = set()
+    try:
+        mail = imaplib.IMAP4_SSL(IMAP_SERVER)
+        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        mail.select("inbox")
+
+        result, data = mail.search(None, 'UNSEEN')
+        if result != "OK":
+            return replied_ids
+
+        for num in data[0].split():
+            result, msg_data = mail.fetch(num, '(RFC822)')
+            if result != "OK":
+                continue
+
+            msg = email.message_from_bytes(msg_data[0][1])
+            in_reply_to = msg.get("In-Reply-To")
+            if in_reply_to:
+                replied_ids.add(in_reply_to.strip())
+        mail.logout()
+    except Exception as e:
+        print(f"❌ IMAP error: {e}")
+    return replied_ids
+
+def send_threaded_email(to_email, subject, body, in_reply_to):
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
-
-    msg_id = make_msgid(domain="toontheory.com")
-    msg["Message-ID"] = msg_id
-
-    if in_reply_to:
-        msg["In-Reply-To"] = in_reply_to
-        msg["References"] = in_reply_to
+    msg["In-Reply-To"] = in_reply_to
+    msg["References"] = in_reply_to
 
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(FROM_EMAIL, [to_email], msg.as_string())
 
     print(f"✅ Sent follow-up 2 to {to_email}")
-    return msg_id.strip("<>")
 
 def main():
-    print("🚀 Starting follow-up 2 sender...")
+    print("🚀 Starting Follow-up 2 sender...")
 
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
     sent_count = 0
+
+    replied_ids = fetch_replied_ids()
 
     for record in records:
         if sent_count >= 3:
             break
 
         fields = record.get("fields", {})
-        required = ["name", "email", "company name", "email 3", "follow-up 1 date", "follow-up 1 status", "message id 2"]
-        if not all(fields.get(k) for k in required):
+        required = ["name", "company name", "email", "email 3", "follow-up 1 date", "message id 2"]
+        missing = [k for k in required if not fields.get(k)]
+
+        if missing:
+            print(f"⏭️ Skipping — missing fields: {', '.join(missing)}")
             continue
 
         if fields.get("follow-up 2 status"):
-            print(f"⏭️ Skipping {fields['name']} — already marked as sent or failed for follow-up 2")
+            print(f"⏭️ Skipping {fields['name']} — already sent follow-up 2")
+            continue
+
+        msg_id_2 = fields["message id 2"].strip()
+        if msg_id_2 in replied_ids:
+            print(f"📭 Reply detected for {fields['name']} — skipping send and updating reply field.")
+            airtable.update(record["id"], {"reply": "after follow-up 1"})
             continue
 
         try:
-            # Parse previous date
-            f1_date = datetime.fromisoformat(fields["follow-up 1 date"])
-            f1_date = f1_date.astimezone(LAGOS)
-
-            # Determine next weekday-safe follow-up date (typically +3 days)
-            target_date = find_next_safe_day(f1_date, 3)
-            now = datetime.now(LAGOS)
-
-            # Wait until target date
-            if now.date() < target_date.date():
-                continue
-
-            # Email prep
-            subject = random.choice(SUBJECT_LINES).format(
-                name=fields["name"],
-                company=fields["company name"]
-            )
+            subject = random.choice(SUBJECT_LINES).format(name=fields["name"], company=fields["company name"])
             body = fields["email 3"]
-            reply_to_id = fields["message id 2"]
+            to_email = fields["email"]
+            in_reply_to = fields["message id 2"]
 
-            # Send email
-            msg_id = send_email(fields["email"], subject, body, in_reply_to=reply_to_id)
+            send_threaded_email(to_email, subject, body, in_reply_to)
 
-            # Update Airtable
-            now_str = now.isoformat()
-            airtable.update(record["id"], {
-                "follow-up 2 date": now_str,
-                "follow-up 2 status": "Sent",
-                "message id 3": msg_id
-            })
-
+            now = datetime.now(LAGOS)
+            update_payload = {
+                "follow-up 2 date": now.isoformat(),
+                "follow-up 2 status": "Sent"
+            }
+            airtable.update(record["id"], update_payload)
+            print(f"✅ Airtable updated for: {fields['name']}")
             sent_count += 1
-            print(f"📝 Airtable updated for: {fields['name']}")
+
+            if sent_count < 3:
+                time.sleep(300)  # 5-minute interval
 
         except Exception as e:
-            print(f"❌ Error for {fields.get('email')}: {e}")
+            print(f"❌ Failed for {fields.get('email')}: {e}")
             try:
-                airtable.update(record["id"], {
-                    "follow-up 2 date": datetime.now(LAGOS).isoformat(),
-                    "follow-up 2 status": "Failed"
-                })
-                print(f"⚠️ Logged failure for {fields['name']}")
-            except Exception as update_error:
-                print(f"❌ Airtable update failed after error: {update_error}")
-
-    print(f"\n🎯 Done. {sent_count} follow-up 2 emails sent.")
+                airtable.update(record["id"], {"follow-up 2 status": "Failed"})
+            except:
+                pass
 
 if __name__ == "__main__":
     main()
