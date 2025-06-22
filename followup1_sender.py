@@ -1,4 +1,3 @@
-# followup1_sender_test.py
 import os
 import smtplib
 import random
@@ -48,12 +47,16 @@ SUBJECT_LINES = [
 
 last_sent_time = None
 
-def replied_to_message_id(message_id):
+def replied_to_message_id(message_id, sender_email):
     try:
         with imaplib.IMAP4_SSL(IMAP_SERVER) as imap:
             imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             imap.select("INBOX")
-            result, data = imap.search(None, f'HEADER In-Reply-To "{message_id}"')
+
+            # Look for replies from the same recipient using the message ID
+            search_criteria = f'(FROM "{sender_email}" (OR HEADER In-Reply-To "{message_id}" HEADER References "{message_id}"))'
+            result, data = imap.search(None, search_criteria)
+
             return bool(data[0].split())
     except Exception as e:
         print(f"⚠️ IMAP check failed: {e}")
@@ -87,7 +90,7 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
     return message_id_2.strip("<>")
 
 def main():
-    print("🚀 Follow-up 1 Sender Test Mode (weekend + 5min interval)")
+    print("🚀 Follow-up 1 Sender (reply-aware + 5min intervals)")
 
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
@@ -105,11 +108,12 @@ def main():
         if fields.get("follow-up 1 status"):
             continue
 
-        if fields.get("reply") in ["after initial", "after follow-up 1", "after follow-up 2"]:
-            print(f"⛔ Skipping {fields['name']} — reply already received")
+        reply_state = fields.get("reply", "").lower()
+        if reply_state in ["after initial", "after follow-up 1", "after follow-up 2"]:
+            print(f"⛔ Skipping {fields['name']} — reply state: {reply_state}")
             continue
 
-        if replied_to_message_id(fields["message id"]):
+        if replied_to_message_id(fields["message id"], fields["email"]):
             airtable.update(record["id"], {"reply": "after initial"})
             print(f"📩 Reply detected for {fields['name']}. Skipping.")
             continue
