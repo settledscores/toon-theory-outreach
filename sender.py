@@ -1,5 +1,6 @@
 import os
 import smtplib
+import random
 from email.mime.text import MIMEText
 from datetime import datetime
 from airtable import Airtable
@@ -23,6 +24,35 @@ SMTP_PORT = 465  # SSL
 
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
+
+# Subject line rotation
+SUBJECT_LINES = [
+    "Let’s make your message stick",
+    "A quick thought for your next project",
+    "Helping your ideas stick visually",
+    "Turn complex into simple (in 90 seconds)",
+    "Your story deserves to be told differently",
+    "How about a different approach to your messaging?",
+    "Making your story unforgettable",
+    "Bring your message to life — visually",
+    "Your pitch deserves more than plain text",
+    "What if your message spoke in pictures?",
+    "Visual stories make better first impressions",
+    "Helping businesses explain what makes them different",
+    "Cut through noise with visual storytelling",
+    "A visual idea for {company}",
+    "Explainers that make people pay attention",
+    "What if you could show it instead of tell it?",
+    "Here’s a visual idea worth testing",
+    "Explaining complex stuff with simple visuals",
+    "Is your message reaching it's full potential?",
+    "A story-first idea for {company}",
+    "Cut through mess and set your message free",
+    "Idea: use animation to make your message land",
+    "This might help supercharge your next big project",
+    "How do you explain what {company} does?",
+    "Let’s make it click — visually"
+]
 
 def send_email(to_email, subject, body):
     msg = MIMEText(body)
@@ -55,36 +85,41 @@ def main():
             print(f"⏭️ Skipping record — missing fields: {', '.join(missing)}")
             continue
 
-        if fields.get("initial status") in ["Sent", "Failed"]:
+        if fields.get("initial status"):
             print(f"⏭️ Skipping {fields['name']} — already marked as sent or failed")
             continue
 
         try:
-            print(f"📤 Sending to {fields['name']} ({fields['email']})")
-            subject = f"Idea for {fields['company name']}"
+            company = fields["company name"]
+            subject_template = random.choice(SUBJECT_LINES)
+            subject = subject_template.format(company=company)
             body = fields["email 1"]
+
+            print(f"📤 Sending to {fields['name']} ({fields['email']})")
             send_email(fields["email"], subject, body)
 
-            now = datetime.now(LAGOS).isoformat()
-            airtable.update(record["id"], {
-                "initial date": now,
+            now = datetime.now(LAGOS)
+            update_payload = {
+                "initial date": now.isoformat(),
                 "initial status": "Sent"
-            })
+            }
 
-            print(f"✅ Marked as Sent: {fields['name']} — {now}")
+            airtable.update(record["id"], update_payload)
+            print(f"✅ Airtable updated for: {fields['name']}")
             sent_count += 1
 
         except Exception as e:
             print(f"❌ Failed for {fields.get('email')}: {e}")
+            now = datetime.now(LAGOS)
+            fail_payload = {
+                "initial date": now.isoformat(),
+                "initial status": "Failed"
+            }
             try:
-                now = datetime.now(LAGOS).isoformat()
-                airtable.update(record["id"], {
-                    "initial date": now,
-                    "initial status": "Failed"
-                })
-                print(f"⚠️ Marked as Failed: {fields.get('name')} — {now}")
+                airtable.update(record["id"], fail_payload)
+                print(f"⚠️ Logged failure for {fields.get('name')}")
             except Exception as update_error:
-                print(f"❌ Could not update Airtable after failure: {update_error}")
+                print(f"❌ Airtable update error after failure: {update_error}")
 
 if __name__ == "__main__":
     main()
