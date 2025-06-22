@@ -14,7 +14,7 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # ApyHub setup
 APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
-APYHUB_ENDPOINT = "https://api.apyhub.com/ai/summarize/text"
+APYHUB_ENDPOINT = "https://api.apyhub.com/generate/summarize/text"
 
 HEADERS = {
     "Content-Type": "application/json",
