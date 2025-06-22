@@ -15,7 +15,9 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def generate_gerunds(use_cases):
-    prompt = f"""Convert each of the following lines into lowercase continuous gerund phrases. Only convert the *first word* of each line into its -ing form. Keep the rest of the line intact and lowercase everything. Do not add, remove, or rearrange anything. Just return each converted line, no formatting, no bullet points, no assistant text.
+    prompt = f"""Convert each of the following lines into lowercase continuous gerund phrases of no more than 7 words each. 
+Only convert the *first word* of each line into its -ing form and trim the rest to keep the meaning intact and concise. 
+Make all text lowercase. No formatting, no assistant text, no punctuation.
 
 {use_cases}
 """
