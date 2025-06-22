@@ -1,11 +1,13 @@
 import os
 import time
+import re
 from airtable import Airtable
 from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
 
+# Airtable setup
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
@@ -19,14 +21,23 @@ SECONDS_BETWEEN_REQUESTS = 60 / REQUESTS_PER_MINUTE
 
 def generate_summary(mini_scrape, services):
     prompt = f"""
-You are an API that returns one lowercase phrase with no punctuation.
+You are an API that returns a short, lowercase business-focused phrase with no punctuation.
 It must:
-- Use a present participle verb (e.g., helping, building)
+- Start with a present participle verb (e.g., empowering, guiding, streamlining)
 - Be max 12 words
-- Be specific to the services described
-- Contain no formatting, explanations, or lists
+- Be grounded in real services — not vague goals or inspiration
+- Avoid second-person pronouns (no "you", "your", "yours")
+- Avoid hype or motivational words like "brilliant", "heroes", or "success"
+- Pull wording directly from the mini scrape and services
+- Return only one phrase. No intros, no formatting, no extra text.
 
-Only return the phrase. Nothing else.
+Examples of strong phrasing:
+- empowering businesses to streamline their hr processes
+- guiding startups through capital raising
+- streamlining payment processing with custom automation tools
+- building customized financial projection models
+- delivering tailored recruitment solutions
+- providing comprehensive financial services to small businesses
 
 Mini scrape:
 {mini_scrape}
@@ -38,10 +49,10 @@ Services:
     response = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[
-            {"role": "system", "content": "Return one lowercase phrase with no punctuation. No list, no formatting, no prefix."},
+            {"role": "system", "content": "Return one lowercase phrase with no punctuation. No prefix, no formatting."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.4,
+        temperature=0.5,
         max_tokens=30,
     )
     return response.choices[0].message.content.strip().lower()
