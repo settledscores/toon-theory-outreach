@@ -17,31 +17,33 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 MAX_INPUT_LENGTH = 14000
 
-
 def truncate_text(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
-
 def generate_prompt(text):
-    return f"""From the following text, extract only the core services or offerings provided by the company.
+    return f"""Extract only the actual services provided by the company from the text below.
 
-- Do not include team bios, values, testimonials, blogs, or generic claims.
-- Do not return any explanations, intros, labels, or bullet list headers.
-- Return only a clean, readable list of real services the business provides.
+- No explanations, summaries, or assistant language.
+- No intros like “Here are...”, “This company offers...”, or “The core services include...”.
+- No bullet headers or section titles.
+- Just return the raw list of service lines, one per line, with no extra wording or formatting.
 
 {text}
 """
 
-
 def postprocess_output(text):
     lines = text.splitlines()
-    clean_lines = [line for line in lines if not re.match(r"(?i)^here\s+(is|are)\b", line.strip())]
+    clean_lines = []
+    for line in lines:
+        line = line.strip()
+        # Remove assistant-speak prefixes or summary phrases
+        if re.match(r"(?i)^(here\s+(is|are)|the\s+company|this\s+company|core\s+services|services\s+include|they\s+offer)", line):
+            continue
+        clean_lines.append(line)
     return "\n".join(clean_lines).strip()
-
 
 def update_services_field(record_id, text):
     airtable.update(record_id, {"services": text})
-
 
 def main():
     records = airtable.get_all()
@@ -80,7 +82,6 @@ def main():
             print(f"❌ Error: {e}")
 
     print(f"\n🎯 Done. {updated} records updated.")
-
 
 if __name__ == "__main__":
     main()
