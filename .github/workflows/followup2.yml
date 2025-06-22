@@ -1,0 +1,31 @@
+name: Follow-up 2 Sender
+
+on:
+  schedule:
+    - cron: "55 8 * * 1-5"  # Weekdays at 08:55 UTC
+  workflow_dispatch:
+
+jobs:
+  followup2:
+    runs-on: ubuntu-latest
+
+    env:
+      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: ✉️ Run Follow-up 2 Generator
+        run: python followup2_generator.py
