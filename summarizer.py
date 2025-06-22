@@ -1,7 +1,6 @@
 import os
 import re
 import requests
-from io import BytesIO
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -13,30 +12,26 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# ApyHub Document Summarizer
+# ApyHub setup
 APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
-APYHUB_ENDPOINT = "https://api.apyhub.com/ai/summarize-documents/file"
+APYHUB_ENDPOINT = "https://api.apyhub.com/ai/summarize/text"
 
 HEADERS = {
+    "Content-Type": "application/json",
     "apy-token": APYHUB_API_KEY
 }
 
 def clean_text(text):
     return re.sub(r"\s+", " ", text).strip()
 
-def summarize_with_apyhub_doc(text):
+def summarize_with_apyhub_text(text):
     try:
-        # Write text to an actual named in-memory file
-        buffer = BytesIO(text.encode('utf-8'))
-        buffer.seek(0)
-        files = {
-            "file": ("webcopy.txt", buffer, "text/plain")
-        }
-        data = {
-            "summary_length": "medium"
+        payload = {
+            "text": text,
+            "summaryLength": "medium"
         }
 
-        response = requests.post(APYHUB_ENDPOINT, headers=HEADERS, files=files, data=data)
+        response = requests.post(APYHUB_ENDPOINT, headers=HEADERS, json=payload)
 
         if response.status_code == 200:
             return response.json().get("data", "").strip()
@@ -65,7 +60,7 @@ def main():
         print(f"🧹 Summarizing for: {fields.get('website', '[no website]')}")
 
         cleaned = clean_text(full_text)
-        summary = summarize_with_apyhub_doc(cleaned)
+        summary = summarize_with_apyhub_text(cleaned)
 
         if summary:
             update_mini_scrape(record["id"], summary)
