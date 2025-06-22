@@ -55,7 +55,7 @@ def main():
             print(f"⏭️ Skipping record — missing fields: {', '.join(missing)}")
             continue
 
-        if fields.get("initial status"):
+        if fields.get("initial status") in ["Sent", "Failed"]:
             print(f"⏭️ Skipping {fields['name']} — already marked as sent or failed")
             continue
 
@@ -65,28 +65,24 @@ def main():
             body = fields["email 1"]
             send_email(fields["email"], subject, body)
 
-            now = datetime.now(LAGOS)
-            update_payload = {
-                "initial date": now.isoformat(),
+            now = datetime.now(LAGOS).isoformat()
+            airtable.update(record["id"], {
+                "initial date": now,
                 "initial status": "Sent"
-            }
+            })
 
-            print(f"📝 Updating Airtable record: {record['id']}")
-            print(f"➡️ Payload: {update_payload}")
-            result = airtable.update(record["id"], update_payload)
-            print(f"✅ Airtable update result: {result}")
+            print(f"✅ Marked as Sent: {fields['name']} — {now}")
             sent_count += 1
 
         except Exception as e:
             print(f"❌ Failed for {fields.get('email')}: {e}")
-            now = datetime.now(LAGOS)
-            fail_payload = {
-                "initial date": now.isoformat(),
-                "initial status": "Failed"
-            }
             try:
-                airtable.update(record["id"], fail_payload)
-                print(f"⚠️ Logged failure for {fields.get('name')} in Airtable")
+                now = datetime.now(LAGOS).isoformat()
+                airtable.update(record["id"], {
+                    "initial date": now,
+                    "initial status": "Failed"
+                })
+                print(f"⚠️ Marked as Failed: {fields.get('name')} — {now}")
             except Exception as update_error:
                 print(f"❌ Could not update Airtable after failure: {update_error}")
 
