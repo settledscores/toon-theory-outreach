@@ -22,19 +22,17 @@ I still think there’s potential to try this out with one of your core offering
 
 I’d still be more than happy to draft a script or sketch a ten-second demo to show what kind of potential this could have. All at zero cost to you.
 
-Either way, thanks again for all the work you’re putting out; it really makes a difference. 
+Either way, thanks for doing what you do best. Hope to hear from you soon.
 
 {signature}
 """,
-    """Hi there {name},
+    """Hi {name},
 
 Just wanted to follow up on my last note in case it got buried.
 
 I genuinely think animated storytelling could help bring ideas like {use_case_1} or {use_case_2} into sharper focus for your audience.
 
-We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. 
-
-I’d be happy to draft a quick teaser at zero cost to you, just to show what it could look like in action. 
+We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. I’d be happy to draft a quick demo at no cost, just to show what it could look like in action. 
 
 Let me know if you’re open to that. No pressure at all; just a genuine offer to collaborate.
 
@@ -52,11 +50,11 @@ Let me know if you’re curious. I’ll make it easy.
 
 {signature}
 """,
-    """Hey {name},
+    """Hi {name},
 
 I figured I’d follow up on my previous note from a couple days back just in case it got buried.
 
-I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I still think that {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
+I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I keep thinking: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
 
 If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you, just something to get the ideas flowing.
 
@@ -64,7 +62,7 @@ Either way, thanks again for all the work you’re putting out; it really makes 
 
 {signature}
 """,
-    """Hello {name}
+    """Hi {name}
 
 Just wanted to follow up on my earlier note about using short explainer videos to showcase what {company} can do
 
@@ -78,8 +76,7 @@ Let me know if you’d be open to taking a look; no commitment at all, just a cr
 """
 ]
 
-def generate_email_2(fields):
-    template = random.choice(TEMPLATES)
+def generate_followup_1_email(fields, template):
     return template.format(
         name=fields.get("name", "[name]").strip(),
         company=fields.get("company name", "[company]").strip(),
@@ -91,20 +88,24 @@ def generate_email_2(fields):
 
 def main():
     records = airtable.get_all()
-    updated = 0
+    eligible = []
 
     for record in records:
         fields = record.get("fields", {})
-        if "email 2" in fields and fields["email 2"].strip():
-            continue
+        if "email 2" not in fields or not fields["email 2"].strip():
+            if all(k in fields for k in ["name", "company name", "inline 1", "inline 2", "inline 3", "signature"]):
+                eligible.append((record["id"], fields))
 
-        if not all(k in fields for k in ["name", "company name", "inline 1", "inline 2", "inline 3", "signature"]):
-            continue
+    random.shuffle(eligible)
+    random.shuffle(TEMPLATES)
 
-        email_2_content = generate_email_2(fields)
-        airtable.update(record["id"], {"email 2": email_2_content})
-        print(f"✅ Updated email 2 for: {fields.get('name')}")
+    updated = 0
+    for idx, (record_id, fields) in enumerate(eligible):
+        template = TEMPLATES[idx % len(TEMPLATES)]
+        content = generate_followup_1_email(fields, template)
+        airtable.update(record_id, {"email 2": content})
         updated += 1
+        print(f"✅ Email 2 updated for: {fields.get('name')}")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
