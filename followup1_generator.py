@@ -12,7 +12,7 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 TEMPLATES = [
-    """Hi {name},
+    """Hey there {name},
 
 Hope your week’s going well. Just wanted to follow up on the note I sent a few days ago about Toon Theory.
 
