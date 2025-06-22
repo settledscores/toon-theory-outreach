@@ -22,17 +22,19 @@ I still think there’s potential to try this out with one of your core offering
 
 I’d still be more than happy to draft a script or sketch a ten-second demo to show what kind of potential this could have. All at zero cost to you.
 
-Either way, thanks for doing what you do best. Hope to hear from you soon.
+Either way, thanks again for all the work you’re putting out; it really makes a difference. 
 
 {signature}
 """,
-    """Hi {name},
+    """Hi there {name},
 
 Just wanted to follow up on my last note in case it got buried.
 
 I genuinely think animated storytelling could help bring ideas like {use_case_1} or {use_case_2} into sharper focus for your audience.
 
-We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. I’d be happy to draft a quick demo at no cost, just to show what it could look like in action. 
+We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. 
+
+I’d be happy to draft a quick teaser at zero cost to you, just to show what it could look like in action. 
 
 Let me know if you’re open to that. No pressure at all; just a genuine offer to collaborate.
 
@@ -50,11 +52,11 @@ Let me know if you’re curious. I’ll make it easy.
 
 {signature}
 """,
-    """Hi {name},
+    """Hey {name},
 
 I figured I’d follow up on my previous note from a couple days back just in case it got buried.
 
-I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I keep thinking: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
+I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I still think that {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
 
 If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you, just something to get the ideas flowing.
 
@@ -62,7 +64,7 @@ Either way, thanks again for all the work you’re putting out; it really makes 
 
 {signature}
 """,
-    """Hi {name}
+    """Hello {name}
 
 Just wanted to follow up on my earlier note about using short explainer videos to showcase what {company} can do
 
