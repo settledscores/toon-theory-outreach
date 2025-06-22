@@ -2,6 +2,7 @@ import os
 import smtplib
 import random
 from email.mime.text import MIMEText
+from email.utils import make_msgid
 from datetime import datetime
 from airtable import Airtable
 from dotenv import load_dotenv
@@ -60,14 +61,18 @@ def send_email(to_email, subject, body):
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
 
+    # Generate and set Message-ID
+    message_id = make_msgid(domain=FROM_EMAIL.split('@')[-1])
+    msg["Message-ID"] = message_id
+
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(FROM_EMAIL, [to_email], msg.as_string())
 
-    print(f"✅ Sent email to {to_email}")
+    return message_id.strip("<>")
 
 def main():
-    print("🚀 Starting email sender...")
+    print("\U0001F680 Starting email sender...")
 
     airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
     records = airtable.get_all()
@@ -96,12 +101,13 @@ def main():
             body = fields["email 1"]
 
             print(f"📤 Sending to {fields['name']} ({fields['email']})")
-            send_email(fields["email"], subject, body)
+            message_id = send_email(fields["email"], subject, body)
 
             now = datetime.now(LAGOS)
             update_payload = {
                 "initial date": now.isoformat(),
-                "initial status": "Sent"
+                "initial status": "Sent",
+                "message id": message_id
             }
 
             airtable.update(record["id"], update_payload)
