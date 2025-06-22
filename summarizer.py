@@ -12,14 +12,16 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-TLDR_ENDPOINT = "https://www.tldrthis.com/api/summarize-text"
+# ApyHub setup
+APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
+APYHUB_ENDPOINT = "https://api.apyhub.com/generate/summarize-text"
 
 HEADERS = {
     "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0",
+    "apy-token": APYHUB_API_KEY
 }
 
-MAX_INPUT_LENGTH = 10000  # Safer for public summarizers
+MAX_INPUT_LENGTH = 10000  # Adjust as needed for safety
 
 def clean_text(text):
     return re.sub(r"\s+", " ", text).strip()
@@ -27,26 +29,22 @@ def clean_text(text):
 def truncate_text(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
-def postprocess_output(text):
-    lines = text.splitlines()
-    clean_lines = [line for line in lines if not re.match(r"(?i)^here\s+(is|are)\b", line.strip())]
-    return "\n".join(clean_lines).strip()
-
-def summarize_with_tldr(text):
+def summarize_with_apyhub(text):
     try:
-        response = requests.post(TLDR_ENDPOINT, headers=HEADERS, json={"text": text})
+        payload = { "text": text }
+        response = requests.post(APYHUB_ENDPOINT, headers=HEADERS, json=payload)
+
         if response.status_code == 200:
-            data = response.json()
-            return postprocess_output(data.get("summary", "").strip())
+            return response.json().get("data", "").strip()
         else:
-            print(f"⚠️ TLDR error: {response.status_code}")
+            print(f"⚠️ ApyHub error: {response.status_code} - {response.text}")
             return ""
     except Exception as e:
         print(f"❌ Exception while summarizing: {e}")
         return ""
 
-def update_mini_scrape(record_id, text):
-    airtable.update(record_id, {"mini scrape": text})
+def update_mini_scrape(record_id, summary):
+    airtable.update(record_id, {"mini scrape": summary})
 
 def main():
     records = airtable.get_all()
@@ -60,18 +58,18 @@ def main():
         if not full_text or mini_scrape:
             continue
 
-        print(f"🧹 Cleaning for: {fields.get('website', '[no website]')}")
+        print(f"🧹 Summarizing for: {fields.get('website', '[no website]')}")
 
         cleaned = clean_text(full_text)
         truncated = truncate_text(cleaned)
-        summary = summarize_with_tldr(truncated)
+        summary = summarize_with_apyhub(truncated)
 
         if summary:
             update_mini_scrape(record["id"], summary)
-            print("✅ Updated mini scrape")
+            print("✅ Mini scrape updated")
             updated += 1
         else:
-            print("❌ Failed to generate summary")
+            print("❌ Summary generation failed")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
