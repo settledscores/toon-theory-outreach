@@ -13,7 +13,7 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
-# ApyHub Document Summarizer API
+# ApyHub Document Summarizer
 APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
 APYHUB_ENDPOINT = "https://api.apyhub.com/ai/summarize-documents/file"
 
@@ -26,9 +26,9 @@ def clean_text(text):
 
 def summarize_with_apyhub_doc(text):
     try:
+        # Write text to an actual named in-memory file
         buffer = BytesIO(text.encode('utf-8'))
-        buffer.name = "webcopy.txt"
-
+        buffer.seek(0)
         files = {
             "file": ("webcopy.txt", buffer, "text/plain")
         }
