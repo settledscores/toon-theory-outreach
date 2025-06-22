@@ -58,8 +58,6 @@ def main():
 
 {p3}
 
-Our videos are often used by folks like you to:
-
 1. {uc1}
 2. {uc2}
 3. {uc3}
