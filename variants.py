@@ -86,8 +86,10 @@ paragraph6_variants = [
 ]
 
 paragraph7_cta_variants = [
-    "Feel free to reply if you’d like to explore what this could look like.",
-    "If it sounds interesting, a quick reply is all it takes to get started."
+    "Feel free to reply if you’d like to explore what this could look like. There’s also a link to our site in my signature if you’d like to take a peek at some of our previous work.",
+    "You’ll find a link to our site in the signature if you’d like to check out our past work — and I’d love to hear your thoughts if it sparks anything.",
+    "Reply any time if it feels like a fit. There’s a link in the signature if you’re curious to see what we’ve done for others.",
+    "If you're open to chatting further? Just hit reply — and there’s a site link in the signature if you’d like to see a handful of our past projects."
 ]
 
 signature_variants = [
