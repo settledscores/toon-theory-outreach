@@ -18,8 +18,7 @@ subject_variants = [
     "Turn complex into simple (in 90 seconds)",
     "Your story deserves to be told differently",
     "How about a different approach to your messaging?",
-    "Making your ideas unforgettable",
-    "Need a visual upgrade for your next launch?"
+    "Making your story unforgettable",
 ]
 
 salutation_variants = [
