@@ -14,14 +14,14 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # ApyHub setup
 APYHUB_API_KEY = os.getenv("APYHUB_API_KEY")
-APYHUB_ENDPOINT = "https://api.apyhub.com/generate/summarize-text"
+APYHUB_ENDPOINT = "https://api.apyhub.com/generate/summary/text"  # ✅ Corrected endpoint
 
 HEADERS = {
     "Content-Type": "application/json",
     "apy-token": APYHUB_API_KEY
 }
 
-MAX_INPUT_LENGTH = 10000  # Adjust as needed for safety
+MAX_INPUT_LENGTH = 10000
 
 def clean_text(text):
     return re.sub(r"\s+", " ", text).strip()
