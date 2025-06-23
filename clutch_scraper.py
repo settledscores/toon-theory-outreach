@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
-import re
 from pyairtable import Api
 from dotenv import load_dotenv
 
@@ -15,122 +14,120 @@ TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 api = Api(AIRTABLE_API_KEY)
 airtable = api.base(AIRTABLE_BASE_ID).table(TABLE_NAME)
 
-CLUTCH_URLS = [
-    "https://clutch.co/us/hr?",
-    "https://clutch.co/hr/uk?",
-    "https://clutch.co/au/hr?",
-    "https://clutch.co/se/hr?",
-    "https://clutch.co/ca/hr?",
-    "https://clutch.co/de/hr?",
-    "https://clutch.co/dk/hr?",
-    "https://clutch.co/ch/hr?",
-    "https://clutch.co/nl/hr?",
-    "https://clutch.co/pl/hr?"
-]
-
 ACCEPTED_EMPLOYEE_SIZES = ["2-9", "10-49"]
-ACCEPTED_INDUSTRIES = [
-    "Human Resources", "Consulting", "Sales", "Business Development", "Coaching",
-    "Education", "Marketing", "Legal services", "Tax consulting", "Insurance",
-    "Law", "HR/Staffing", "Management Consulting", "Sales Consulting"
+
+SCRAPE_URLS = [
+    # HR
+    "https://clutch.co/us/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/hr/uk?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/au/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/se/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/ca/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/de/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/dk/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/ch/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/nl/hr?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/pl/hr?agency_size=10+-+49&agency_size=2+-+9",
+    # Consulting
+    "https://clutch.co/consulting?agency_size=10+-+49&agency_size=2+-+9&geona_id=840",
+    "https://clutch.co/consulting/uk?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/au/consulting?agency_size=10+-+49&agency_size=2+-+9",
+    # Accounting
+    "https://clutch.co/us/accounting?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/uk/accounting?agency_size=10+-+49&agency_size=2+-+9",
+    "https://clutch.co/au/accounting?agency_size=10+-+49&agency_size=2+-+9",
+    # Tax Law
+    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=840",
+    "https://clutch.co/law/tax?agency_size=2+-+9&agency_size=10+-+49&geona_id=124",
+    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=826",
+    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=53792",
+    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=276",
+    "https://clutch.co/law/tax?agency_size=2+-+9&agency_size=10+-+49&geona_id=756",
+    # Corporate Law
+    "https://clutch.co/us/law/corporate?agency_size=10+-+49&agency_size=2+-+9",
+    # Tax Consulting
+    "https://clutch.co/us/accounting/tax-services/tax-consulting?agency_size=10+-+49&agency_size=2+-+9",
+    # Law Firms
+    "https://clutch.co/us/law?agency_size=2+-+9&agency_size=10+-+49",
+    # Sales Outsourcing
+    "https://clutch.co/us/call-centers/sales-outsourcing?agency_size=10+-+49&agency_size=2+-+9",
+    # Executive Search
+    "https://clutch.co/us/hr/executive-search?agency_size=2+-+9&agency_size=10+-+49",
+    # Staffing
+    "https://clutch.co/us/hr/staffing?agency_size=10+-+49&agency_size=2+-+9"
 ]
 
-MAX_PAGES = 50
+def get_existing_names():
+    print("🔄 Fetching existing records from Airtable...")
+    existing = set()
+    for page in airtable.iterate():
+        for record in page:
+            name = record.get("fields", {}).get("business name", "")
+            if name:
+                existing.add(name.lower())
+    return existing
 
-def bucket_year(year):
+def get_clutch_profiles(url):
     try:
-        year = int(year)
-        if 2000 <= year < 2005: return "2000–2005"
-        if 2005 <= year < 2010: return "2005–2010"
-        if 2010 <= year < 2015: return "2010–2015"
-        if 2015 <= year < 2020: return "2015–2020"
-        if 2020 <= year <= 2025: return "2020–2025"
-    except:
-        return None
+        print(f"🌐 Scraping: {url}")
+        res = requests.get(url, timeout=10)
+        if res.status_code != 200:
+            print(f"❌ Invalid URL: {url} (status {res.status_code})")
+            return []
 
-def extract_founded_year(profile_url):
-    try:
-        res = requests.get(profile_url)
         soup = BeautifulSoup(res.text, "html.parser")
-        text = soup.get_text().lower()
-        match = re.search(r'founded\s*(in)?\s*(\d{4})', text)
-        if match:
-            return bucket_year(match.group(2))
-    except:
-        return None
-    return None
+        companies = []
 
-def get_clutch_profiles():
-    companies = []
-
-    for base_url in CLUTCH_URLS:
-        for page in range(0, MAX_PAGES):
-            url = f"{base_url}page={page}"
-            print(f"🌍 Scraping page {page + 1}: {url}")
-            res = requests.get(url)
-            soup = BeautifulSoup(res.text, "html.parser")
-            providers = soup.select(".provider-info")
-
-            for company in providers:
-                try:
-                    name = company.select_one("h3 a").text.strip()
-                    profile_url = "https://clutch.co" + company.select_one("h3 a")["href"]
-                    location = company.select_one(".location").text.strip()
-                    employees = company.find(text="Employees").find_next().text.strip()
-                    industry_el = company.select_one(".field--name-field-service-lines .field__item")
-                    industry = industry_el.text.strip() if industry_el else ""
-
-                    # Count how many 'Undisclosed' fields are in the block
-                    undisclosed_count = sum(
-                        1 for field in company.select(".list-item span") if "undisclosed" in field.text.lower()
-                    )
-                    if undisclosed_count > 1:
-                        print(f"⛔ Skipped (undisclosed): {name}")
-                        continue
-
-                    if not any(size in employees for size in ACCEPTED_EMPLOYEE_SIZES):
-                        continue
-                    if not any(niche.lower() in industry.lower() for niche in ACCEPTED_INDUSTRIES):
-                        continue
-
-                    founding_bucket = extract_founded_year(profile_url)
-                    if not founding_bucket:
-                        print(f"⛔ Skipped (no founding year): {name}")
-                        continue
-
-                    print(f"✅ Matched: {name} ({founding_bucket})")
-                    companies.append({
-                        "name": name,
-                        "clutch_profile": profile_url,
-                        "location": location,
-                        "employees": employees,
-                        "industry": industry,
-                        "founded": founding_bucket
-                    })
-
-                except Exception as e:
-                    print(f"⚠️ Error parsing a company block: {e}")
+        for company in soup.select(".provider-info"):
+            try:
+                name = company.select_one("h3 a").text.strip()
+                profile_url = "https://clutch.co" + company.select_one("h3 a")["href"]
+                employees = company.find(text="Employees").find_next().text.strip()
+                if not any(size in employees for size in ACCEPTED_EMPLOYEE_SIZES):
                     continue
+                location = company.select_one(".location").text.strip()
+                industry_tag = company.select_one(".field--name-field-service-lines .field__item")
+                industry = industry_tag.text.strip() if industry_tag else "unspecified"
 
-            time.sleep(1)
+                companies.append({
+                    "name": name,
+                    "clutch_profile": profile_url,
+                    "location": location,
+                    "employees": employees,
+                    "industry": industry
+                })
+            except Exception:
+                continue
 
-    print(f"\n🔎 Total matched companies: {len(companies)}")
-    return companies
+        return companies
 
-def save_to_airtable(companies):
+    except Exception as e:
+        print(f"❌ Failed to scrape {url}: {str(e)}")
+        return []
+
+def save_to_airtable(companies, existing_names):
     for company in companies:
-        print(f"📤 Saving to Airtable: {company['name']}")
+        name = company["name"].lower()
+        if name in existing_names:
+            continue
         airtable.create({
             "business name": company["name"],
             "clutch profile": company["clutch_profile"],
             "location": company["location"],
             "employee range": company["employees"],
             "industry": company["industry"],
-            "founded": company["founded"]
+            "service breakdown": ""  # Placeholder
         })
+        print(f"✅ Added: {company['name']}")
         time.sleep(0.3)
 
 if __name__ == "__main__":
-    companies = get_clutch_profiles()
-    save_to_airtable(companies)
-    print("✅ Script finished.")
+    all_companies = []
+    existing_names = get_existing_names()
+
+    for url in SCRAPE_URLS:
+        companies = get_clutch_profiles(url)
+        save_to_airtable(companies, existing_names)
+        time.sleep(2)
+
+    print("🎉 Done scraping.")
