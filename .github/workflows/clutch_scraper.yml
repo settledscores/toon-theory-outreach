@@ -1,0 +1,27 @@
+name: Scrape Clutch Leads
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 pyairtable python-dotenv
+
+      - name: Run Clutch Scraper
+        run: python clutch_scraper.py
