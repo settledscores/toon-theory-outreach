@@ -14,63 +14,31 @@ TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 api = Api(AIRTABLE_API_KEY)
 airtable = api.base(AIRTABLE_BASE_ID).table(TABLE_NAME)
 
-ACCEPTED_EMPLOYEE_SIZES = ["2-9", "10-49"]
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Referer": "https://google.com",
+    "DNT": "1",
+}
 
-SCRAPE_URLS = [
-    # HR
-    "https://clutch.co/us/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/hr/uk?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/au/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/se/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/ca/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/de/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/dk/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/ch/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/nl/hr?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/pl/hr?agency_size=10+-+49&agency_size=2+-+9",
-    # Consulting
-    "https://clutch.co/consulting?agency_size=10+-+49&agency_size=2+-+9&geona_id=840",
-    "https://clutch.co/consulting/uk?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/au/consulting?agency_size=10+-+49&agency_size=2+-+9",
-    # Accounting
-    "https://clutch.co/us/accounting?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/uk/accounting?agency_size=10+-+49&agency_size=2+-+9",
-    "https://clutch.co/au/accounting?agency_size=10+-+49&agency_size=2+-+9",
-    # Tax Law
-    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=840",
-    "https://clutch.co/law/tax?agency_size=2+-+9&agency_size=10+-+49&geona_id=124",
-    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=826",
-    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=53792",
-    "https://clutch.co/law/tax?agency_size=10+-+49&agency_size=2+-+9&geona_id=276",
-    "https://clutch.co/law/tax?agency_size=2+-+9&agency_size=10+-+49&geona_id=756",
-    # Corporate Law
-    "https://clutch.co/us/law/corporate?agency_size=10+-+49&agency_size=2+-+9",
-    # Tax Consulting
-    "https://clutch.co/us/accounting/tax-services/tax-consulting?agency_size=10+-+49&agency_size=2+-+9",
-    # Law Firms
-    "https://clutch.co/us/law?agency_size=2+-+9&agency_size=10+-+49",
-    # Sales Outsourcing
-    "https://clutch.co/us/call-centers/sales-outsourcing?agency_size=10+-+49&agency_size=2+-+9",
-    # Executive Search
-    "https://clutch.co/us/hr/executive-search?agency_size=2+-+9&agency_size=10+-+49",
-    # Staffing
-    "https://clutch.co/us/hr/staffing?agency_size=10+-+49&agency_size=2+-+9"
-]
+EXISTING_NAMES = set()
 
-def get_existing_names():
+def fetch_existing_names():
     print("🔄 Fetching existing records from Airtable...")
-    existing = set()
-    for page in airtable.iterate():
-        for record in page:
-            name = record.get("fields", {}).get("business name", "")
-            if name:
-                existing.add(name.lower())
-    return existing
+    for record in airtable.all():
+        name = record.get("fields", {}).get("business name", "")
+        if name:
+            EXISTING_NAMES.add(name.lower())
 
 def get_clutch_profiles(url):
+    print(f"🌐 Scraping: {url}")
     try:
-        print(f"🌐 Scraping: {url}")
-        res = requests.get(url, timeout=10)
+        res = requests.get(url, headers=HEADERS, timeout=10)
         if res.status_code != 200:
             print(f"❌ Invalid URL: {url} (status {res.status_code})")
             return []
@@ -81,53 +49,62 @@ def get_clutch_profiles(url):
         for company in soup.select(".provider-info"):
             try:
                 name = company.select_one("h3 a").text.strip()
-                profile_url = "https://clutch.co" + company.select_one("h3 a")["href"]
-                employees = company.find(text="Employees").find_next().text.strip()
-                if not any(size in employees for size in ACCEPTED_EMPLOYEE_SIZES):
+                if name.lower() in EXISTING_NAMES:
                     continue
+
+                profile_url = "https://clutch.co" + company.select_one("h3 a")["href"]
                 location = company.select_one(".location").text.strip()
-                industry_tag = company.select_one(".field--name-field-service-lines .field__item")
-                industry = industry_tag.text.strip() if industry_tag else "unspecified"
+                employees = company.find(text="Employees").find_next().text.strip()
+
+                # Check for accepted employee size
+                if not any(s in employees for s in ["2-9", "10-49"]):
+                    continue
 
                 companies.append({
                     "name": name,
                     "clutch_profile": profile_url,
                     "location": location,
-                    "employees": employees,
-                    "industry": industry
+                    "employee range": employees,
                 })
-            except Exception:
+            except:
                 continue
 
+        print(f"✅ Found {len(companies)} companies from {url}")
         return companies
 
     except Exception as e:
-        print(f"❌ Failed to scrape {url}: {str(e)}")
+        print(f"❌ Failed to scrape {url}: {e}")
         return []
 
-def save_to_airtable(companies, existing_names):
+def save_to_airtable(companies):
     for company in companies:
-        name = company["name"].lower()
-        if name in existing_names:
-            continue
         airtable.create({
             "business name": company["name"],
             "clutch profile": company["clutch_profile"],
             "location": company["location"],
-            "employee range": company["employees"],
-            "industry": company["industry"],
-            "service breakdown": ""  # Placeholder
+            "employee range": company["employee range"],
         })
-        print(f"✅ Added: {company['name']}")
+        print(f"📌 Saved: {company['name']}")
         time.sleep(0.3)
 
 if __name__ == "__main__":
-    all_companies = []
-    existing_names = get_existing_names()
+    fetch_existing_names()
 
-    for url in SCRAPE_URLS:
+    urls = [
+        "https://clutch.co/us/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/hr/uk?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/au/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/se/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/ca/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/de/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/dk/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/ch/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/nl/hr?agency_size=10+-+49&agency_size=2+-+9",
+        "https://clutch.co/pl/hr?agency_size=10+-+49&agency_size=2+-+9",
+    ]
+
+    for url in urls:
         companies = get_clutch_profiles(url)
-        save_to_airtable(companies, existing_names)
-        time.sleep(2)
+        save_to_airtable(companies)
 
     print("🎉 Done scraping.")
