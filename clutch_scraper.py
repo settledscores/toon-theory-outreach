@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
-from pyairtable import Table
+from pyairtable import Api
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,7 +11,8 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, TABLE_NAME)
+api = Api(AIRTABLE_API_KEY)
+airtable = api.base(AIRTABLE_BASE_ID).table(TABLE_NAME)
 
 ACCEPTED_LOCATIONS = [
     "United States", "United Kingdom", "Canada", "Australia",
@@ -65,10 +66,9 @@ def save_to_airtable(companies):
             "employee range": company["employees"],
             "industry": company["industry"]
         })
-        time.sleep(0.3)  # Rate limit buffer
+        time.sleep(0.3)  # Airtable rate limit
 
 if __name__ == "__main__":
-    # Example URL (adjust this to start at page 1 or paginate through)
     example_url = "https://clutch.co/hr"
     companies = get_clutch_profiles(example_url)
     save_to_airtable(companies)
