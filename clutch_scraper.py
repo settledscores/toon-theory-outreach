@@ -1,118 +1,91 @@
+import os
+import time
 import requests
 from bs4 import BeautifulSoup
-import time
-import os
-from pyairtable import Api
-from dotenv import load_dotenv
+from pyairtable import Table
 from datetime import datetime
 
-load_dotenv()
-
+SCRAPER_API_KEY = os.getenv("CLUTCH_SCRAPER_API_KEY")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
+SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-api = Api(AIRTABLE_API_KEY)
-airtable = api.base(AIRTABLE_BASE_ID).table(TABLE_NAME)
+SCRAPER_API_URL = "http://api.scraperapi.com"
+HEADERS = {"Content-Type": "application/json"}
 
-ACCEPTED_LOCATIONS = [
-    "United States", "USA", "UK", "United Kingdom", "Canada", "Australia",
-    "Switzerland", "Germany", "Denmark", "Netherlands", "Poland"
-]
+# Airtable table instance
+table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME)
 
-ACCEPTED_EMPLOYEE_SIZES = ["2 - 9", "10 - 49"]
+def fetch_page(url):
+    params = {
+        "api_key": SCRAPER_API_KEY,
+        "url": url,
+        "render": "true"
+    }
+    response = requests.get(SCRAPER_API_URL, params=params, headers=HEADERS)
+    if response.status_code == 200:
+        return response.text
+    else:
+        print(f"❌ Failed to fetch: {url} (status {response.status_code})")
+        return None
 
-START_URL = "https://clutch.co/hr"
-
-def is_valid_location(location_text):
-    location_text = location_text.lower()
-    return any(country.lower() in location_text for country in ACCEPTED_LOCATIONS)
-
-def get_clutch_profiles(base_url, max_pages=20):
+def parse_company_cards(html):
+    soup = BeautifulSoup(html, "html.parser")
+    cards = soup.select(".provider-info")
     companies = []
-    for page in range(max_pages):
-        url = f"{base_url}?page={page}"
-        print(f"🌐 Scraping: {url}")
+    for card in cards[:5]:  # Only extract 5 per page for now
         try:
-            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
-            if res.status_code != 200:
-                print(f"❌ Invalid URL: {url} (status {res.status_code})")
-                continue
+            name_tag = card.select_one("h3 a")
+            clutch_profile = "https://clutch.co" + name_tag["href"] if name_tag else None
+            website_tag = card.select_one(".website-link__item a")
+            website = website_tag["href"] if website_tag else None
+            
+            employee_range = None
+            location = None
+            service_breakdown = None
+            
+            meta_tags = card.select(".list-key-dots li")
+            for tag in meta_tags:
+                text = tag.get_text(strip=True)
+                if "Employees" in text:
+                    employee_range = text.replace("Employees:", "").strip()
+                elif "Location" in text:
+                    location = text.replace("Location:", "").strip()
+            
+            # Example placeholder until we implement internal profile scanning
+            service_breakdown = "unknown"
+
+            companies.append({
+                "Website": website,
+                "Clutch Profile": clutch_profile,
+                "Employee Range": employee_range,
+                "Location": location,
+                "founded": "unknown",
+                "service breakdown": service_breakdown,
+                "Date Added": datetime.utcnow().isoformat(),
+                "Email Source": "Clutch.co",
+                "Status": "new"
+            })
         except Exception as e:
-            print(f"❌ Request failed: {e}")
+            print(f"⚠️ Error parsing company card: {e}")
             continue
-
-        soup = BeautifulSoup(res.text, "html.parser")
-        listings = soup.select(".provider-info")
-        if not listings:
-            print(f"⚠️ No listings found on page {page}")
-            break
-
-        for listing in listings:
-            try:
-                name_el = listing.select_one("h3 a")
-                name = name_el.text.strip()
-                clutch_profile = "https://clutch.co" + name_el["href"]
-
-                location = listing.select_one(".location").text.strip()
-                if not is_valid_location(location):
-                    continue
-
-                employees = listing.find(text="Employees")
-                if employees:
-                    employee_range = employees.find_next().text.strip()
-                    if employee_range not in ACCEPTED_EMPLOYEE_SIZES:
-                        continue
-                else:
-                    continue
-
-                website_tag = listing.select_one("a.website-link__item")
-                website = website_tag["href"].strip() if website_tag else ""
-
-                services_block = listing.select(".field--name-field-service-lines .field__item")
-                service_breakdown = ", ".join(s.text.strip() for s in services_block if s.text.strip()) if services_block else ""
-
-                companies.append({
-                    "business name": name,
-                    "clutch profile": clutch_profile,
-                    "location": location,
-                    "employee range": employee_range,
-                    "website": website,
-                    "service breakdown": service_breakdown,
-                    "date added": datetime.utcnow().strftime("%Y-%m-%d"),
-                    "notes": "",
-                })
-            except Exception as e:
-                print(f"⚠️ Error parsing company: {e}")
-                continue
-
-        time.sleep(1)
     return companies
 
-def save_to_airtable(companies):
-    print(f"💾 Saving {len(companies)} companies to Airtable...")
-    for company in companies:
+def upload_to_airtable(records):
+    for record in records:
         try:
-            airtable.create({
-                "Website": company["website"],
-                "Clutch Profile": company["clutch profile"],
-                "Location": company["location"],
-                "Employee Range": company["employee range"],
-                "service breakdown": company["service breakdown"],
-                "Date Added": company["date added"],
-                "Notes": company["notes"]
-            })
-            time.sleep(0.3)
+            table.create(record)
+            print(f"✅ Uploaded: {record.get('Clutch Profile')}")
         except Exception as e:
-            print(f"❌ Airtable insert error: {e}")
-            continue
-    print("✅ Airtable upload complete.")
+            print(f"❌ Airtable upload error: {e}")
 
 if __name__ == "__main__":
-    print("🔄 Fetching existing records from Airtable...")
-    records = airtable.all()
-    print(f"📦 Existing records: {len(records)}")
-    companies = get_clutch_profiles(START_URL, max_pages=30)
-    print(f"📈 Total companies scraped: {len(companies)}")
-    save_to_airtable(companies)
-    print("🎉 Done.")
+    for page in range(2):
+        url = f"https://clutch.co/hr?page={page}"
+        print(f"🌐 Scraping: {url}")
+        html = fetch_page(url)
+        if html:
+            records = parse_company_cards(html)
+            print(f"📈 Companies extracted: {len(records)}")
+            upload_to_airtable(records)
+        time.sleep(60)  # Respectful delay
