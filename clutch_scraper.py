@@ -26,6 +26,7 @@ ACCEPTED_INDUSTRIES = [
 ]
 
 def get_clutch_profiles(url):
+    print(f"Scraping Clutch URL: {url}")
     res = requests.get(url)
     soup = BeautifulSoup(res.text, "html.parser")
     companies = []
@@ -45,20 +46,25 @@ def get_clutch_profiles(url):
             if not any(niche.lower() in industry.lower() for niche in ACCEPTED_INDUSTRIES):
                 continue
 
-            companies.append({
+            company_data = {
                 "name": name,
                 "clutch_profile": profile_url,
                 "location": location,
                 "employees": employees,
                 "industry": industry
-            })
-        except:
+            }
+            print(f"✅ Matched: {name} | {location} | {employees} | {industry}")
+            companies.append(company_data)
+        except Exception as e:
+            print(f"⚠️ Skipping company due to error: {e}")
             continue
 
+    print(f"Total matched companies: {len(companies)}")
     return companies
 
 def save_to_airtable(companies):
     for company in companies:
+        print(f"📤 Saving to Airtable: {company['name']}")
         airtable.create({
             "business name": company["name"],
             "clutch profile": company["clutch_profile"],
@@ -66,9 +72,10 @@ def save_to_airtable(companies):
             "employee range": company["employees"],
             "industry": company["industry"]
         })
-        time.sleep(0.3)  # Airtable rate limit
+        time.sleep(0.3)
 
 if __name__ == "__main__":
     example_url = "https://clutch.co/hr"
     companies = get_clutch_profiles(example_url)
     save_to_airtable(companies)
+    print("✅ Script finished.")
