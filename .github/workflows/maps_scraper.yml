@@ -1,5 +1,4 @@
-name: Run Google Maps Scraper
-
+name: Google Maps Scraper
 on:
   workflow_dispatch:
 
@@ -7,16 +6,22 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
       - name: Install dependencies
         run: |
-          pip install pyairtable requests python-dotenv
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run scraper
+      - name: Run Google Maps Scraper
         run: python maps_scraper.py
+        env:
+          CLUTCH_SCRAPER_API_KEY: ${{ secrets.CLUTCH_SCRAPER_API_KEY }}
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
