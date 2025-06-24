@@ -3,15 +3,15 @@ import time
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from airtable import Airtable
 from dotenv import load_dotenv
+from airtable import Airtable
+from playwright.sync_api import sync_playwright
 
 load_dotenv()
 
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
-SCRAPER_API_KEY = os.getenv("CLUTCH_SCRAPER_API_KEY")
 
 airtable = Airtable(AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME, AIRTABLE_API_KEY)
 
@@ -23,35 +23,33 @@ BASE_URL = "https://www.bbb.org"
 SEARCH_URL = "https://www.bbb.org/search?find_country=USA&find_entity=60005-101&find_id=1_100&find_latlng=30.314613%2C-97.793745&find_loc=Austin%2C%20TX&find_text=Accounting&find_type=Category&page=1&sort=Relevance"
 
 MAX_LEADS = 5
-REQUEST_INTERVAL = 3  # seconds
+WAIT_BETWEEN = 3  # seconds
 
-def get_search_results():
-    print("🔍 Requesting BBB search page with ScraperAPI...")
-    params = {
-        "api_key": SCRAPER_API_KEY,
-        "url": SEARCH_URL,
-        "render": "true",
-        "country_code": "us"
-    }
 
-    try:
-        res = requests.get("https://api.scraperapi.com", params=params, headers=HEADERS, timeout=30)
-        print(f"📄 Response size: {len(res.text)} bytes")
+def get_profile_links():
+    print("🧭 Launching Playwright to fetch BBB search results...")
+    links = []
 
-        # Save raw HTML for debugging
-        with open("debug.html", "w", encoding="utf-8") as f:
-            f.write(res.text)
-        print("🧪 Saved raw HTML to debug.html")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
+        page.goto(SEARCH_URL, timeout=60000)
+        page.wait_for_selector("a.Link__StyledLink-sc-1dh2vhu-0", timeout=20000)
 
-        soup = BeautifulSoup(res.text, 'html.parser')
-        links = soup.select("a.Link__StyledLink-sc-1dh2vhu-0")
-        profile_urls = [urljoin(BASE_URL, link['href']) for link in links if "/profile/" in link['href']]
-        print(f"🔗 Found {len(profile_urls)} profile links")
-        return profile_urls[:MAX_LEADS]
+        elements = page.query_selector_all("a.Link__StyledLink-sc-1dh2vhu-0")
+        for el in elements:
+            href = el.get_attribute("href")
+            if href and "/profile/" in href:
+                full_url = urljoin(BASE_URL, href)
+                if full_url not in links:
+                    links.append(full_url)
 
-    except Exception as e:
-        print(f"❌ Failed to fetch search results: {e}")
-        return []
+        browser.close()
+
+    print(f"🔗 Extracted {len(links)} profile links.")
+    return links[:MAX_LEADS]
+
 
 def scrape_profile(url):
     print(f"➡️ Scraping profile: {url}")
@@ -59,7 +57,6 @@ def scrape_profile(url):
         res = requests.get(url, headers=HEADERS)
         soup = BeautifulSoup(res.text, 'html.parser')
 
-        business_name = soup.select_one("h1[class*=Heading__HeadingStyled]")
         website_url = soup.find("a", string="Visit Website")
         notes = soup.select_one("section p")
         location = soup.select_one("address")
@@ -91,18 +88,19 @@ def scrape_profile(url):
         print(f"✅ Uploaded to Airtable: {fields['website url']}")
 
     except Exception as e:
-        print(f"❌ Error scraping {url}: {e}")
+        print(f"❌ Failed scraping {url}: {e}")
+
 
 def main():
-    print("🔄 Starting BBB scraper...")
-    profile_links = get_search_results()
-    print("🚀 Starting profile scrape...\n")
+    print("🔄 Starting full BBB scrape...")
+    links = get_profile_links()
 
-    for url in profile_links:
+    for url in links:
         scrape_profile(url)
-        time.sleep(REQUEST_INTERVAL)
+        time.sleep(WAIT_BETWEEN)
 
     print("🏁 Done.")
+
 
 if __name__ == "__main__":
     main()
