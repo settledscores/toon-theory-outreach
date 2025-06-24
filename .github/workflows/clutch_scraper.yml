@@ -10,6 +10,7 @@ jobs:
       AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
       AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
       SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+      CLUTCH_SCRAPER_API_KEY: ${{ secrets.CLUTCH_SCRAPER_API_KEY }}
 
     steps:
       - name: Checkout repo
