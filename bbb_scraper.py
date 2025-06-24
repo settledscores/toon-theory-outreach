@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from airtable import Airtable
 from playwright.sync_api import sync_playwright
 
+# Load environment
 load_dotenv()
-
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
@@ -35,10 +35,27 @@ def get_profile_links():
         context = browser.new_context()
         page = context.new_page()
         page.goto(SEARCH_URL, timeout=60000)
-        page.wait_for_selector("a.Link__StyledLink-sc-1dh2vhu-0", timeout=20000)
 
-        elements = page.query_selector_all("a.Link__StyledLink-sc-1dh2vhu-0")
-        for el in elements:
+        try:
+            print("⏳ Waiting for profile links...")
+            page.wait_for_selector("a[href*='/profile/']", timeout=25000)
+            profile_elements = page.query_selector_all("a[href*='/profile/']")
+        except Exception as e:
+            print(f"⚠️ Selector wait failed: {e}")
+            try:
+                html = page.content()
+                print(f"📁 Current working dir: {os.getcwd()}")
+                with open("bbb_debug.html", "w", encoding="utf-8") as f:
+                    f.write(html)
+                    f.flush()
+                    os.fsync(f.fileno())
+                print("📄 Saved fallback HTML to bbb_debug.html")
+            except Exception as write_err:
+                print(f"❌ Failed to write debug HTML: {write_err}")
+            browser.close()
+            return []
+
+        for el in profile_elements:
             href = el.get_attribute("href")
             if href and "/profile/" in href:
                 full_url = urljoin(BASE_URL, href)
