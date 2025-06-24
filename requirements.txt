@@ -7,3 +7,4 @@ pytz      # 👈 Add this line
 groq
 duckduckgo-search
 pyairtable>=1.3.0
+playwright
