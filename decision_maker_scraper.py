@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 load_dotenv()
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+airtable = Airtable(AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME, AIRTABLE_API_KEY)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; Bot/0.1; +https://example.com/bot)"
