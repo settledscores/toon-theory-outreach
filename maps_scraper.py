@@ -1,16 +1,19 @@
 import os
+import time
 import requests
+from bs4 import BeautifulSoup
 from pyairtable import Api
 from dotenv import load_dotenv
 
 load_dotenv()
 
 API_KEY = os.getenv("CLUTCH_SCRAPER_API_KEY")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-GOOGLE_MAPS_URL = "https://api.scraperapi.com/structured/google/maps/search"
+# Airtable setup
+api = Api(API_KEY)
+table = api.base(AIRTABLE_BASE_ID).table(SCRAPER_TABLE_NAME)
 
 QUERIES = [
     "accounting San Francisco",
@@ -22,45 +25,57 @@ QUERIES = [
 
 def search_maps(query):
     print(f"🔍 Searching: {query}")
+    url = "http://api.scraperapi.com"
     params = {
         "api_key": API_KEY,
-        "query": query
+        "url": f"https://www.google.com/maps/search/{query.replace(' ', '+')}"
     }
     try:
-        response = requests.get(GOOGLE_MAPS_URL, params=params)
+        response = requests.get(url, params=params, timeout=30)
         response.raise_for_status()
-        return response.json().get("organic_results", [])
+        return response.text
     except Exception as e:
         print(f"❌ Failed: {e}")
-        return []
+        return None
 
-def extract_businesses(results):
-    for biz in results:
-        name = biz.get("title")
-        website = biz.get("website")
-        if name and website:
-            yield {"business name": name, "website url": website}
+def parse_results(html):
+    soup = BeautifulSoup(html, "html.parser")
+    links = soup.find_all("a", href=True)
+    results = []
 
-def main():
-    api = Api(AIRTABLE_API_KEY)
-    table = api.base(AIRTABLE_BASE_ID).table(SCRAPER_TABLE_NAME)
-
-    total_added = 0
-    for query in QUERIES:
-        results = search_maps(query)
-        for business in extract_businesses(results):
-            try:
-                table.create(business)
-                print(f"✅ Added: {business['business name']} - {business['website url']}")
-                total_added += 1
-                if total_added >= 10:
-                    break
-            except Exception as e:
-                print(f"❌ Airtable Error: {e}")
-        if total_added >= 10:
+    for a in links:
+        href = a["href"]
+        if "google.com/maps/place" in href:
+            name = a.get_text(strip=True)
+            if name and name not in [r["name"] for r in results]:
+                results.append({
+                    "name": name,
+                    "url": href
+                })
+        if len(results) >= 10:
             break
+    return results
 
+def add_to_airtable(results):
+    for result in results:
+        try:
+            table.create({
+                "website url": result["url"],
+                "business name": result["name"]
+            })
+        except Exception as e:
+            print(f"❌ Failed to add {result['url']}: {e}")
+
+def run():
+    print("🔎 Running Google Maps scrape...")
+    for query in QUERIES:
+        html = search_maps(query)
+        if not html:
+            continue
+        results = parse_results(html)
+        add_to_airtable(results)
+        time.sleep(3)  # be polite to API
     print("🎉 Done.")
 
 if __name__ == "__main__":
-    main()
+    run()
