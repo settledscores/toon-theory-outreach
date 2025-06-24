@@ -1,17 +1,17 @@
-name: DuckDuckGo Name Scraper
+name: Scrape Lead Websites
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'duckduckgo_name_finder.py'
+      - 'web_content_scraper.py'
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🛎️ Checkout Repo
+    - name: ⬇️ Checkout code
       uses: actions/checkout@v3
 
     - name: 🐍 Set up Python
@@ -19,17 +19,16 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: 📦 Install Dependencies
+    - name: 📦 Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-dotenv airtable-python-wrapper requests
+        pip install requests beautifulsoup4 airtable-python-wrapper python-dotenv
 
-    - name: 🔐 Create .env from GitHub Secrets
+    - name: 🔐 Set up environment
       run: |
         echo "AIRTABLE_API_KEY=${{ secrets.AIRTABLE_API_KEY }}" >> .env
         echo "AIRTABLE_BASE_ID=${{ secrets.AIRTABLE_BASE_ID }}" >> .env
         echo "SCRAPER_TABLE_NAME=${{ secrets.SCRAPER_TABLE_NAME }}" >> .env
-        echo "CLUTCH_SCRAPER_API_KEY=${{ secrets.CLUTCH_SCRAPER_API_KEY }}" >> .env
 
-    - name: 🚀 Run DuckDuckGo Name Finder
-      run: python duckduckgo_name_finder.py
+    - name: 🚀 Run content scraper
+      run: python web_content_scraper.py
