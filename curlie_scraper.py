@@ -15,7 +15,7 @@ CURLIE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; CurlieScraper/1.0)"
 }
 
-MAX_RESULTS = 4  # For test run
+MAX_RESULTS = 4  # Test run limit
 
 
 def scrape_curlie_page(url, limit=MAX_RESULTS):
@@ -73,6 +73,7 @@ def push_to_airtable(data):
             res = requests.post(url, headers=HEADERS, json=payload)
             res.raise_for_status()
             print(f"✅ Uploaded: {record['business name']}")
+            print("🪵 Response:", res.json())  # <-- Debug response from Airtable
         except requests.RequestException as e:
             print(f"❌ Failed to upload {record['business name']}: {e}")
 
