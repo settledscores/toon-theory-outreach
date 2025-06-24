@@ -1,7 +1,12 @@
+import os
 import time
+from pathlib import Path
+from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-BBB_SEARCH_URL = "https://www.bbb.org/search?find_country=USA&find_entity=60005-101&find_id=1_100&find_latlng=30.314613%2C-97.793745&find_loc=Austin%2C%20TX&find_text=Accounting&find_type=Category&page=1&sort=Relevance"
+SEARCH_URL = "https://www.bbb.org/search?find_country=USA&find_entity=60005-101&find_id=1_100&find_latlng=30.314613%2C-97.793745&find_loc=Austin%2C%20TX&find_text=Accounting&find_type=Category&page=1&sort=Relevance"
+DEBUG_FILE = "bbb_debug_final.html"
+
 
 def get_profile_links():
     with sync_playwright() as p:
@@ -9,44 +14,60 @@ def get_profile_links():
         context = browser.new_context()
         page = context.new_page()
 
-        print("🚯 Launching Playwright to fetch BBB search results...")
-        page.goto(BBB_SEARCH_URL, timeout=60000)
+        print("🧭 Launching Playwright to fetch BBB search results...")
+        page.goto(SEARCH_URL, timeout=60000)
 
-        print("⏳ Waiting for full page load (networkidle)...")
-        page.wait_for_load_state("networkidle")
+        print("⏳ Waiting manually for JS content to hydrate...")
+        time.sleep(10)
 
-        print("⏳ Sleeping to bypass Cloudflare...")
-        time.sleep(10)  # Let JavaScript finish rendering
-
-        print("🛃 Scrolling to force lazy loading...")
-        for i in range(0, 3000, 500):
+        print("⬇️ Scrolling page gradually to trigger lazy load...")
+        for i in range(0, 4000, 400):
             page.evaluate(f"window.scrollTo(0, {i})")
-            time.sleep(1)
+            time.sleep(0.8)
 
-        html_content = page.content()
-        with open("bbb_debug_final.html", "w", encoding="utf-8") as f:
-            f.write(html_content)
-        print("📄 Saved final HTML for inspection: bbb_debug_final.html")
+        print("📄 Saving hydrated HTML to debug file...")
+        html = page.content()
+        Path(DEBUG_FILE).write_text(html)
 
-        links = page.locator("a[href*='/profile/']")
-        found = links.count()
-        print(f"🔗 Found {found} profile links")
+        soup = BeautifulSoup(html, "html.parser")
+        links = []
+        for a in soup.select("a[href*='/profile/']"):
+            href = a.get("href")
+            if href and href.startswith("/profile/"):
+                full_url = f"https://www.bbb.org{href}"
+                if full_url not in links:
+                    links.append(full_url)
 
-        profile_urls = []
-        for i in range(min(found, 5)):
-            href = links.nth(i).get_attribute("href")
-            if href:
-                profile_urls.append("https://www.bbb.org" + href)
+        print(f"🔗 Found {len(links)} profile links")
+        return links[:5]  # For test run only
 
-        browser.close()
-        return profile_urls
+
+def scrape_profile(url):
+    print(f"🔍 Visiting profile: {url}")
+    # Future: Implement actual profile scraping
+    return {
+        "website url": url,
+        "notes": "Placeholder",
+        "location": "Austin, TX, US",
+        "industry": "Accounting",
+        "years": "",
+        "Decision Maker Name": "",
+        "Decision Maker Title": "",
+        "Email Permutations": ""
+    }
 
 
 def main():
     print("🔄 Starting full BBB scrape...")
     links = get_profile_links()
-    print("\n".join(links))
-    print("\n🌝 Done.")
+
+    print("🚀 Starting profile scrape...")
+    for link in links:
+        record = scrape_profile(link)
+        print(f"✅ Record scraped: {record['website url']}")
+
+    print("\n🏁 Done.")
+
 
 if __name__ == "__main__":
     main()
