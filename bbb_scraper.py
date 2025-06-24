@@ -11,6 +11,7 @@ load_dotenv()
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
+SCRAPER_API_KEY = os.getenv("CLUTCH_SCRAPER_API_KEY")
 
 airtable = Airtable(AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME, AIRTABLE_API_KEY)
 
@@ -25,14 +26,27 @@ MAX_LEADS = 5
 REQUEST_INTERVAL = 3  # seconds
 
 def get_search_results():
-    res = requests.get(SEARCH_URL, headers=HEADERS)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    links = soup.select("a.Link__StyledLink-sc-1dh2vhu-0")
-    return [urljoin(BASE_URL, link['href']) for link in links if "/profile/" in link['href']][:MAX_LEADS]
+    print("🔍 Requesting BBB search page with ScraperAPI...")
+    params = {
+        "api_key": SCRAPER_API_KEY,
+        "url": SEARCH_URL,
+        "render": "true"
+    }
+    try:
+        res = requests.get("http://api.scraperapi.com", params=params, headers=HEADERS, timeout=30)
+        print(f"📄 Response size: {len(res.text)} bytes")
+        soup = BeautifulSoup(res.text, 'html.parser')
+        links = soup.select("a.Link__StyledLink-sc-1dh2vhu-0")
+        profile_urls = [urljoin(BASE_URL, link['href']) for link in links if "/profile/" in link['href']]
+        print(f"🔗 Found {len(profile_urls)} profile links")
+        return profile_urls[:MAX_LEADS]
+    except Exception as e:
+        print(f"❌ Failed to fetch search results: {e}")
+        return []
 
 def scrape_profile(url):
+    print(f"➡️ Scraping profile: {url}")
     try:
-        print(f"🔍 Scraping: {url}")
         res = requests.get(url, headers=HEADERS)
         soup = BeautifulSoup(res.text, 'html.parser')
 
@@ -53,18 +67,6 @@ def scrape_profile(url):
                 elif len(parts) == 1:
                     name = parts[0]
 
-        domain = website_url['href'].replace("https://", "").replace("http://", "").strip("/") if website_url else ""
-        first, last = (name.split(" ")[0], name.split(" ")[-1]) if name else ("", "")
-        perms = []
-        if first and last and domain:
-            perms = [
-                f"{first}@{domain}",
-                f"{first}.{last}@{domain}",
-                f"{first[0]}{last}@{domain}",
-                f"{first}{last}@{domain}",
-                f"{first}_{last}@{domain}"
-            ]
-
         fields = {
             "website url": website_url['href'] if website_url else "",
             "notes": notes.text.strip() if notes else "",
@@ -72,22 +74,26 @@ def scrape_profile(url):
             "industry": "Accounting",
             "years": years.strip() if years else "",
             "Decision Maker Name": name,
-            "Decision Maker Title": title,
-            "Email Permutations": "\n".join(perms)
+            "Decision Maker Title": title
         }
 
+        print(f"📦 Extracted fields: {fields}")
         airtable.insert(fields)
-        print(f"✅ Uploaded: {name or '[No Name]'}")
+        print(f"✅ Uploaded to Airtable: {fields['website url']}")
 
     except Exception as e:
         print(f"❌ Error scraping {url}: {e}")
 
-
 def main():
+    print("🔄 Starting BBB scraper...")
     profile_links = get_search_results()
+    print("🚀 Starting profile scrape...\n")
+
     for url in profile_links:
         scrape_profile(url)
         time.sleep(REQUEST_INTERVAL)
+
+    print("🏁 Done.")
 
 if __name__ == "__main__":
     main()
