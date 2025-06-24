@@ -1,4 +1,4 @@
-name: Scrape Manifest Leads
+name: Scrape GoodFirms Leads
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ jobs:
       SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -21,9 +21,7 @@ jobs:
           python-version: 3.11
 
       - name: Install dependencies
-        run: |
-          pip install pyairtable playwright
-          playwright install chromium
+        run: pip install requests beautifulsoup4 pyairtable python-dotenv
 
-      - name: Run Manifest Scraper
-        run: python manifest_scraper.py
+      - name: Run GoodFirms Scraper
+        run: python goodfirms_scraper.py
