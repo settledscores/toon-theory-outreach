@@ -1,7 +1,7 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-from pyairtable import Table
+from pyairtable import Api
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,7 +10,8 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME)
+api = Api(AIRTABLE_API_KEY)
+table = api.table(AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME)
 
 BASE_URL = "https://www.goodfirms.co/business-services/accounting/usa"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -23,28 +24,29 @@ def scrape_page(url):
         return []
 
     soup = BeautifulSoup(res.text, "html.parser")
+    listings = soup.select("div.company-info")[:5]
+
     results = []
-
-    listings = soup.select("div.profile-service")  # ← Parent container for each listing
-    for card in listings[:5]:  # Limit to 5 per page
-        name_tag = card.select_one(".profile-info h3 a")
-        website_tag = card.select_one("a.website-link__item")
-        tagline_tag = card.select_one("div.profile-tagline")
-
-        name = name_tag.text.strip() if name_tag else None
+    for listing in listings:
+        name_tag = listing.select_one("h3 a")
         profile_url = "https://www.goodfirms.co" + name_tag["href"] if name_tag else None
-        website = website_tag["href"].strip() if website_tag and "href" in website_tag.attrs else None
+        name = name_tag.text.strip() if name_tag else None
+
+        website_tag = listing.find_next("a", class_="visit-website ga-url")
+        website = website_tag["href"] if website_tag and "href" in website_tag.attrs else None
+
+        tagline_tag = listing.select_one(".company-intro")
         tagline = tagline_tag.text.strip() if tagline_tag else None
 
-        company = {
+        record = {
             "name": name,
             "profile_url": profile_url,
             "website": website,
-            "tagline": tagline
+            "tagline": tagline,
         }
 
-        print(f"➡️ Found: {company['name']} | {company['website']}")
-        results.append(company)
+        print(f"➡️ Found: {name} | {website}")
+        results.append(record)
 
     return results
 
@@ -58,8 +60,7 @@ def main():
     all_results = []
     for page in range(2):  # Page 0 and 1
         url = f"{BASE_URL}?page={page}"
-        companies = scrape_page(url)
-        all_results.extend(companies)
+        all_results.extend(scrape_page(url))
 
     if all_results:
         upload_to_airtable(all_results)
