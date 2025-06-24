@@ -29,10 +29,9 @@ def get_profile_links():
             print(f"⚠️ Selector wait failed: {e}")
         
         html = page.content()
-        
-        # Log working dir and save fallback HTML
+
+        # Save debug HTML
         cwd = os.getcwd()
-        print(f"📁 Current working dir: {cwd}")
         debug_path = os.path.join(cwd, "bbb_debug.html")
         try:
             with open(debug_path, "w", encoding="utf-8") as f:
@@ -40,10 +39,15 @@ def get_profile_links():
             print(f"📄 Saved fallback HTML to {debug_path}")
         except Exception as e:
             print(f"❌ Failed to save debug.html: {e}")
-        
+
+        # Print raw HTML preview
+        print("\n🧪 FIRST 2500 CHARS OF RAW HTML ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓\n")
+        print(html[:2500])
+        print("\n🧪 END OF PREVIEW ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑\n")
+
         soup = BeautifulSoup(html, "html.parser")
         links = soup.select("a[href*='/profile/']")
-        profile_urls = ["https://www.bbb.org" + a["href"] for a in links][:5]  # Just 5 for test
+        profile_urls = ["https://www.bbb.org" + a["href"] for a in links][:5]
         browser.close()
         return profile_urls
 
@@ -66,7 +70,6 @@ def scrape_profile(url):
         location = "Austin, TX, US"
         industry = "Accounting"
         years = safe_select_text("div:has(h4:contains('Years in Business')) span") or ""
-
         dm_name = safe_select_text("div[data-testid='principal-name']")
         dm_title = safe_select_text("div[data-testid='principal-role']")
 
@@ -90,7 +93,7 @@ def main():
             record = scrape_profile(link)
             print(f"📦 Scraped: {record['website url']} - {record['Decision Maker Name']}")
             airtable.insert(record)
-            time.sleep(2)  # Rate limit
+            time.sleep(2)  # Respectful rate limiting
         except Exception as e:
             print(f"❌ Error scraping {link}: {e}")
 
