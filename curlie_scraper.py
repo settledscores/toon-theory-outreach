@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from bs4 import BeautifulSoup
 
@@ -6,7 +7,7 @@ AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
-HEADERS = {
+AIRTABLE_HEADERS = {
     "Authorization": f"Bearer {AIRTABLE_API_KEY}",
     "Content-Type": "application/json"
 }
@@ -15,70 +16,88 @@ CURLIE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; CurlieScraper/1.0)"
 }
 
-MAX_RESULTS = 4  # Test run limit
+BASE_URL_TEMPLATE = "https://curlie.org/en/Business/Accounting/Firms/Accountants/North_America/United_States/{}"
+MAX_PER_STATE = 5
+REQUEST_DELAY = 3  # seconds between requests
 
 
-def scrape_curlie_page(url, limit=MAX_RESULTS):
-    print(f"🔍 Scraping: {url}")
+US_STATES = [
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+    "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+    "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
+    "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New_Hampshire",
+    "New_Jersey", "New_Mexico", "New_York", "North_Carolina", "North_Dakota", "Ohio",
+    "Oklahoma", "Oregon", "Pennsylvania", "Rhode_Island", "South_Carolina", "South_Dakota",
+    "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West_Virginia",
+    "Wisconsin", "Wyoming"
+]
+
+
+def scrape_state(state):
+    url = BASE_URL_TEMPLATE.format(state)
+    print(f"🔍 Scraping {state}: {url}")
     try:
-        response = requests.get(url, headers=CURLIE_HEADERS, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"❌ Request failed: {e}")
+        res = requests.get(url, headers=CURLIE_HEADERS, timeout=10)
+        res.raise_for_status()
+    except Exception as e:
+        print(f"❌ Failed to load {state}: {e}")
         return []
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    results = []
-
+    soup = BeautifulSoup(res.text, "html.parser")
     entries = soup.select("div.site-item")
+    leads = []
+
     for entry in entries:
-        if len(results) >= limit:
+        if len(leads) >= MAX_PER_STATE:
             break
 
         name_tag = entry.select_one(".site-title")
-        link_tag = entry.select_one(".site-title > a")
+        link_tag = name_tag.find("a") if name_tag else None
+        description_tag = entry.select_one(".site-descr")
 
         if not name_tag or not link_tag:
             continue
 
         name = name_tag.text.strip()
-        website_url = link_tag.get("href")
+        website = link_tag.get("href")
+        notes = description_tag.text.strip() if description_tag else ""
+        location = state.replace("_", " ") + ", US"
 
-        if not website_url.startswith("http"):
+        if not website.startswith("http"):
             continue
 
-        results.append({
+        leads.append({
             "business name": name,
-            "website url": website_url
+            "website url": website,
+            "notes": notes,
+            "location": location
         })
 
-    return results
+    return leads
 
 
-def push_to_airtable(data):
-    if not data:
-        print("⚠️ No data to push.")
-        return
-
-    for record in data:
-        payload = {
-            "fields": {
-                "business name": record["business name"],
-                "website url": record["website url"]
-            }
+def push_to_airtable(record):
+    payload = {
+        "fields": {
+            "business name": record["business name"],
+            "website url": record["website url"],
+            "notes": record["notes"],
+            "location": record["location"]
         }
+    }
 
-        url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
-        try:
-            res = requests.post(url, headers=HEADERS, json=payload)
-            res.raise_for_status()
-            print(f"✅ Uploaded: {record['business name']}")
-            print("🪵 Response:", res.json())  # <-- Debug response from Airtable
-        except requests.RequestException as e:
-            print(f"❌ Failed to upload {record['business name']}: {e}")
+    url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
+    try:
+        res = requests.post(url, headers=AIRTABLE_HEADERS, json=payload)
+        res.raise_for_status()
+        print(f"✅ Uploaded: {record['business name']} ({record['location']})")
+    except requests.RequestException as e:
+        print(f"❌ Failed to upload {record['business name']}: {e}")
 
 
 if __name__ == "__main__":
-    test_url = "https://curlie.org/Business/Accounting/Firms/Accountants/North_America/United_States/California/"
-    data = scrape_curlie_page(test_url)
-    push_to_airtable(data)
+    for state in US_STATES:
+        leads = scrape_state(state)
+        for lead in leads:
+            push_to_airtable(lead)
+            time.sleep(REQUEST_DELAY)
