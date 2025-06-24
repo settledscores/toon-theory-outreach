@@ -1,4 +1,5 @@
-name: Google Maps Scraper
+name: Run Curlie Scraper
+
 on:
   workflow_dispatch:
 
@@ -6,7 +7,8 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -16,12 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install requests beautifulsoup4 pyairtable python-dotenv
 
-      - name: Run Google Maps Scraper
-        run: python maps_scraper.py
+      - name: Run Curlie Scraper
+        run: python curlie_scraper.py
         env:
-          CLUTCH_SCRAPER_API_KEY: ${{ secrets.CLUTCH_SCRAPER_API_KEY }}
           AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
           AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
           SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
