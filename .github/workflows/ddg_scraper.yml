@@ -1,26 +1,29 @@
-name: Run DDG Scraper
+name: DDG Discovery Scraper
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # every hour
 
 jobs:
-  scrape:
+  run-scraper:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: 3.11
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 python-dotenv pyairtable
+          pip install pyairtable beautifulsoup4 requests
 
       - name: Run DDG scraper
-        run: python ddg_scraper.py
         env:
           AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
           AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
           SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+        run: python ddg_scraper.py
