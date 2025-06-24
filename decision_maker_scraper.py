@@ -11,13 +11,17 @@ load_dotenv()
 # Airtable setup
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")  # Updated
+AIRTABLE_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # Constants
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; Bot/0.1; +https://example.com/bot)"}
-GENERIC_EMAIL_PREFIXES = {"info", "support", "hello", "contact", "admin", "accounting", "help", "inquiry"}
-FREE_EMAIL_PROVIDERS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com"}
+GENERIC_EMAIL_PREFIXES = {
+    "info", "support", "hello", "contact", "admin", "accounting", "help", "inquiry"
+}
+FREE_EMAIL_PROVIDERS = {
+    "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com"
+}
 TITLE_KEYWORDS = [
     "Managing Partner", "Managing Director", "Founder", "Owner", "Principal", "Partner",
     "President", "Executive Director", "Director", "Firm Principal", "Tax Partner", "Audit Partner",
@@ -25,7 +29,6 @@ TITLE_KEYWORDS = [
 ]
 MAX_PAGES = 15
 
-# Email filters
 def is_valid_email(email):
     if not email or "@" not in email:
         return False
@@ -36,25 +39,23 @@ def is_valid_email(email):
         not email.endswith((".jpg", ".jpeg", ".png"))
     )
 
-# Name validation
 def looks_like_a_name(text):
     if not text or len(text.split()) > 4:
         return False
-    if text.strip().lower().startswith(("your", "the", "data", "provides", "25+")):
+    if text.strip().lower().startswith((
+        "your", "the", "data", "provides", "25+", "terms", "privacy", "cookies"
+    )):
         return False
-    return all(word[0].isupper() for word in text.strip().split()[:2])
+    return all(word and word[0].isupper() for word in text.strip().split()[:2])
 
-# Normalize
 def normalize_url(url):
     url = url.strip().rstrip("/")
     return url if url.startswith("http") else f"https://{url}"
 
-# Name cleaner
 def clean_name(text):
     text = re.sub(r"\b(CPA|CFE|EA|JD|MBA|PhD|Esq)\b", "", text)
     return re.sub(r"\s+", " ", text).strip(" ,:-")
 
-# Permutation logic
 def guess_email_permutations(name, domain):
     parts = name.lower().split()
     if len(parts) < 2:
@@ -65,7 +66,6 @@ def guess_email_permutations(name, domain):
         f"{first[0]}{last}@{domain}", f"{first}{last}@{domain}"
     ]
 
-# Extract people
 def extract_people_info(html):
     soup = BeautifulSoup(html, "html.parser")
     people, emails, linkedins = [], set(), set()
@@ -73,26 +73,22 @@ def extract_people_info(html):
     for tag in soup.find_all(['p', 'div', 'li', 'span', 'a']):
         text = tag.get_text(" ", strip=True)
 
-        # Titles
         for title in TITLE_KEYWORDS:
             if title.lower() in text.lower():
                 cleaned = clean_name(text)
                 if looks_like_a_name(cleaned):
                     people.append((cleaned, title))
 
-        # Emails
         for match in re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text):
             if is_valid_email(match):
                 emails.add(match)
 
-        # LinkedIn
         if "linkedin.com/in/" in text:
             links = re.findall(r"https?://(www\.)?linkedin\.com/in/[^\s\"'>]+", text)
             linkedins.update(links)
 
     return people, list(emails), list(linkedins)
 
-# Crawl
 def crawl_site(base_url):
     visited = set()
     to_visit = [base_url]
@@ -116,6 +112,8 @@ def crawl_site(base_url):
                 soup = BeautifulSoup(res.text, "html.parser")
                 for link in soup.find_all("a", href=True):
                     href = urljoin(url, link["href"])
+                    if "#" in href:
+                        href = href.split("#")[0]
                     if urlparse(href).netloc == domain and href not in visited:
                         to_visit.append(href)
         except Exception as e:
@@ -124,7 +122,6 @@ def crawl_site(base_url):
 
     return all_people, list(set(all_emails)), list(set(all_linkedins))
 
-# Main
 def main():
     records = airtable.get_all()
     updated = 0
@@ -139,28 +136,25 @@ def main():
         people, emails, linkedins = crawl_site(norm_url)
 
         name, title, email, permutations, backup_email = "", "", "", "", ""
-        email_source, email_inferred_from = "", "", ""
+        email_source, email_inferred_from = "", ""
 
         if people:
             name, title = people[0]
             name = clean_name(name)
             domain = urlparse(norm_url).netloc.replace("www.", "")
 
-            # Check if decision maker email exists
             for em in emails:
                 if name.split()[0].lower() in em.lower():
                     email = em
                     email_source = "website"
                     break
 
-            # Fallback to permutation logic
             if not email and emails:
                 backup_email = emails[0]
                 email_source = "guessed"
                 permutations = ", ".join(guess_email_permutations(name, domain))
                 email_inferred_from = backup_email.split("@")[0]
 
-        # Prepare update payload
         update_data = {
             "Decision Maker Name": name,
             "Decision Maker Title": title,
