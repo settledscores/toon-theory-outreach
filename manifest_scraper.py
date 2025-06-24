@@ -26,7 +26,7 @@ async def scrape_manifest():
             url = BASE_URL.format(i)
             print(f"🌐 Scraping: {url}")
             await page.goto(url, timeout=60000)
-            await page.wait_for_load_state("networkidle")
+            await page.wait_for_selector(".directory-list__item", timeout=30000)
 
             html = await page.content()
 
