@@ -1,49 +1,57 @@
 import os
-import time
-import random
-from duckduckgo_search import DDGS
+import requests
+from urllib.parse import quote
 from pyairtable import Api
 from dotenv import load_dotenv
-from urllib.parse import urlparse
 
 load_dotenv()
 
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 
 api = Api(AIRTABLE_API_KEY)
-table = api.table(AIRTABLE_BASE_ID, SCRAPER_TABLE_NAME)
+table = api.base(AIRTABLE_BASE_ID).table(SCRAPER_TABLE_NAME)
 
-search_queries = [
-    'accounting firm site:.com',
-    'bookkeeping agency site:.com',
-    'tax preparation services site:.com',
-    'business consulting services site:.com',
-    'financial advisory site:.com'
+HEADERS = {"X-API-KEY": SCRAPER_API_KEY}
+SEARCH_QUERIES = [
+    "accounting San Francisco",
+    "bookkeeping New York"
 ]
 
-print("🔎 Running DDG discovery scrape...")
+def fetch_places(query):
+    url = f"https://api.scraperapi.com/structured/maps/search?query={quote(query)}&limit=10"
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    return response.json().get("places", [])
 
-for query in search_queries:
-    print(f"🔍 Searching: \"{query}\"")
-    with DDGS() as ddgs:
-        results = ddgs.text(query, max_results=5)
-        for result in results:
-            url = result.get("href") or result.get("url")
-            if not url:
-                continue
-            parsed = urlparse(url)
-            domain = parsed.netloc or parsed.path.split('/')[0]
-            business_name = domain.replace("www.", "").split(".")[0].replace("-", " ").title()
-            try:
-                table.create({
-                    "website url": url,
-                    "business name": business_name
-                })
-                print(f"✅ Added: {business_name} ({url})")
-            except Exception as e:
-                print(f"❌ Failed to add {url}: {e}")
-            time.sleep(random.uniform(1, 3))
+def extract_business_data(place):
+    return {
+        "fields": {
+            "website url": place.get("website"),
+            "business name": place.get("title")
+        }
+    }
 
-print("🎉 Done.")
+def main():
+    print("📍 Running Google Maps business scraper (10 test results)...")
+    for query in SEARCH_QUERIES:
+        print(f"🔍 Querying: {query}")
+        try:
+            results = fetch_places(query)
+            for place in results:
+                if not place.get("website"):
+                    continue
+                data = extract_business_data(place)
+                try:
+                    table.create(data)
+                    print(f"✅ Added: {data['fields']['business name']}")
+                except Exception as airtable_error:
+                    print(f"❌ Airtable error for {data['fields']}: {airtable_error}")
+        except Exception as scrape_error:
+            print(f"❌ Failed to fetch results for query '{query}': {scrape_error}")
+    print("🎉 Scrape complete.")
+
+if __name__ == "__main__":
+    main()
