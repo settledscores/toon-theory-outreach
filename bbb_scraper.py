@@ -30,16 +30,25 @@ def get_search_results():
     params = {
         "api_key": SCRAPER_API_KEY,
         "url": SEARCH_URL,
-        "render": "true"
+        "render": "true",
+        "country_code": "us"
     }
+
     try:
-        res = requests.get("http://api.scraperapi.com", params=params, headers=HEADERS, timeout=30)
+        res = requests.get("https://api.scraperapi.com", params=params, headers=HEADERS, timeout=30)
         print(f"📄 Response size: {len(res.text)} bytes")
+
+        # Save raw HTML for debugging
+        with open("debug.html", "w", encoding="utf-8") as f:
+            f.write(res.text)
+        print("🧪 Saved raw HTML to debug.html")
+
         soup = BeautifulSoup(res.text, 'html.parser')
         links = soup.select("a.Link__StyledLink-sc-1dh2vhu-0")
         profile_urls = [urljoin(BASE_URL, link['href']) for link in links if "/profile/" in link['href']]
         print(f"🔗 Found {len(profile_urls)} profile links")
         return profile_urls[:MAX_LEADS]
+
     except Exception as e:
         print(f"❌ Failed to fetch search results: {e}")
         return []
