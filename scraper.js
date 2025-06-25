@@ -22,37 +22,26 @@ async function humanScroll(page) {
 async function scrapeProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
-    console.log(`🧭 Currently scraping: ${page.url()}`);
-
+    console.log(`🧭 Scraping profile: ${url}`);
     await delay(randomBetween(2000, 4000));
     await humanScroll(page);
 
-    // Capture screenshot and HTML snapshot
     const timestamp = Date.now();
-    const screenshotPath = `bbb_screenshot_${timestamp}.png`;
-    const htmlPath = `bbb_html_${timestamp}.html`;
-
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    fs.writeFileSync(htmlPath, await page.content());
+    await page.screenshot({ path: `bbb_screenshot_${timestamp}.png`, fullPage: true });
+    fs.writeFileSync(`bbb_html_${timestamp}.html`, await page.content());
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
 
-      const businessName = getText('[data-testid="business-name"]') ||
-        document.querySelector('h1')?.textContent.trim() || '';
-
-      const principalContact = getText('[data-testid="leadership-name"]') ||
-        getText('[data-testid="leadership-contact"]');
-
-      const jobTitle = getText('[data-testid="leadership-title"]');
-      const location = getText('[data-testid="business-address"]') ||
-        getText('[itemprop="address"]');
-      const years = getText('[data-testid="years-in-business"]') ||
-        getText('[itemprop="foundingDate"]');
-      const industry = getText('[data-testid="business-category"]');
+      const businessName = getText('h1[data-testid="business-title"]');
+      const principalContact = getText('section[data-testid="leadership-section"] [data-testid="leadership-name"]');
+      const jobTitle = getText('section[data-testid="leadership-section"] [data-testid="leadership-title"]');
+      const location = getText('div[data-testid="business-address"]');
+      const years = getText('div[data-testid="years-in-business"]');
+      const industry = getText('div[data-testid="business-category"]');
 
       const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.href.includes('http') && /website/i.test(a.innerText)
+        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
       )?.href || '';
 
       return {
@@ -68,7 +57,7 @@ async function scrapeProfile(page, url) {
 
     return data;
   } catch (err) {
-    console.error(`❌ Failed to scrape ${url}:`, err.message);
+    console.error(`❌ Error scraping ${url}:`, err.message);
     return null;
   }
 }
@@ -109,7 +98,7 @@ async function scrapeProfile(page, url) {
     if (profile) results.push(profile);
 
     const waitTime = randomBetween(15000, 60000);
-    console.log(`⏳ Waiting ${Math.round(waitTime / 1000)}s to mimic human behavior.`);
+    console.log(`⏳ Waiting ${Math.round(waitTime / 1000)}s before next.`);
     await delay(waitTime);
   }
 
