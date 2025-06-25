@@ -6,6 +6,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -15,17 +16,23 @@ jobs:
           node-version: '20'
 
       - name: Cache node modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install dependencies (skip Chromium download)
+      - name: Skip Puppeteer Chromium download
+        run: npm config set puppeteer_skip_chromium_download true
+
+      - name: Install Chromium manually
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Install dependencies
         run: npm install
-        env:
-          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
 
       - name: Run scraper
         run: npm start
