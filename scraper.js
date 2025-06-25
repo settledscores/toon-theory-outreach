@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
+const axios = require('axios');
 
 puppeteer.use(StealthPlugin());
 
@@ -20,28 +21,80 @@ async function humanScroll(page) {
 
 async function scrapeProfile(page, url) {
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
-    await delay(randomBetween(2000, 5000));
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    await delay(randomBetween(2000, 4000));
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
-      const businessName = getText('h1');
-      const principalContact = getText('[data-testid="leadership-name"]');
+
+      const businessName = getText('[data-testid="business-name"]') ||
+        document.querySelector('h1')?.textContent.trim() || '';
+
+      const principalContact = getText('[data-testid="leadership-name"]') ||
+        getText('[data-testid="leadership-contact"]');
+
       const jobTitle = getText('[data-testid="leadership-title"]');
-      const location = getText('[data-testid="business-address"]');
-      const years = getText('[data-testid="years-in-business"]');
+      const location = getText('[data-testid="business-address"]') ||
+        getText('[itemprop="address"]');
+
+      const years = getText('[data-testid="years-in-business"]') ||
+        getText('[itemprop="foundingDate"]');
+
       const industry = getText('[data-testid="business-category"]');
+
       const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.href.includes('http') && a.innerText.toLowerCase().includes('website')
+        a.href.includes('http') && /website/i.test(a.innerText)
       )?.href || '';
-      return { businessName, principalContact, jobTitle, location, years, industry, website };
+
+      return {
+        businessName,
+        principalContact,
+        jobTitle,
+        location,
+        years,
+        industry,
+        website
+      };
     });
 
     return data;
   } catch (err) {
     console.error(`❌ Failed to scrape ${url}:`, err.message);
     return null;
+  }
+}
+
+async function pushToAirtable(record) {
+  try {
+    const response = await axios.post(
+      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`,
+      {
+        records: [
+          {
+            fields: {
+              "website url": record.website,
+              "location": record.location,
+              "industry": record.industry,
+              "years": record.years,
+              "Decision Maker Name": record.principalContact,
+              "Decision Maker Title": record.jobTitle,
+              "business name": record.businessName
+            }
+          }
+        ]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ Synced to Airtable: ${record.businessName}`);
+  } catch (err) {
+    console.error(`❌ Airtable sync failed for ${record.businessName}`, err.message);
   }
 }
 
@@ -60,8 +113,6 @@ async function scrapeProfile(page, url) {
   await page.waitForSelector('a[href*="/profile/"]', { timeout: 15000 });
   await humanScroll(page);
 
-  await page.screenshot({ path: 'bbb_debug.png', fullPage: true });
-
   const profileLinks = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('a[href*="/profile/"]'))
       .map(a => a.href)
@@ -75,7 +126,19 @@ async function scrapeProfile(page, url) {
     const link = profileLinks[i];
     console.log(`🔗 Visiting ${link}`);
     const profile = await scrapeProfile(page, link);
-    if (profile) results.push(profile);
+
+    // Filter: require website, businessName, and principalContact
+    if (
+      profile &&
+      profile.website &&
+      profile.businessName &&
+      profile.principalContact
+    ) {
+      results.push(profile);
+      await pushToAirtable(profile);
+    } else {
+      console.log(`⏭ Skipping incomplete profile: ${link}`);
+    }
 
     const waitTime = randomBetween(15000, 60000);
     console.log(`⏳ Waiting ${Math.round(waitTime / 1000)}s to mimic human behavior.`);
