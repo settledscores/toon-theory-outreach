@@ -1,8 +1,8 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
-import fs from 'fs';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 puppeteer.use(StealthPlugin());
@@ -26,50 +26,76 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const scrolls = randomBetween(3, 6);
-  for (let i = 0; i < scrolls; i++) {
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(300, 700));
-    await page.mouse.move(randomBetween(200, 1000), randomBetween(100, 800));
+  const steps = randomBetween(5, 10);
+  for (let i = 0; i < steps; i++) {
+    await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
+    await page.evaluate(() => {
+      window.scrollBy(0, window.innerHeight / 2);
+    });
+    await delay(randomBetween(300, 1000));
   }
+  await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
 }
 
 async function extractProfile(page, url) {
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
-    await delay(randomBetween(2000, 4000));
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
+    await delay(randomBetween(1500, 3000));
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
-      const scriptTag = Array.from(document.querySelectorAll('script')).find(s => s.textContent.includes('business_name'));
-      const businessName = scriptTag?.textContent.match(/"business_name":"([^"]+)"/)?.[1] || '';
-      const website = Array.from(document.querySelectorAll('a')).find(a => a.innerText.toLowerCase().includes('visit website'))?.href || '';
-      const addressMatch = document.body.innerText.match(/\s[A-Z]{2}\s\d{5}(-\d{4})?/);
+      const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('"business_name"'));
+      const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
+      const businessName = businessNameMatch?.[1] || '';
+
+      const website = Array.from(document.querySelectorAll('a')).find(a =>
+        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
+      )?.href || '';
+
+      const addressMatch = document.body.innerText.match(/(?:[A-Z][a-z]+,)?\s?[A-Z]{2}\s\d{5}(-\d{4})?/);
       const location = addressMatch?.[0]?.trim() || '';
-      const mgmt = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(.*)/);
-      const principalContact = mgmt?.[2]?.trim() || '';
-      const jobTitle = mgmt?.[3]?.trim().split('\n')[0] || '';
-      const years = document.body.innerText.match(/Business Started:\s*(.+)/)?.[1]?.trim() || '';
+
+      const mgmtMatch = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(Owner|CEO|Manager|President|Founder)?/i);
+      const principalContact = mgmtMatch?.[2]?.trim() || '';
+      const jobTitle = mgmtMatch?.[3]?.trim() || '';
+
+      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
+      const years = yearsMatch?.[1]?.trim().split('\n')[0] || '';
+
       const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)\n[A-Z]/i);
       const industry = industryMatch?.[1]?.split('\n').map(s => s.trim()).filter(Boolean).join(', ') || '';
-      return { businessName, principalContact, jobTitle, location, years, industry, website };
+
+      return {
+        businessName,
+        principalContact,
+        jobTitle,
+        location,
+        years,
+        industry,
+        website
+      };
     });
 
-    if (!data.website || !data.principalContact) return null;
+    if (!data.website || !data.principalContact || !data.businessName) return null;
     return data;
-  } catch (e) {
-    console.warn(`⚠️ Failed to scrape: ${url}`);
+
+  } catch (err) {
+    console.error(`❌ Failed to extract: ${url} — ${err.message}`);
     return null;
   }
 }
 
 async function syncToAirtable(record) {
-  if (!process.env.AIRTABLE_API_KEY) return;
+  if (
+    !process.env.AIRTABLE_API_KEY ||
+    !process.env.AIRTABLE_BASE_ID ||
+    !process.env.SCRAPER_TABLE_NAME
+  ) return;
+
   const body = {
     fields: {
       'business name': record.businessName,
       'website url': record.website,
-      'notes': '',
       'location': record.location,
       'industry': record.industry,
       'years': record.years,
@@ -77,6 +103,7 @@ async function syncToAirtable(record) {
       'Decision Maker Title': record.jobTitle
     }
   };
+
   const res = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
     method: 'POST',
     headers: {
@@ -100,47 +127,54 @@ async function syncToAirtable(record) {
     executablePath: '/usr/bin/chromium-browser',
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
+
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
   const visited = new Set();
 
-  for (const nicheUrl of NICHES) {
-    console.log(`🔍 Starting niche: ${nicheUrl}`);
-    let collected = 0;
+  for (const niche of NICHES) {
+    console.log(`🔍 Starting niche: ${niche}`);
     let pageNum = 1;
+    let totalScraped = 0;
 
-    while (collected < 50) {
-      const pagedUrl = `${nicheUrl}${nicheUrl.includes('page=') ? '' : `&page=${pageNum}`}`;
+    while (totalScraped < 50) {
+      const pagedUrl = `${niche}&page=${pageNum}`;
       console.log(`📄 Scraping page ${pageNum}`);
       await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1000, 3000));
       await humanScroll(page);
 
-      const profileLinks = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+      const links = await page.evaluate(() =>
+        [...document.querySelectorAll('a[href*="/profile/"]')]
           .map(a => a.href)
-          .filter((v, i, arr) => arr.indexOf(v) === i && !v.includes('/about'))
+          .filter((href, i, arr) => href.includes('/profile/') && arr.indexOf(href) === i)
       );
 
-      if (!profileLinks.length) break;
+      if (links.length === 0) break;
 
-      for (const link of profileLinks) {
-        if (visited.has(link) || collected >= 50) continue;
+      for (const link of links) {
+        if (visited.has(link)) continue;
         visited.add(link);
+
         console.log(`🔗 Visiting: ${link}`);
         const data = await extractProfile(page, link);
+
         if (data) {
           await syncToAirtable(data);
-          collected++;
+          totalScraped++;
         }
+
         await delay(randomBetween(7000, 25000));
+        if (totalScraped >= 50) break;
       }
+
       pageNum++;
     }
-    console.log(`✅ Finished: ${collected} profiles scraped from niche.`);
+
+    console.log(`🏁 Finished niche: ${niche} — Scraped ${totalScraped} valid profiles`);
   }
 
   await browser.close();
-  console.log('🏁 All done.');
+  console.log('✅ All niches complete.');
 })();
