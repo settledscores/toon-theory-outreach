@@ -8,21 +8,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Chromium manually
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: Install Node.js dependencies (skip Chromium download)
-        run: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install
+      - name: Install dependencies (skipped if cached)
+        run: |
+          if [ ! -d "node_modules" ]; then
+            npm install
+          else
+            echo "✅ node_modules cache restored, skipping npm install"
+          fi
 
       - name: Run scraper
         run: npm start
