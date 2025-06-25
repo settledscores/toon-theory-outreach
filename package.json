@@ -1,0 +1,19 @@
+{
+  "name": "bbb-scraper",
+  "version": "1.0.0",
+  "description": "Stealth Puppeteer scraper for Better Business Bureau profiles",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "keywords": ["scraper", "bbb", "puppeteer", "stealth", "automation"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.1",
+    "puppeteer": "^21.3.8",
+    "chalk": "^5.3.0",
+    "fs-extra": "^11.2.0"
+  }
+}
