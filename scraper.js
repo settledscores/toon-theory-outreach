@@ -77,7 +77,7 @@ async function syncToAirtable(record) {
       'Decision Maker Title': record.jobTitle
     }
   };
-  await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
+  const res = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
@@ -85,7 +85,13 @@ async function syncToAirtable(record) {
     },
     body: JSON.stringify(body)
   });
-  console.log(`✅ Scraped: ${record.businessName}`);
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`❌ Airtable sync failed (${res.status}):`, text);
+  } else {
+    console.log(`✅ Scraped: ${record.businessName}`);
+  }
 }
 
 (async () => {
