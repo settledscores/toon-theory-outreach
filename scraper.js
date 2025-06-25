@@ -58,7 +58,6 @@ async function extractProfile(page, url) {
     if (!data.website || !data.principalContact) return null;
     return data;
   } catch (e) {
-    console.warn('⚠️ Failed to scrape:', url);
     return null;
   }
 }
@@ -99,14 +98,11 @@ async function syncToAirtable(record) {
   const visited = new Set();
 
   for (const nicheUrl of NICHES) {
-    console.log(`🔎 Starting niche: ${nicheUrl}`);
     let collected = 0;
     let pageNum = 1;
 
     while (collected < 50) {
       const pagedUrl = `${nicheUrl}${nicheUrl.includes('page=') ? '' : `&page=${pageNum}`}`;
-      console.log(`📄 Page ${pageNum}: ${pagedUrl}`);
-
       await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1000, 3000));
       await humanScroll(page);
@@ -122,24 +118,16 @@ async function syncToAirtable(record) {
       for (const link of profileLinks) {
         if (visited.has(link) || collected >= 50) continue;
         visited.add(link);
-        console.log(`🔗 Visiting ${link}`);
-
         const data = await extractProfile(page, link);
         if (data) {
-          console.table(data);
           await syncToAirtable(data);
           collected++;
         }
-
         await delay(randomBetween(7000, 25000));
       }
-
       pageNum++;
     }
-
-    console.log(`✅ Finished niche with ${collected} profiles.`);
   }
 
   await browser.close();
-  console.log('🏁 All done.');
 })();
