@@ -1,7 +1,6 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
-const path = require('path');
 
 puppeteer.use(StealthPlugin());
 
@@ -31,14 +30,23 @@ async function scrapeProfile(page, url) {
     fs.writeFileSync(`bbb_html_${timestamp}.html`, await page.content());
 
     const data = await page.evaluate(() => {
-      const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
+      const businessName = document.querySelector('h1')?.innerText.trim() || '';
 
-      const businessName = getText('h1[data-testid="business-title"]');
-      const principalContact = getText('section[data-testid="leadership-section"] [data-testid="leadership-name"]');
-      const jobTitle = getText('section[data-testid="leadership-section"] [data-testid="leadership-title"]');
-      const location = getText('div[data-testid="business-address"]');
-      const years = getText('div[data-testid="years-in-business"]');
-      const industry = getText('div[data-testid="business-category"]');
+      const locationNode = document.querySelector('h1')?.nextElementSibling;
+      const location = locationNode?.innerText?.trim() || '';
+
+      const principalSection = Array.from(document.querySelectorAll('section'))
+        .find(sec => /Business Management/i.test(sec.innerText));
+      const principalText = principalSection?.innerText || '';
+      const match = principalText.match(/(Mr\.|Ms\.|Mrs\.|Dr\.)?\s?([A-Z][a-z]+\s?[A-Z]?[a-z]*),?\s*(Owner|CEO|Manager|President)?/i);
+      const principalContact = match?.[2]?.trim() || '';
+      const jobTitle = match?.[3]?.trim() || '';
+
+      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
+      const years = yearsMatch?.[1]?.trim() || '';
+
+      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)More Resources/i);
+      const industry = industryMatch?.[1]?.replace(/\n/g, ', ').trim() || '';
 
       const website = Array.from(document.querySelectorAll('a')).find(a =>
         a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
@@ -55,10 +63,10 @@ async function scrapeProfile(page, url) {
       };
     });
 
-    return data;
+    console.log('📋 Scraped Data:');
+    console.table(data);
   } catch (err) {
     console.error(`❌ Error scraping ${url}:`, err.message);
-    return null;
   }
 }
 
@@ -89,13 +97,10 @@ async function scrapeProfile(page, url) {
 
   console.log(`✅ Found ${profileLinks.length} valid profile links.`);
 
-  const results = [];
-
   for (let i = 0; i < 1 && i < profileLinks.length; i++) {
     const link = profileLinks[i];
     console.log(`🔗 Visiting ${link}`);
-    const profile = await scrapeProfile(page, link);
-    if (profile) results.push(profile);
+    await scrapeProfile(page, link);
 
     const waitTime = randomBetween(15000, 60000);
     console.log(`⏳ Waiting ${Math.round(waitTime / 1000)}s before next.`);
@@ -103,6 +108,5 @@ async function scrapeProfile(page, url) {
   }
 
   await browser.close();
-  fs.writeFileSync('bbb_results.json', JSON.stringify(results, null, 2));
-  console.log('📄 Results saved to bbb_results.json');
+  console.log('✅ Scrape complete.');
 })();
