@@ -1,7 +1,6 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
-const axios = require('axios');
 
 puppeteer.use(StealthPlugin());
 
@@ -24,6 +23,9 @@ async function scrapeProfile(page, url) {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
     await delay(randomBetween(2000, 4000));
     await humanScroll(page);
+
+    const htmlSnapshot = await page.content();
+    fs.writeFileSync(`debug-${Date.now()}.html`, htmlSnapshot); // Capture full DOM for inspection
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
@@ -65,39 +67,6 @@ async function scrapeProfile(page, url) {
   }
 }
 
-async function pushToAirtable(record) {
-  try {
-    const response = await axios.post(
-      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`,
-      {
-        records: [
-          {
-            fields: {
-              "website url": record.website,
-              "location": record.location,
-              "industry": record.industry,
-              "years": record.years,
-              "Decision Maker Name": record.principalContact,
-              "Decision Maker Title": record.jobTitle,
-              "business name": record.businessName
-            }
-          }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log(`✅ Synced to Airtable: ${record.businessName}`);
-  } catch (err) {
-    console.error(`❌ Airtable sync failed for ${record.businessName}`, err.message);
-  }
-}
-
 (async () => {
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -122,23 +91,11 @@ async function pushToAirtable(record) {
   console.log(`✅ Found ${profileLinks.length} profiles.`);
 
   const results = [];
-  for (let i = 0; i < Math.min(profileLinks.length, 5); i++) {
+  for (let i = 0; i < Math.min(profileLinks.length, 10); i++) {
     const link = profileLinks[i];
     console.log(`🔗 Visiting ${link}`);
     const profile = await scrapeProfile(page, link);
-
-    // Filter: require website, businessName, and principalContact
-    if (
-      profile &&
-      profile.website &&
-      profile.businessName &&
-      profile.principalContact
-    ) {
-      results.push(profile);
-      await pushToAirtable(profile);
-    } else {
-      console.log(`⏭ Skipping incomplete profile: ${link}`);
-    }
+    if (profile) results.push(profile);
 
     const waitTime = randomBetween(15000, 60000);
     console.log(`⏳ Waiting ${Math.round(waitTime / 1000)}s to mimic human behavior.`);
