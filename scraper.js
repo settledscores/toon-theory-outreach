@@ -30,27 +30,25 @@ async function scrapeProfile(page, url) {
     fs.writeFileSync(`bbb_html_${timestamp}.html`, await page.content());
 
     const data = await page.evaluate(() => {
+      const safeText = el => el?.innerText?.trim() || '';
       const businessName = document.querySelector('h1')?.innerText.trim() || '';
-
-      const locationNode = document.querySelector('h1')?.nextElementSibling;
-      const location = locationNode?.innerText?.trim() || '';
-
-      const principalSection = Array.from(document.querySelectorAll('section'))
-        .find(sec => /Business Management/i.test(sec.innerText));
-      const principalText = principalSection?.innerText || '';
-      const match = principalText.match(/(Mr\.|Ms\.|Mrs\.|Dr\.)?\s?([A-Z][a-z]+\s?[A-Z]?[a-z]*),?\s*(Owner|CEO|Manager|President)?/i);
-      const principalContact = match?.[2]?.trim() || '';
-      const jobTitle = match?.[3]?.trim() || '';
-
-      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
-      const years = yearsMatch?.[1]?.trim() || '';
-
-      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)More Resources/i);
-      const industry = industryMatch?.[1]?.replace(/\n/g, ', ').trim() || '';
 
       const website = Array.from(document.querySelectorAll('a')).find(a =>
         a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
       )?.href || '';
+
+      const addressMatch = document.body.innerText.match(/(?:[A-Z][a-z]+,)?\s?[A-Z]{2}\s\d{5}(-\d{4})?/);
+      const location = addressMatch?.[0]?.trim() || '';
+
+      const mgmtMatch = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(Owner|CEO|Manager|President|Founder)?/i);
+      const principalContact = mgmtMatch?.[2]?.trim() || '';
+      const jobTitle = mgmtMatch?.[3]?.trim() || '';
+
+      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
+      const years = yearsMatch?.[1]?.trim().split('\n')[0] || '';
+
+      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)\n[A-Z]/i);
+      const industry = industryMatch?.[1]?.split('\n').map(s => s.trim()).filter(Boolean).join(', ') || '';
 
       return {
         businessName,
@@ -81,7 +79,7 @@ async function scrapeProfile(page, url) {
   await page.setViewport({ width: 1280, height: 800 });
 
   console.log('🔍 Navigating to BBB search page...');
-  await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle2', timeout: 0 });
   await page.waitForSelector('a[href*="/profile/"]', { timeout: 15000 });
   await humanScroll(page);
 
