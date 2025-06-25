@@ -1,7 +1,10 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const fs = require('fs');
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
+dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const BASE_URL = 'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA';
@@ -67,6 +70,44 @@ async function scrapeProfile(page, url) {
 
     console.log('📋 Scraped Data:');
     console.table(data);
+
+    // ✅ Airtable sync
+    if (
+      process.env.AIRTABLE_API_KEY &&
+      process.env.AIRTABLE_BASE_ID &&
+      process.env.SCRAPER_TABLE_NAME
+    ) {
+      const record = {
+        fields: {
+          'business name': data.businessName,
+          'website url': data.website,
+          'notes': '',
+          'location': data.location,
+          'industry': data.industry,
+          'years': data.years,
+          'Decision Maker Name': data.principalContact,
+          'Decision Maker Title': data.jobTitle
+        }
+      };
+
+      await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(record)
+      }).then(res => res.json())
+        .then(res => {
+          if (res.id) {
+            console.log(`✅ Airtable record created: ${res.id}`);
+          } else {
+            console.warn('⚠️ Airtable response:', res);
+          }
+        }).catch(err => {
+          console.error('❌ Airtable sync failed:', err.message);
+        });
+    }
   } catch (err) {
     console.error(`❌ Error scraping ${url}:`, err.message);
   }
