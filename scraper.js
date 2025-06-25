@@ -9,7 +9,6 @@ puppeteer.use(StealthPlugin());
 const BASE_URL = 'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
@@ -29,7 +28,6 @@ async function scrapeProfile(page, url) {
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
-
       const businessName = getText('h1');
       const principalContact = getText('[data-testid="leadership-name"]');
       const jobTitle = getText('[data-testid="leadership-title"]');
@@ -37,7 +35,6 @@ async function scrapeProfile(page, url) {
       const years = getText('[data-testid="years-in-business"]');
       const industry = getText('[data-testid="business-category"]');
       const website = document.querySelector('a[data-testid="business-website"]')?.href || '';
-
       return { businessName, principalContact, jobTitle, location, years, industry, website };
     });
 
@@ -49,7 +46,10 @@ async function scrapeProfile(page, url) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath: '/usr/bin/google-chrome' // use system Chrome
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
