@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
+const path = require('path');
 
 puppeteer.use(StealthPlugin());
 
@@ -21,11 +22,18 @@ async function humanScroll(page) {
 async function scrapeProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    console.log(`🧭 Currently scraping: ${page.url()}`);
+
     await delay(randomBetween(2000, 4000));
     await humanScroll(page);
 
-    const htmlSnapshot = await page.content();
-    fs.writeFileSync(`debug-${Date.now()}.html`, htmlSnapshot); // Capture full DOM for inspection
+    // Capture screenshot and HTML snapshot
+    const timestamp = Date.now();
+    const screenshotPath = `bbb_screenshot_${timestamp}.png`;
+    const htmlPath = `bbb_html_${timestamp}.html`;
+
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    fs.writeFileSync(htmlPath, await page.content());
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
@@ -39,10 +47,8 @@ async function scrapeProfile(page, url) {
       const jobTitle = getText('[data-testid="leadership-title"]');
       const location = getText('[data-testid="business-address"]') ||
         getText('[itemprop="address"]');
-
       const years = getText('[data-testid="years-in-business"]') ||
         getText('[itemprop="foundingDate"]');
-
       const industry = getText('[data-testid="business-category"]');
 
       const website = Array.from(document.querySelectorAll('a')).find(a =>
@@ -85,13 +91,18 @@ async function scrapeProfile(page, url) {
   const profileLinks = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('a[href*="/profile/"]'))
       .map(a => a.href)
-      .filter((v, i, arr) => arr.indexOf(v) === i);
+      .filter((href, i, arr) =>
+        href.includes('/profile/') &&
+        !href.includes('/about') &&
+        arr.indexOf(href) === i
+      );
   });
 
-  console.log(`✅ Found ${profileLinks.length} profiles.`);
+  console.log(`✅ Found ${profileLinks.length} valid profile links.`);
 
   const results = [];
-  for (let i = 0; i < Math.min(profileLinks.length, 10); i++) {
+
+  for (let i = 0; i < 1 && i < profileLinks.length; i++) {
     const link = profileLinks[i];
     console.log(`🔗 Visiting ${link}`);
     const profile = await scrapeProfile(page, link);
