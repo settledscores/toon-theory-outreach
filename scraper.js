@@ -31,7 +31,11 @@ async function scrapeProfile(page, url) {
 
     const data = await page.evaluate(() => {
       const safeText = el => el?.innerText?.trim() || '';
-      const businessName = document.querySelector('h1')?.innerText.trim() || '';
+
+      const businessName =
+        document.querySelector('div.styles-module__headerContainer___1Cvgh h1')?.innerText.trim() ||
+        Array.from(document.querySelectorAll('h1')).find(h => h.innerText.length > 5)?.innerText.trim() ||
+        '';
 
       const website = Array.from(document.querySelectorAll('a')).find(a =>
         a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
