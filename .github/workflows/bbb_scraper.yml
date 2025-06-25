@@ -8,31 +8,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Skip Puppeteer Chromium download
-        run: npm config set puppeteer_skip_chromium_download true
-
       - name: Install Chromium manually
         run: |
           sudo apt-get update
           sudo apt-get install -y chromium-browser
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Node.js dependencies (skip Chromium download)
+        run: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install
 
       - name: Run scraper
         run: npm start
