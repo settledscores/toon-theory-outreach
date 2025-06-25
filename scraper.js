@@ -47,8 +47,8 @@ async function scrapeProfile(page, url) {
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: '/usr/bin/google-chrome' // use system Chrome
+    executablePath: '/usr/bin/chromium-browser',
+    headless: true
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
