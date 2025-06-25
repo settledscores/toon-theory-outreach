@@ -1,5 +1,3 @@
-// scraper.js
-
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
@@ -14,8 +12,8 @@ const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) 
 async function humanScroll(page) {
   const scrollSteps = randomBetween(4, 8);
   for (let i = 0; i < scrollSteps; i++) {
-    await page.mouse.move(randomBetween(100, 900), randomBetween(100, 700));
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
+    await page.mouse.move(randomBetween(0, 800), randomBetween(0, 600));
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 3));
     await delay(randomBetween(500, 1500));
   }
 }
@@ -28,16 +26,15 @@ async function scrapeProfile(page, url) {
 
     const data = await page.evaluate(() => {
       const getText = sel => document.querySelector(sel)?.innerText?.trim() || '';
-      const getLink = sel => document.querySelector(sel)?.href || '';
-
       const businessName = getText('h1');
       const principalContact = getText('[data-testid="leadership-name"]');
       const jobTitle = getText('[data-testid="leadership-title"]');
       const location = getText('[data-testid="business-address"]');
       const years = getText('[data-testid="years-in-business"]');
       const industry = getText('[data-testid="business-category"]');
-      const website = getLink('a[data-testid="business-website"]');
-
+      const website = Array.from(document.querySelectorAll('a')).find(a =>
+        a.href.includes('http') && a.innerText.toLowerCase().includes('website')
+      )?.href || '';
       return { businessName, principalContact, jobTitle, location, years, industry, website };
     });
 
@@ -50,8 +47,8 @@ async function scrapeProfile(page, url) {
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: '/snap/bin/chromium',
+    headless: 'new',
+    executablePath: '/usr/bin/chromium-browser',
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
