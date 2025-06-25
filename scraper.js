@@ -10,10 +10,10 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const scrollSteps = randomBetween(4, 8);
-  for (let i = 0; i < scrollSteps; i++) {
+  const steps = randomBetween(4, 8);
+  for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(0, 800), randomBetween(0, 600));
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 3));
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
     await delay(randomBetween(500, 1500));
   }
 }
@@ -56,12 +56,14 @@ async function scrapeProfile(page, url) {
   await page.setViewport({ width: 1280, height: 800 });
 
   console.log('🔍 Navigating to BBB search page...');
-  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await delay(randomBetween(2000, 4000));
+  await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('a[href*="/profile/"]', { timeout: 15000 });
   await humanScroll(page);
 
+  await page.screenshot({ path: 'bbb_debug.png', fullPage: true });
+
   const profileLinks = await page.evaluate(() => {
-    return [...document.querySelectorAll('[data-testid="business-title"] > a')]
+    return Array.from(document.querySelectorAll('a[href*="/profile/"]'))
       .map(a => a.href)
       .filter((v, i, arr) => arr.indexOf(v) === i);
   });
