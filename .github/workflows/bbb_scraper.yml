@@ -33,3 +33,16 @@ jobs:
 
       - name: Run scraper
         run: npm start
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbb-scraper-results
+          path: bbb_results.json
+
+      - name: Upload Debug Screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshot
+          path: bbb_debug.png
