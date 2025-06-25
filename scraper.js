@@ -1,29 +1,145 @@
-yay it worked, airtable updated successfully. 
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import fetch from 'node-fetch';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-i think we need to scale and add pagination support so it can cycle through pages. i will send you a bunch of relevant links to include.
+dotenv.config();
+puppeteer.use(StealthPlugin());
 
-also i think we should cut the randomised waiting time in half so we can make room for more human-like patterns such as scrolling up and down the profile pages and using the mouse cursor to hover over links. this way, we can optimise for increased quantity and not sacrifice our stealth, while also staying within the limits of the github limit of 6 hours per run. do the math and decide the best approach for this, its up tp you to decide how many to scrape per hour and still stay under the radar.
+const NICHES = [
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_country=USA&find_entity=60170-110&find_id=6349_000-000-7524&find_latlng=28.511388%2C-81.308452&find_loc=Orlando%2C%20FL&find_text=Business%20Development&find_type=Category&page=1',
+  'https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=San+Jose%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=San+Francisco%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Austin%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA',
+  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA'
+];
 
-here are the links per niche. it should scrape 50 profiles for every link group. dont forget the original link we worked with. if it cant find 50 leads in any link, it should gather whatever it cant find and mive on to the next. profiles witnout decison makers or websites should be omitted. also duplicate profiles and other data should be omitted.
+const delay = ms => new Promise(res => setTimeout(res, ms));
+const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-https://www.bbb.org/search?find_country=USA&find_entity=60170-110&find_id=6349_000-000-7524&find_latlng=28.511388%2C-81.308452&find_loc=Orlando%2C%20FL&find_text=Business%20Development&find_type=Category&page=1
+async function humanScroll(page) {
+  const scrolls = randomBetween(3, 6);
+  for (let i = 0; i < scrolls; i++) {
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
+    await delay(randomBetween(300, 700));
+    await page.mouse.move(randomBetween(200, 1000), randomBetween(100, 800));
+  }
+}
 
-https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=San+Jose%2C+CA&find_country=USA
+async function extractProfile(page, url) {
+  try {
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    await delay(randomBetween(2000, 4000));
+    await humanScroll(page);
 
-https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA
+    const data = await page.evaluate(() => {
+      const scriptTag = Array.from(document.querySelectorAll('script')).find(s => s.textContent.includes('business_name'));
+      const businessName = scriptTag?.textContent.match(/"business_name":"([^"]+)"/)?.[1] || '';
+      const website = Array.from(document.querySelectorAll('a')).find(a => a.innerText.toLowerCase().includes('visit website'))?.href || '';
+      const addressMatch = document.body.innerText.match(/\s[A-Z]{2}\s\d{5}(-\d{4})?/);
+      const location = addressMatch?.[0]?.trim() || '';
+      const mgmt = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(.*)/);
+      const principalContact = mgmt?.[2]?.trim() || '';
+      const jobTitle = mgmt?.[3]?.trim().split('\n')[0] || '';
+      const years = document.body.innerText.match(/Business Started:\s*(.+)/)?.[1]?.trim() || '';
+      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)\n[A-Z]/i);
+      const industry = industryMatch?.[1]?.split('\n').map(s => s.trim()).filter(Boolean).join(', ') || '';
+      return { businessName, principalContact, jobTitle, location, years, industry, website };
+    });
 
-https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=San+Francisco%2C+CA&find_country=USA
+    if (!data.website || !data.principalContact) return null;
+    return data;
+  } catch (e) {
+    console.warn('⚠️ Failed to scrape:', url);
+    return null;
+  }
+}
 
-https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Austin%2C+TX&find_country=USA
+async function syncToAirtable(record) {
+  if (!process.env.AIRTABLE_API_KEY) return;
+  const body = {
+    fields: {
+      'business name': record.businessName,
+      'website url': record.website,
+      'notes': '',
+      'location': record.location,
+      'industry': record.industry,
+      'years': record.years,
+      'Decision Maker Name': record.principalContact,
+      'Decision Maker Title': record.jobTitle
+    }
+  };
+  await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+}
 
-https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA
+(async () => {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: '/usr/bin/chromium-browser',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 800 });
 
-https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA
+  const visited = new Set();
 
-https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA
+  for (const nicheUrl of NICHES) {
+    console.log(`🔎 Starting niche: ${nicheUrl}`);
+    let collected = 0;
+    let pageNum = 1;
 
-https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA
+    while (collected < 50) {
+      const pagedUrl = `${nicheUrl}${nicheUrl.includes('page=') ? '' : `&page=${pageNum}`}`;
+      console.log(`📄 Page ${pageNum}: ${pagedUrl}`);
 
-https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA
+      await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
+      await delay(randomBetween(1000, 3000));
+      await humanScroll(page);
 
-https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA
+      const profileLinks = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+          .map(a => a.href)
+          .filter((v, i, arr) => arr.indexOf(v) === i && !v.includes('/about'))
+      );
+
+      if (!profileLinks.length) break;
+
+      for (const link of profileLinks) {
+        if (visited.has(link) || collected >= 50) continue;
+        visited.add(link);
+        console.log(`🔗 Visiting ${link}`);
+
+        const data = await extractProfile(page, link);
+        if (data) {
+          console.table(data);
+          await syncToAirtable(data);
+          collected++;
+        }
+
+        await delay(randomBetween(7000, 25000));
+      }
+
+      pageNum++;
+    }
+
+    console.log(`✅ Finished niche with ${collected} profiles.`);
+  }
+
+  await browser.close();
+  console.log('🏁 All done.');
+})();
