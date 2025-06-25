@@ -1,4 +1,4 @@
-name: Run BBB Scraper
+name: Run BBB Scraper (Airtable + Debug)
 
 on:
   workflow_dispatch:
@@ -6,6 +6,11 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+
+    env:
+      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,24 +34,23 @@ jobs:
             Linux-node-modules-
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install node-fetch@2 dotenv
 
-      - name: Run scraper
-        env:
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-          SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+      - name: Run Puppeteer Scraper
         run: npm start
 
-      - name: Upload JSON Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: bbb-scraper-results
-          path: bbb_results.json
-
-      - name: Upload Screenshot (Debug)
+      - name: Upload Screenshot(s)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-screenshot
-          path: bbb_debug.png
+          name: bbb-screenshots
+          path: bbb_screenshot_*.png
+
+      - name: Upload HTML Snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbb-html
+          path: bbb_html_*.html
