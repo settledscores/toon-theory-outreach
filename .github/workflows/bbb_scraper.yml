@@ -32,15 +32,19 @@ jobs:
         run: npm install
 
       - name: Run scraper
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
         run: npm start
 
-      - name: Upload results
+      - name: Upload JSON Results
         uses: actions/upload-artifact@v4
         with:
           name: bbb-scraper-results
           path: bbb_results.json
 
-      - name: Upload Debug Screenshot
+      - name: Upload Screenshot (Debug)
         if: always()
         uses: actions/upload-artifact@v4
         with:
