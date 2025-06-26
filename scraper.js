@@ -15,7 +15,7 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const steps = randomBetween(4, 8);
+  const steps = randomBetween(5, 8);
   for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
@@ -24,8 +24,8 @@ async function humanScroll(page) {
 }
 
 function isValidName(name, businessName) {
-  if (!name || name.length < 5) return false;
-  if (name.toLowerCase().includes(businessName.toLowerCase())) return false;
+  if (!name || name.length < 4) return false;
+  if (name.toLowerCase() === businessName.toLowerCase()) return false;
   const cleaned = name.replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '').trim();
   const wordCount = cleaned.split(/\s+/).length;
   return wordCount >= 2 && wordCount <= 4;
@@ -54,6 +54,7 @@ async function extractProfile(page, url) {
       )?.href || '';
 
       const fullText = document.body.innerText;
+
       const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
       const location = locationMatch?.[0] || '';
 
@@ -90,7 +91,6 @@ async function extractProfile(page, url) {
     ) return null;
 
     return data;
-
   } catch (err) {
     console.error(`❌ Failed to extract: ${url} — ${err.message}`);
     return null;
@@ -102,7 +102,10 @@ async function syncToAirtable(record) {
     !process.env.AIRTABLE_API_KEY ||
     !process.env.AIRTABLE_BASE_ID ||
     !process.env.SCRAPER_TABLE_NAME
-  ) return;
+  ) {
+    console.error('❌ Airtable config missing.');
+    return;
+  }
 
   const body = {
     fields: {
@@ -116,20 +119,25 @@ async function syncToAirtable(record) {
     }
   };
 
-  const res = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
+  try {
+    const res = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(`❌ Airtable sync failed (${res.status}):`, text);
-  } else {
-    console.log(`✅ Scraped: ${record.businessName}`);
+    const result = await res.text();
+
+    if (!res.ok) {
+      console.error(`❌ Airtable error (${res.status}): ${result}`);
+    } else {
+      console.log(`✅ Scraped: ${record.businessName}`);
+    }
+  } catch (err) {
+    console.error(`❌ Airtable request failed: ${err.message}`);
   }
 }
 
@@ -149,24 +157,24 @@ async function syncToAirtable(record) {
     console.log(`🔍 Scraping niche: ${baseUrl}`);
     let pageNum = 1;
     let validCount = 0;
-    let consecutiveEmptyPages = 0;
+    let consecutiveEmpty = 0;
 
-    while (validCount < 50 && consecutiveEmptyPages < 5) {
-      const url = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
+    while (validCount < 50 && consecutiveEmpty < 5) {
+      const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
+      await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1500, 3000));
       await humanScroll(page);
 
-      const profileLinks = await page.evaluate(() => {
+      const links = await page.evaluate(() => {
         return [...document.querySelectorAll('a[href*="/profile/"]')]
           .map(a => a.href)
-          .filter((v, i, arr) => arr.indexOf(v) === i);
+          .filter((href, i, arr) => arr.indexOf(href) === i);
       });
 
-      if (!profileLinks.length) break;
+      if (!links.length) break;
 
       let scrapedThisPage = 0;
-      for (const link of profileLinks) {
+      for (const link of links) {
         if (seen.has(link)) continue;
         seen.add(link);
 
@@ -181,21 +189,17 @@ async function syncToAirtable(record) {
           }
         }
 
-        await delay(randomBetween(6000, 15000));
+        await delay(randomBetween(5000, 10000));
         if (validCount >= 50) break;
       }
 
-      if (scrapedThisPage === 0) {
-        consecutiveEmptyPages++;
-      } else {
-        consecutiveEmptyPages = 0;
-      }
-
+      consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
 
-    console.log(`🏁 Finished niche: ${baseUrl} — ${validCount} valid profiles`);
+    console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
 
   await browser.close();
+  console.log('✅ All niches done.');
 })();
