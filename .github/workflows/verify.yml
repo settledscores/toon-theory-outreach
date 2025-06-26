@@ -1,0 +1,44 @@
+name: Verify Emails via Tor
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: 📦 Install Python dependencies
+        run: |
+          pip install stem pysocks dnspython requests
+
+      - name: 🔐 Configure secrets as environment variables
+        run: |
+          echo "AIRTABLE_API_KEY=${{ secrets.AIRTABLE_API_KEY }}" >> $GITHUB_ENV
+          echo "AIRTABLE_BASE_ID=${{ secrets.AIRTABLE_BASE_ID }}" >> $GITHUB_ENV
+          echo "SCRAPER_TABLE_NAME=${{ secrets.SCRAPER_TABLE_NAME }}" >> $GITHUB_ENV
+          echo "TOR_CONTROL_PASSWORD=${{ secrets.TOR_CONTROL_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: 🌐 Install and start Tor with control port
+        run: |
+          sudo apt update
+          sudo apt install -y tor
+
+          # Add hashed control password to torrc
+          HASHED_PASSWORD=$(tor --hash-password "$TOR_CONTROL_PASSWORD")
+          echo "ControlPort 9051" | sudo tee -a /etc/tor/torrc
+          echo "CookieAuthentication 0" | sudo tee -a /etc/tor/torrc
+          echo "HashedControlPassword $HASHED_PASSWORD" | sudo tee -a /etc/tor/torrc
+
+          sudo systemctl restart tor
+          sleep 10
+
+      - name: 🚀 Run verifier
+        run: python verifier.py
