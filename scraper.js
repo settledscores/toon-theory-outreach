@@ -23,33 +23,40 @@ async function humanScroll(page) {
   }
 }
 
-function isValidName(name, businessName) {
-  if (!name || name.length < 4) return false;
-  if (name.toLowerCase() === businessName.toLowerCase()) return false;
-  const cleaned = name.replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '').trim();
-  const wordCount = cleaned.split(/\s+/).length;
-  return wordCount >= 2 && wordCount <= 4;
-}
-
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
 
-  let clean = raw
-    .replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '')
-    .replace(/[,/]+$/, '') // remove trailing commas/slashes
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Remove honorifics and punctuation at ends
+  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
+  let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
 
-  if (clean.toLowerCase() === businessName.toLowerCase()) return null;
+  // If comma exists, split name/title
+  let namePart = clean;
+  let titlePart = '';
+  if (clean.includes(',')) {
+    const [name, title] = clean.split(',', 2);
+    namePart = name.trim();
+    titlePart = title.trim();
+  }
 
-  const parts = clean.split(' ');
-  if (parts.length < 2) return null;
+  // Reject reused business name
+  if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
 
-  const firstName = parts[0];
-  const lastName = parts[parts.length - 1];
-  const middleName = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+  // Split name by spaces (keep initials with dots)
+  const tokens = namePart.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2 || tokens.length > 4) return null;
 
-  return { firstName, middleName, lastName };
+  const firstName = tokens[0];
+  const lastName = tokens[tokens.length - 1];
+  const middleName = tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '';
+
+  return {
+    firstName,
+    middleName,
+    lastName,
+    title: titlePart
+  };
 }
 
 async function extractProfile(page, url) {
@@ -72,12 +79,8 @@ async function extractProfile(page, url) {
       const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
       const location = locationMatch?.[0] || '';
 
-      const principalMatch = fullText.match(/Principal Contacts\s+(Mr\.|Ms\.|Mrs\.|Dr\.)?\s?([^\n]+)/i);
-      const principalContactRaw = principalMatch?.[2]?.trim() || '';
-
-      const jobTitleMatch = principalContactRaw.match(/(Owner|CEO|Founder|Manager|Director|Partner)$/i);
-      const jobTitle = jobTitleMatch?.[1] || '';
-      const principalContact = principalContactRaw.replace(jobTitle, '').trim();
+      const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
+      const principalContactRaw = principalMatch?.[1]?.trim() || '';
 
       const yearsMatch = fullText.match(/Business Started:\s*(.+)/i);
       const years = yearsMatch?.[1]?.split('\n')[0].trim() || '';
@@ -87,8 +90,7 @@ async function extractProfile(page, url) {
 
       return {
         businessName,
-        principalContact,
-        jobTitle,
+        principalContact: principalContactRaw,
         location,
         years,
         industry,
@@ -130,7 +132,7 @@ async function syncToAirtable(record) {
       'First Name': record.firstName,
       'Middle Name': record.middleName,
       'Last Name': record.lastName,
-      'Decision Maker Title': record.jobTitle
+      'Decision Maker Title': record.title
     }
   };
 
