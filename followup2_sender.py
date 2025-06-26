@@ -32,15 +32,15 @@ LAGOS = pytz.timezone("Africa/Lagos")
 
 # Subject lines for Follow-up 2 (25 variants)
 SUBJECT_LINES = [
-    "any thoughts on this, {name}?", "checking back in, {name}", "quick follow-up, {name}",
-    "still curious if this helps", "wondering if this sparked anything", "visual storytelling, still on the table?",
-    "a quick nudge your way", "happy to mock something up", "short reminder, {name}",
-    "just revisiting this idea", "whiteboard sketch still an option?", "no pressure, just following up",
-    "back with another nudge", "a final nudge, {name}", "hoping this reached you",
-    "revisiting that animation idea", "let me know if now's better", "still worth exploring?",
-    "quick question on our last email", "still around if helpful", "do you want me to close this out?",
-    "open to creative pitches?", "visual ideas always on hand", "just in case it got buried",
-    "hope this isn’t too forward"
+    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
+    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
+    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
+    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
+    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
+    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
+    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
+    "Open to creative pitches?", "Visual ideas always on hand", "Just in case it got buried",
+    "Hope this isn’t too forward"
 ]
 
 last_sent_time = None
