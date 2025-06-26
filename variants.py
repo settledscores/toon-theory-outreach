@@ -10,6 +10,23 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
+# --- Variant Rotator ---
+
+class VariantRotator:
+    def __init__(self, items):
+        self.original_items = items[:]
+        self.pool = []
+        self._reshuffle()
+
+    def _reshuffle(self):
+        self.pool = self.original_items[:]
+        random.shuffle(self.pool)
+
+    def next(self):
+        if not self.pool:
+            self._reshuffle()
+        return self.pool.pop()
+
 # --- Variant Lists ---
 
 paragraph1_templates = [
@@ -30,19 +47,32 @@ paragraph2_variants = [
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:\n"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used for:\n",
+    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end—illustration, scripting, voice, and storyboarding—and they’re often used for:\n",
+    "Visual storytelling could be a strong lever for {company}, especially when clarity and connection are key.\n\nWe take care of the entire process—from script to storyboard to final voiceover—and they’re typically applied to:\n",
+    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift—script, visuals, voice—and these are often created for:\n",
+    "For {company}, a short explainer could help communicate key ideas more clearly and quickly.\n\nWe take care of everything—writing, illustrating, voicing, and producing—so you can focus on results. These typically support:\n"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
     "These animations don’t just explain, they convert; Many clients see a big lift in engagement, trust, and sales.",
+    "Clients often tell us these pieces help cut through the noise, increase clarity, and lead to more meaningful conversions.",
+    "Whether it’s more signups, better retention, or faster understanding, these animations tend to move the needle where it counts.",
+    "People use these to clarify complex ideas, but they often notice the real impact in engagement and conversion metrics too."
 ]
 
 paragraph5_variants = [
-    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. All at zero cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
-    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings at zero cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
-    "I'd be happy to draft a no-cost, ten-second demo around something core to your brand. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
-    "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? Absolutely no pressure, just keen to see what this could look like with your voice behind it."
+    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. No strings attached; just curious to explore how it might sound with {company}'s voice.",
+    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings. No pressure at all; just interested in how this could come to life in {company}'s tone.",
+    "I'd be happy to draft a ten-second demo around something core to your brand. Totally low-lift, just keen to explore what this could look like with {company}'s voice behind it.",
+    "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? No expectations; just interested in showing you what’s possible.",
+    "Open to a quick preview? I could whip up a ten-second mock or short script tailored to something core at {company}; purely exploratory.",
+    "Happy to create a no-commitment snippet; a short script or sketch; that speaks to what {company} does best. Just a chance to show you what I mean.",
+    "If you're curious, I can pull together a short sketch or script draft focused on something {company} offers. Just to give you a sense of what it might sound like.",
+    "I’d love to put together a quick concept; maybe a script or a short visual; around one of your offerings. No strings, just a glimpse of the potential in {company}'s tone.",
+    "How about a quick sample built around {company}'s strengths? Ten seconds or so, just a feeler to see what resonates.",
+    "Could I sketch something out for you? A short demo or script idea based on what {company} does. No pitch; just something for you to react to."
 ]
 
 paragraph6_variants = [
@@ -53,9 +83,15 @@ paragraph6_variants = [
 
 paragraph7_cta_variants = [
     "Feel free to reply if you’d like to explore what this could look like. There’s also a link to our site in my signature if you’d like to take a peek at some of our previous work.",
-    "You’ll find a link to our site in the signature if you’d like to check out our past work — and I’d love to hear your thoughts if it sparks anything.",
-    "If it feels like a fit, reply any time. There’s also a link in my signature if you’d like to see a few past projects.",
-    "If you're open to chatting further? Just hit reply — and there’s a site link in the signature if you’d like to see a handful of our past projects."
+    "You’ll find a link to our site in the signature if you’d like to check out our past work. I’d love to hear your thoughts if anything stands out.",
+    "If it feels like a fit, you can reply any time. There’s also a link in my signature in case you want to browse a few previous projects.",
+    "If you're open to chatting more, just hit reply. And if you're curious, there’s a site link in the signature with a few past examples.",
+    "Curious what this might look like for you? I'm around if you want to explore. You’ll find some previous work in the signature link too.",
+    "Happy to dive deeper if you're interested. You can reply anytime, and there’s a portfolio link in my signature if you’d like to have a look.",
+    "Let me know if you'd like to take this further. You can check out some of our work through the link in my signature as well.",
+    "Always open to a quick chat if this feels worth exploring. In the meantime, you can view a few past pieces via the link in my signature.",
+    "Reply anytime if you'd like to talk more about this. There’s also a link below with some samples of what we’ve done before.",
+    "Just reach out if you’d like to continue the conversation. You’ll find a few previous projects linked in the signature below."
 ]
 
 signature_variants = [
@@ -65,6 +101,21 @@ signature_variants = [
     "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
+
+# --- Rotation Setup ---
+
+rotators = {
+    "p1": VariantRotator(paragraph1_templates),
+    "p2": VariantRotator(paragraph2_variants),
+    "p3": VariantRotator(paragraph3_additional_variants),
+    "p4b": VariantRotator(paragraph4b_variants),
+    "p5": VariantRotator(paragraph5_variants),
+    "p6": VariantRotator(paragraph6_variants),
+    "p7": VariantRotator(paragraph7_cta_variants),
+    "sig": VariantRotator(signature_variants),
+}
+
+# --- Utility Functions ---
 
 def parse_use_cases(use_case_field):
     raw = str(use_case_field or "")
@@ -78,22 +129,22 @@ def build_email(fields):
     bullet_block = "\n".join([f"• {uc}" for uc in use_cases])
 
     email = f"""
-{random.choice(paragraph1_templates).format(name=name, company=company)}
+{rotators["p1"].next().format(name=name, company=company)}
 
-{random.choice(paragraph2_variants)}
+{rotators["p2"].next()}
 
-{random.choice(paragraph3_additional_variants).format(company=company)}
+{rotators["p3"].next().format(company=company)}
 {bullet_block}
 
-{random.choice(paragraph4b_variants)}
+{rotators["p4b"].next()}
 
-{random.choice(paragraph5_variants).format(company=company)}
+{rotators["p5"].next().format(company=company)}
 
-{random.choice(paragraph7_cta_variants)}
+{rotators["p7"].next()}
 
-{random.choice(paragraph6_variants)}
+{rotators["p6"].next()}
 
-{random.choice(signature_variants)}
+{rotators["sig"].next()}
 """.strip()
 
     return email
