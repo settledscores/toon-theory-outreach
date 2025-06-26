@@ -2,39 +2,40 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
-import fs from 'fs';
 
 dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
   'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_country=USA&find_entity=60170-110&find_id=6349_000-000-7524&find_latlng=28.511388%2C-81.308452&find_loc=Orlando%2C%20FL&find_text=Business%20Development&find_type=Category&page=1',
-  'https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=San+Jose%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=San+Francisco%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Austin%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA',
-  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA',
-  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA',
-  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA'
+  'https://www.bbb.org/us/fl/alafaya/category/business-consultant?page=1'
 ];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const steps = randomBetween(5, 10);
+  const steps = randomBetween(4, 8);
   for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
-    await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight / 2);
-    });
-    await delay(randomBetween(300, 1000));
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
+    await delay(randomBetween(300, 800));
   }
-  await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
+}
+
+function isValidName(name, businessName) {
+  if (!name || name.length < 5) return false;
+  if (name.toLowerCase().includes(businessName.toLowerCase())) return false;
+  const cleaned = name.replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '').trim();
+  const wordCount = cleaned.split(/\s+/).length;
+  return wordCount >= 2 && wordCount <= 4;
+}
+
+function cleanName(raw) {
+  return raw
+    .replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function extractProfile(page, url) {
@@ -52,18 +53,22 @@ async function extractProfile(page, url) {
         a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
       )?.href || '';
 
-      const addressMatch = document.body.innerText.match(/(?:[A-Z][a-z]+,)?\s?[A-Z]{2}\s\d{5}(-\d{4})?/);
-      const location = addressMatch?.[0]?.trim() || '';
+      const fullText = document.body.innerText;
+      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
+      const location = locationMatch?.[0] || '';
 
-      const mgmtMatch = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(Owner|CEO|Manager|President|Founder)?/i);
-      const principalContact = mgmtMatch?.[2]?.trim() || '';
-      const jobTitle = mgmtMatch?.[3]?.trim() || '';
+      const principalMatch = fullText.match(/Principal Contacts\s+(Mr\.|Ms\.|Mrs\.|Dr\.)?\s?([^\n]+)/i);
+      const principalContactRaw = principalMatch?.[2]?.trim() || '';
 
-      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
-      const years = yearsMatch?.[1]?.trim().split('\n')[0] || '';
+      const jobTitleMatch = principalContactRaw.match(/(Owner|CEO|Founder|Manager|Director|Partner)$/i);
+      const jobTitle = jobTitleMatch?.[1] || '';
+      const principalContact = principalContactRaw.replace(jobTitle, '').trim();
 
-      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)\n[A-Z]/i);
-      const industry = industryMatch?.[1]?.split('\n').map(s => s.trim()).filter(Boolean).join(', ') || '';
+      const yearsMatch = fullText.match(/Business Started:\s*(.+)/i);
+      const years = yearsMatch?.[1]?.split('\n')[0].trim() || '';
+
+      const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
+      const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
 
       return {
         businessName,
@@ -76,7 +81,14 @@ async function extractProfile(page, url) {
       };
     });
 
-    if (!data.website || !data.principalContact || !data.businessName) return null;
+    data.principalContact = cleanName(data.principalContact);
+
+    if (
+      !data.website ||
+      !data.businessName ||
+      !isValidName(data.principalContact, data.businessName)
+    ) return null;
+
     return data;
 
   } catch (err) {
@@ -131,50 +143,59 @@ async function syncToAirtable(record) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  const visited = new Set();
+  const seen = new Set();
 
-  for (const niche of NICHES) {
-    console.log(`🔍 Starting niche: ${niche}`);
+  for (const baseUrl of NICHES) {
+    console.log(`🔍 Scraping niche: ${baseUrl}`);
     let pageNum = 1;
-    let totalScraped = 0;
+    let validCount = 0;
+    let consecutiveEmptyPages = 0;
 
-    while (totalScraped < 50) {
-      const pagedUrl = `${niche}&page=${pageNum}`;
-      console.log(`📄 Scraping page ${pageNum}`);
-      await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
-      await delay(randomBetween(1000, 3000));
+    while (validCount < 50 && consecutiveEmptyPages < 5) {
+      const url = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
+      await delay(randomBetween(1500, 3000));
       await humanScroll(page);
 
-      const links = await page.evaluate(() =>
-        [...document.querySelectorAll('a[href*="/profile/"]')]
+      const profileLinks = await page.evaluate(() => {
+        return [...document.querySelectorAll('a[href*="/profile/"]')]
           .map(a => a.href)
-          .filter((href, i, arr) => href.includes('/profile/') && arr.indexOf(href) === i)
-      );
+          .filter((v, i, arr) => arr.indexOf(v) === i);
+      });
 
-      if (links.length === 0) break;
+      if (!profileLinks.length) break;
 
-      for (const link of links) {
-        if (visited.has(link)) continue;
-        visited.add(link);
+      let scrapedThisPage = 0;
+      for (const link of profileLinks) {
+        if (seen.has(link)) continue;
+        seen.add(link);
 
-        console.log(`🔗 Visiting: ${link}`);
-        const data = await extractProfile(page, link);
-
-        if (data) {
-          await syncToAirtable(data);
-          totalScraped++;
+        const profile = await extractProfile(page, link);
+        if (profile) {
+          const dedupKey = `${profile.businessName}|${profile.website}`;
+          if (!seen.has(dedupKey)) {
+            seen.add(dedupKey);
+            await syncToAirtable(profile);
+            validCount++;
+            scrapedThisPage++;
+          }
         }
 
-        await delay(randomBetween(7000, 25000));
-        if (totalScraped >= 50) break;
+        await delay(randomBetween(6000, 15000));
+        if (validCount >= 50) break;
+      }
+
+      if (scrapedThisPage === 0) {
+        consecutiveEmptyPages++;
+      } else {
+        consecutiveEmptyPages = 0;
       }
 
       pageNum++;
     }
 
-    console.log(`🏁 Finished niche: ${niche} — Scraped ${totalScraped} valid profiles`);
+    console.log(`🏁 Finished niche: ${baseUrl} — ${validCount} valid profiles`);
   }
 
   await browser.close();
-  console.log('✅ All niches complete.');
 })();
