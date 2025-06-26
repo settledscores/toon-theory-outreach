@@ -17,17 +17,17 @@ SALUTATIONS = [
 ]
 
 SIGNATURES = [
-    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+    "Warm regards,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com"
 ]
 
 TEMPLATES = [
     """{salutation} {name},
 
-Just circling back in case the timing makes more sense now. I still believe whiteboard animation could simplify something {company} is working on—whether that’s a pitch, process, or product.
+Just circling back in case the timing makes more sense now. I still believe whiteboard animation could simplify something {company} is working on; whether that’s a pitch, process, or product.
 
 If you’d like to test the waters, I’m happy to sketch something out to show what it might look like.
 
@@ -49,7 +49,7 @@ You’ll find past examples in the signature below.
 
 Thought I’d check in one last time.
 
-If you're still curious what an explainer might look like for {company}, I’d be glad to share something rough—a short sketch, or script to get the ball rolling.
+If you're still curious what an explainer might look like for {company}, I’d be glad to share something rough; a short sketch, or script to get the ball rolling.
 
 You can find our work in the link below.
 
@@ -81,13 +81,13 @@ If you’re still considering new ways to share what {company} does, whiteboard 
 
 I’d be happy to send over a short visual draft to get the ideas flowing.
 
-No pressure—just a creative option to keep in mind.
+No pressure; just a creative option to keep in mind.
 
 {signature}""",
 
     """{salutation} {name},
 
-Hope this isn’t too forward—I just really think there’s potential to show off what {company} does through animation.
+Hope this isn’t too forward; I just really think there’s potential to show off what {company} does through animation.
 
 If you'd like to see what that might look like, I’d be happy to sketch something out.
 
@@ -137,7 +137,7 @@ But if you’re curious about how animation might help {company}, I’m still op
 
     """{salutation} {name},
 
-No pressure at all—just following up to say I’d still be happy to sketch something for {company} if you're curious.
+No pressure at all; just following up to say I’d still be happy to sketch something for {company} if you're curious.
 
 It could help simplify something you already offer, or clarify a new direction.
 
@@ -150,15 +150,6 @@ Whiteboard explainers are great for making complex ideas stick. If that’s some
 You’ll find our work in the link below if you want to browse examples.
 
 {signature}""",
-
-    """{salutation} {name},
-
-I’ll keep this short—I know you’re busy.
-
-If there’s ever a need to simplify messaging at {company}, I’d love to help with a short visual. Just hit reply.
-
-{signature}"""
-]
 
 def build_email(template, name, company, salutation, signature):
     return template.format(name=name, company=company, salutation=salutation, signature=signature)
@@ -181,7 +172,7 @@ def main():
             eligible.append((record_id, name, company))
             print("   ✅ Eligible")
         else:
-            print("   ❌ Skipping — missing name/company or email 3 already exists")
+            print("   ❌ Skipping ;  missing name/company or email 3 already exists")
 
     if not eligible:
         print("⚠️ No eligible records found.")
