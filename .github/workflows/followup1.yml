@@ -1,4 +1,4 @@
-name: Generate Followup Email 2
+name: Generate Followup Email 1
 
 on:
   push:
