@@ -11,13 +11,14 @@ from stem import Signal
 from stem.control import Controller
 from email.utils import parseaddr
 from datetime import datetime
+import threading
 
 # Constants
 SOCKS_PROXY = ("127.0.0.1", 9050)
 TOR_CONTROL_PORT = 9051
 MAX_RETRIES = 3
 RETRY_DELAY = 5
-SLEEP_BETWEEN_CHECKS = 7  # ~500/hour
+SLEEP_BETWEEN_CHECKS = 7
 EHLO_DOMAIN = "outlook.com"
 MX_BYPASS_LIST = [
     "gmail-smtp-in.l.google.com",
@@ -39,11 +40,13 @@ with open("permutations.txt") as f:
     emails = [line.strip() for line in f if line.strip()]
 verified = []
 
+log_lock = threading.Lock()
 def log(message):
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    with open(LOG_FILE, "a") as f:
-        f.write(f"{timestamp} {message}\n")
-    print(message)
+    with log_lock:
+        timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+        print(f"{timestamp} {message}")
+        with open(LOG_FILE, "a") as f:
+            f.write(f"{timestamp} {message}\n")
 
 def is_tor_alive():
     s = socket.socket()
@@ -85,15 +88,14 @@ def smtp_check(email):
 
     for _, mx in mx_records:
         if any(bypass in mx for bypass in MX_BYPASS_LIST):
-            log(f"⚠️ Skipping MX-blocked domain: {email} via {mx}")
-            return None, "mx_bypass"
+            log(f"⚠️ MX-blocked domain detected: {email} via {mx}")
 
         for attempt in range(MAX_RETRIES):
             try:
                 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, *SOCKS_PROXY)
                 socket.socket = socks.socksocket
 
-                server = smtplib.SMTP(timeout=10)
+                server = smtplib.SMTP(timeout=12)
                 server.connect(mx)
                 server.helo(EHLO_DOMAIN)
                 server.mail('test@outlook.com')
@@ -109,10 +111,16 @@ def smtp_check(email):
                 log(f"🔁 Retry {email} ({attempt+1}) - Disconnected.")
                 time.sleep(RETRY_DELAY)
             except smtplib.SMTPConnectError as e:
-                return None, f"connect_error: {e}"
+                log(f"⚠️ Connect error: {email} — {e}")
+                renew_tor_identity()
+                time.sleep(10)
+                break
             except Exception as e:
-                return None, f"error: {e}"
-    return False, "timeout"
+                log(f"⚠️ General error: {email} — {e}")
+                renew_tor_identity()
+                time.sleep(10)
+                break
+    return None, "soft_fail"
 
 log(f"🚀 Verifying {len(emails)} emails...")
 
@@ -130,12 +138,21 @@ for i, email in enumerate(emails):
         verified.append(email)
     elif result is False:
         log(f"❌ Invalid: {email}")
-    elif result is None and reason == "mx_bypass":
-        log(f"⚠️ Skipped due to major MX block: {email}")
-    else:
-        log(f"⚠️ Soft fail: {email} — {reason}")
-        renew_tor_identity()
-        time.sleep(10)
+    elif result is None:
+        log(f"🔁 Persistent retry: {email} — {reason}")
+        for retry in range(2):
+            renew_tor_identity()
+            time.sleep(8)
+            result_retry, reason_retry = smtp_check(email)
+            if result_retry:
+                log(f"✅ Valid on retry: {email}")
+                verified.append(email)
+                break
+            elif result_retry is False:
+                log(f"❌ Invalid on retry: {email}")
+                break
+            else:
+                log(f"⏳ Still failing: {email} — {reason_retry}")
 
     time.sleep(random.uniform(SLEEP_BETWEEN_CHECKS - 1, SLEEP_BETWEEN_CHECKS + 1))
 
