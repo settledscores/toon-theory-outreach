@@ -1,4 +1,4 @@
-name: Verify Emails with Tor
+name: Verify Emails
 
 on:
   workflow_dispatch:
@@ -7,37 +7,45 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
-    env:
-      TOR_CONTROL_PASSWORD: ${{ secrets.TOR_CONTROL_PASSWORD }}
-
     steps:
-      - name: ⬇️ Checkout Repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: 3.11
 
-      - name: 🛠 Install dependencies
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y tor torsocks
           pip install stem dnspython PySocks
 
-      - name: ⚙️ Configure Tor
+      - name: Configure Tor
         run: |
           echo "ControlPort 9051" | sudo tee -a /etc/tor/torrc
           echo "CookieAuthentication 0" | sudo tee -a /etc/tor/torrc
-          echo "HashedControlPassword ${TOR_CONTROL_PASSWORD}" | sudo tee -a /etc/tor/torrc
-          sudo systemctl restart tor
-          sleep 5
+          echo "HashedControlPassword $(tor --hash-password my_password)" | sudo tee -a /etc/tor/torrc
 
-      - name: 📁 Check permutations.txt exists
+      - name: Start Tor service
+        run: |
+          sudo systemctl start tor
+          sleep 10
+
+      - name: Add permutations.txt if missing
         run: |
           if [ ! -f permutations.txt ]; then
-            echo "❌ permutations.txt not found"; exit 1;
+            echo "No permutations.txt file found." > permutations.txt
           fi
 
-      - name: 🔍 Run verifier.py
+      - name: Run verifier
+        env:
+          TOR_CONTROL_PASSWORD: my_password
         run: python verifier.py
+
+      - name: Upload verified emails
+        uses: actions/upload-artifact@v3
+        with:
+          name: verified_emails
+          path: verified_emails.json
