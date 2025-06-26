@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -52,7 +53,7 @@ Feel free to reply if you’re curious. Our website’s link is in my signature 
 
 I figured I’d follow up on my previous note from a couple days back just in case it got buried.
 
-I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their messaging. And I still that: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
+I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their messaging. And I still think: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
 
 If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you; just something to get the ideas flowing.
 
@@ -74,36 +75,50 @@ Feel free to reply if this could be worth a shot. You’ll also find a link to o
 """
 ]
 
-def generate_followup_1_email(fields, template):
+def clean_use_cases(raw_text):
+    raw = str(raw_text or "")
+    raw_list = [item.strip() for item in raw.split("|") if item.strip()]
+    cleaned = []
+    for item in raw_list:
+        item_clean = re.sub(r"[^\w\s]", "", item).lower()
+        cleaned.append(item_clean)
+        if len(cleaned) == 3:
+            break
+    return cleaned
+
+def generate_followup_email(fields, template, use_cases):
     return template.format(
         name=fields.get("name", "[name]").strip(),
         company=fields.get("company name", "[company]").strip(),
-        use_case_1=fields.get("inline 1", "[use case 1]").strip(),
-        use_case_2=fields.get("inline 2", "[use case 2]").strip(),
-        use_case_3=fields.get("inline 3", "[use case 3]").strip(),
+        use_case_1=use_cases[0] if len(use_cases) > 0 else "[use case 1]",
+        use_case_2=use_cases[1] if len(use_cases) > 1 else "[use case 2]",
+        use_case_3=use_cases[2] if len(use_cases) > 2 else "[use case 3]",
         signature=fields.get("signature", "[signature]").strip()
     )
 
 def main():
     records = airtable.get_all()
-    eligible = []
+    updated = 0
+
+    random.shuffle(TEMPLATES)
 
     for record in records:
         fields = record.get("fields", {})
-        if "email 2" not in fields or not fields["email 2"].strip():
-            if all(k in fields for k in ["name", "company name", "inline 1", "inline 2", "inline 3", "signature"]):
-                eligible.append((record["id"], fields))
+        record_id = record["id"]
 
-    random.shuffle(eligible)
-    random.shuffle(TEMPLATES)
+        if fields.get("email 2", "").strip():
+            continue
 
-    updated = 0
-    for idx, (record_id, fields) in enumerate(eligible):
-        template = TEMPLATES[idx % len(TEMPLATES)]
-        content = generate_followup_1_email(fields, template)
-        airtable.update(record_id, {"email 2": content})
-        updated += 1
-        print(f"✅ Email 2 updated for: {fields.get('name')}")
+        if "use case" in fields and "name" in fields and "company name" in fields and "signature" in fields:
+            use_cases = clean_use_cases(fields["use case"])
+            if len(use_cases) < 2:
+                continue  # not enough clean use cases to generate email
+
+            template = random.choice(TEMPLATES)
+            email_content = generate_followup_email(fields, template, use_cases)
+            airtable.update(record_id, {"email 2": email_content})
+            updated += 1
+            print(f"✅ Email 2 written for: {fields['name']}")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
