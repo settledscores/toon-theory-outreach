@@ -16,13 +16,11 @@ TEMPLATES = [
 
 Hope your week’s going well. Just wanted to follow up on the note I sent a few days ago about Toon Theory.
 
-We create animated explainer videos that help businesses like {company} break down the dense copy and turn them into something clear and engaging.
-
-I still think there’s potential to try this out with one of your core offerings. Such as {use_case_3} or {use_case_2}
+I still think there’s potential to try out animated storytelling with one of your core offerings. Such as {use_case_3} or {use_case_2}
 
 I’d still be more than happy to draft a script or sketch a ten-second demo to show what kind of potential this could have. All at zero cost to you.
 
-Feel free to reply if this sounds interesting — and there’s a link to our site in the signature if you’d like to check out some of our past work.
+Feel free to reply this email if you're still curious to explore the fit — and there’s a link to our site in my signature if you’d like to check out some of our past work.
 
 {signature}
 """,
@@ -32,7 +30,7 @@ Just wanted to follow up on my last note in case it got buried.
 
 I genuinely think animated storytelling could help bring ideas like {use_case_1} or {use_case_2} into sharper focus for your audience.
 
-We make the whole process simple: scripting, illustrations, storyboard, voiceover — all done for you. I’d be happy to draft a quick demo at no cost, just to show what it could look like in action. 
+We make the whole process simple: scripting, illustrations, storyboard, voiceover... all done for you. I’d be happy to draft a quick teaser of a sample script at no cost, just to show what it could look like in action. 
 
 If that sounds worth exploring, feel free to reply. Our website’s link in my signature if you'd like to take a peek at some of our past projects.
 
@@ -42,11 +40,11 @@ If that sounds worth exploring, feel free to reply. Our website’s link in my s
 
 Hope your week’s going well so far.
 
-I wanted to follow up on my last email about Toon Theory; the animation studio I run. We create whiteboard explainer videos that simplify complex ideas, especially for companies like {company} doing meaningful work.
+I wanted to follow up on my last email about Toon Theory; the animation studio I run. Animated videos could simplify complex ideas, especially for businesses like {company} doing meaningful work.
 
-If you’re still exploring ways to make things like {use_case_1} or {use_case_3} more engaging, I’d be happy to sketch a sample or share a quick storyboard. No charge. No pressure. Just a thoughtful way to explore the idea visually. 
+If you’re still exploring ways to make things like {use_case_1} or {use_case_3} more engaging, I’d be happy to sketch a sample or share a quick storyboard. No charge. No pressure. Just a thoughtful way to explore the idea. 
 
-Feel free to reply if you’re curious. Our website’s link is in my signature if you want to see explore some of our past projects.
+Feel free to reply if you’re curious. Our website’s link is in my signature if you want to see check out some of our past projects.
 
 {signature}
 """,
@@ -54,9 +52,9 @@ Feel free to reply if you’re curious. Our website’s link is in my signature 
 
 I figured I’d follow up on my previous note from a couple days back just in case it got buried.
 
-I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their message. And I keep thinking: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
+I mentioned how we create animated explainers to help businesses like {company} cut through the noise and supercharge their messaging. And I still that: {use_case_2} or {use_case_1} could work beautifully as a 90-second explainer. 
 
-If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you — just something to get the ideas flowing.
+If you’re open to it, I can put together a brief teaser or script to show what that might look like, at zero cost to you; just something to get the ideas flowing.
 
 Let me know if this sounds like something worth trying. You’ll also find our website link in my signature if you'd like to take a peek at some of our past work.
 
@@ -68,7 +66,7 @@ Just wanted to follow up on my earlier note about using short explainer videos t
 
 I know you’re busy, so no pressure; but I’d still love to share a quick teaser tailored to one of your core offerings. Such as {use_case_2} or {use_case_3} 
 
-Even a 10-second sketch can give you a feel for how whiteboard animation could simplify the way you communicate amongst teams or how you provide industry-specific insights to your clients.
+Even a 10-second sketch can give you a feel for how whiteboard animation could simplify the way you communicate among teams or how you provide industry-specific insights to your clients.
 
 Feel free to reply if this could be worth a shot. You’ll also find a link to our website in my signature if you'd like to check out some of our previous projects.
 
