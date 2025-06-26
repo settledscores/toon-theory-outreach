@@ -75,57 +75,62 @@ Feel free to reply if this could be worth a shot. You’ll also find a link to o
 """
 ]
 
-def clean_use_cases(raw_text):
-    raw = str(raw_text or "")
-    raw_list = [item.strip() for item in raw.split("|") if item.strip()]
-    cleaned = []
-    for item in raw_list:
-        item_clean = re.sub(r"[^\w\s]", "", item).lower()
-        cleaned.append(item_clean)
-        if len(cleaned) == 3:
-            break
-    return cleaned
+def parse_use_cases(use_case_field):
+    raw = str(use_case_field or "")
+    items = [re.sub(r'[^\w\s]', '', uc).lower().strip() for uc in raw.split("|") if uc.strip()]
+    return items[:3]
 
 def generate_followup_email(fields, template, use_cases):
     return template.format(
         name=fields.get("name", "[name]").strip(),
         company=fields.get("company name", "[company]").strip(),
-        use_case_1=use_cases[0] if len(use_cases) > 0 else "[use case 1]",
-        use_case_2=use_cases[1] if len(use_cases) > 1 else "[use case 2]",
-        use_case_3=use_cases[2] if len(use_cases) > 2 else "[use case 3]",
+        use_case_1=use_cases[0],
+        use_case_2=use_cases[1],
+        use_case_3=use_cases[2],
         signature=fields.get("signature", "[signature]").strip()
     )
 
 def main():
+    print("🔍 Scanning records...")
     records = airtable.get_all()
     updated = 0
 
-    print("🔍 Scanning records...")
-    random.shuffle(TEMPLATES)
-
     for record in records:
-        fields = record.get("fields", {})
         record_id = record["id"]
+        fields = record.get("fields", {})
 
         print(f"→ Checking record {record_id} for update eligibility")
 
-        if fields.get("email 2", "").strip():
-            print("   Skipping — already has email 2")
+        email_2 = fields.get("email 2", "")
+        use_case_raw = fields.get("use case", "")
+        name = fields.get("name", "")
+        company = fields.get("company name", "")
+        signature = fields.get("signature", "")
+
+        print(f"   email 2: {'[EMPTY]' if not email_2.strip() else '[FILLED]'}")
+        print(f"   use case: {'[EMPTY]' if not use_case_raw.strip() else use_case_raw}")
+        print(f"   name: {'[MISSING]' if not name else name}")
+        print(f"   company: {'[MISSING]' if not company else company}")
+        print(f"   signature: {'[MISSING]' if not signature else '[OK]'}")
+
+        if email_2.strip():
+            print("   Skipping — email 2 already exists.\n")
             continue
 
-        if "use case" in fields and "name" in fields and "company name" in fields and "signature" in fields:
-            use_cases = clean_use_cases(fields["use case"])
-            if len(use_cases) < 2:
-                print("   Skipping — not enough valid use cases")
-                continue
+        use_cases = parse_use_cases(use_case_raw)
+        if len(use_cases) < 3:
+            print("   Skipping — not enough valid use cases.\n")
+            continue
+        if not name or not company or not signature:
+            print("   Skipping — missing required fields.\n")
+            continue
 
-            template = random.choice(TEMPLATES)
-            email_content = generate_followup_email(fields, template, use_cases)
-            airtable.update(record_id, {"email 2": email_content})
-            updated += 1
-            print(f"✅ Email 2 written for: {fields['name']}")
-        else:
-            print("   Skipping — missing required fields")
+        template = random.choice(TEMPLATES)
+        content = generate_followup_email(fields, template, use_cases)
+
+        airtable.update(record_id, {"email 2": content})
+        updated += 1
+        print(f"✅ Email 2 updated for: {name}\n")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
