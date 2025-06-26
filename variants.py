@@ -30,7 +30,7 @@ paragraph2_variants = [
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:\n"
 ]
 
 paragraph4b_variants = [
