@@ -13,13 +13,13 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 # --- Variant Lists ---
 
 paragraph1_templates = [
-    "Hi {name},\n\n I came across {company} recently and wanted to reach out directly.",
-    "Hello {name},\n\n I just saw {company} and thought you might be the right person to speak with.",
-    "Hey {name},\n\n I came across {company} recently and thought I’d drop you a quick note.",
-    "Hi {name},\n\n I stumbled on {company} the other day and wanted to get in touch.",
-    "Hi {name},\n\n I stumbled across {company} and thought I’d reach out.",
-    "Hi {name},\n\n I just spotted {company} and thought there could be an opportunity to collaborate.",
-    "Hi {name},\n\n Hope you don't mind me reaching out; I came across {company} recently and thought we could collaborate."
+    "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
+    "Hello {name},\n\nI just saw {company} and thought you might be the right person to speak with.",
+    "Hey {name},\n\nI came across {company} recently and thought I’d drop you a quick note.",
+    "Hi {name},\n\nI stumbled on {company} the other day and wanted to get in touch.",
+    "Hi {name},\n\nI stumbled across {company} and thought I’d reach out.",
+    "Hi {name},\n\nI just spotted {company} and thought there could be an opportunity to collaborate.",
+    "Hi {name},\n\nHope you don't mind me reaching out; I came across {company} recently and thought we could collaborate."
 ]
 
 paragraph2_variants = [
