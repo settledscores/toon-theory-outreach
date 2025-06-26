@@ -7,7 +7,7 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  'https://www.bbb.org/us/fl/alafaya/category/business-consultant?page=1'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA'
 ];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
