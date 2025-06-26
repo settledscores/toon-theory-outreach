@@ -31,13 +31,13 @@ def generate_use_cases(mini_scrape, services):
 Based on the company's services and the summary of their website below, list 4 to 6 practical use cases for explainer videos that could help the business communicate more clearly.
 
 Each bullet must:
-- Start with a verb (e.g., Show, Explain, Clarify, Walk through)
+- Start with a gerund (e.g., Showing, Explaining, Clarifying, Walking through)
 - Be short (under 20 words)
 - Be clear, natural, and human — avoid jargon or corporate language
 - Directly relate to the company's actual services
 
 Do not mention the company name.
-Do not include any labels, intros, or explanations — just return the raw bullet list.
+Do not include any labels, intros, or explanations — just return the raw list, separated by the "|" as a delimiter.
 
 Services:
 {services}
