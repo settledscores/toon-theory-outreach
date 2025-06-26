@@ -3,7 +3,7 @@ name: Send First Follow-ups
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"  # runs every hour
+    - cron: "* * * * *"  # runs every hour
 
 jobs:
   update-email-2:
