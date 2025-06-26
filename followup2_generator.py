@@ -55,6 +55,14 @@ If it sounds worth exploring, feel free to reply. You’ll find a link to our we
 {signature}"""
 ]
 
+SIGNATURES = [
+    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+]
+
 def build_email(template, name, company, signature):
     return template.format(name=name, company=company, signature=signature)
 
@@ -67,11 +75,16 @@ def main():
         fields = record.get("fields", {})
         name = fields.get("name", "").strip()
         company = fields.get("company name", "").strip()
-        signature = fields.get("signature", "").strip()
         email3 = fields.get("email 3", "").strip()
 
-        if name and company and signature and not email3:
-            eligible_records.append((record["id"], name, company, signature))
+        record_id = record["id"]
+        print(f"→ Checking record {record_id}...")
+
+        if name and company and not email3:
+            eligible_records.append((record_id, name, company))
+            print(f"   ✅ Eligible")
+        else:
+            print(f"   ❌ Skipping — missing name/company or email 3 already exists")
 
     if not eligible_records:
         print("⚠️ No eligible records found.")
@@ -81,8 +94,9 @@ def main():
     random.shuffle(TEMPLATES)
 
     updated = 0
-    for i, (record_id, name, company, signature) in enumerate(eligible_records):
+    for i, (record_id, name, company) in enumerate(eligible_records):
         template = TEMPLATES[i % len(TEMPLATES)]
+        signature = random.choice(SIGNATURES)
         message = build_email(template, name, company, signature)
         airtable.update(record_id, {"email 3": message})
         updated += 1
