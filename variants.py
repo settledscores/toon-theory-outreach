@@ -11,6 +11,8 @@ AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
+# --- Variant Lists ---
+
 subject_variants = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -19,56 +21,39 @@ subject_variants = [
     "Your story deserves to be told differently",
     "How about a different approach to your messaging?",
     "Making your story unforgettable",
-]
-
-salutation_variants = [
-    "Hi {name},", "Hey {name},", "Hello {name},",
-    "Hi there {name},", "Hey there {name},",
-    "Hey {name}, just a quick note."
-]
-
-default_paragraph1_variants = [
-    "I’ve been diving into your work lately, and I think there’s a huge opportunity here.",
-    "Your work speaks for itself, but I’ve got an idea that could amplify it even more.",
-    "I’ve been checking out your recent projects, and I have a quick thought for you.",
-    "Your work stands out on its own; but I've got something that could boost it even more.",
-    "Been thinking about how your message could hit harder. Got a minute?",
-    "Your work grabbed my attention; now I’ve got an idea to make it even more engaging.",
-    "I saw your work and thought: this could use a bit of a visual spark.",
-    "You’ve got a great thing going, but here’s something I think could elevate it even more."
+    "Visual storytelling for busy decision-makers",
+    "Helping messages land better for businesses like {company}",
+    "For when words aren’t enough, {name},"
 ]
 
 paragraph1_templates = [
-    "I’ve been following {company} lately, and your focus on {summary} really got my attention.",
-    "I came across {company} recently, your approach to {summary} really got my attention.",
-    "I’ve been exploring what {company} does, and your focus on {summary} caught my eye.",
+    "Hi {name}, I came across {company} recently and wanted to reach out directly.",
+    "Hello {name}, Just saw {company} and thought you might be the right person to speak with.",
+    "Hey {name}, I came across {company} recently and thought I’d drop you a quick note.",
+    "Hi {name}, Stumbled on {company} the other day and wanted to get in touch.",
+    "Hi {name}, Stumbled across {company} and thought I’d reach out.",
+    "Hi {name}, Just spotted {company} and thought there could be an opportunity to collaborate.",
+    "Hi {name}, Hope you don't mind me reaching out; I came across {company} recently and thought we could collaborate."
 ]
 
 paragraph2_variants = [
-    "I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
-]
-
-# Combined variants from intro + dynamic field + hardcoded templates
-paragraph3_intro_phrases = [
-    "With your mission centered on", 
-    "Since you're focused on"
-]
-
-paragraph3_variants = [
-    "{phrase} {summary_2}, animated storytelling could supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:"
+    "I'm Trent. I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
+    "I'm Trent, founder of Toon Theory – a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed.",
+    "I'm Trent, I lead a creative studio called Toon Theory. We work with businesses like yours to turn abstract nonsense into short, powerful videos that actually stick.",
+    "I'm Trent, I run Toon Theory, an animation studio based in the UK. We focus on helping businesses cut through the noise using clean, hand-drawn storytelling."
 ]
 
 paragraph3_additional_variants = [
-    "With your focus on {summary_2}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
-    "With your focus on {summary_2}, animated storytelling could help supercharge your message for even greater impact. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
-    "With your focus on {summary_2}, animated storytelling might help drive home your message faster and clearer. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:",
-    "With your focus on {summary_2}, animated storytelling could be the next smart move in boosting engagement and trust. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you to:"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:",
+    "There’s a lot of potential for {company} to benefit from visual storytelling — it often helps others understand what you do much faster. We handle everything end-to-end: scripting, voiceover, design and animation. Folks like you often use it for:"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
     "Our clients often see up to 2x engagement and 80% stronger retention when they present ideas visually.",
     "These animations don’t just explain, they convert; often doubling engagement, boosting sales and improving trust.",
+    "By turning ideas into clear visuals, our animations consistently drive higher conversions, stronger engagement, and longer message recall.",
+    "We've seen teams cut through noise, capture attention faster, and turn interest into action — all by using the power of animated storytelling."
 ]
 
 paragraph5_variants = [
@@ -81,7 +66,7 @@ paragraph5_variants = [
 paragraph6_variants = [
     "Thanks for putting something refreshing out there.",
     "Thanks for leading with both heart and strategy.",
-    "Keep doing what you do, it's making an impact.",
+    "Keep doing what you do, it's making an impact."
 ]
 
 paragraph7_cta_variants = [
@@ -96,94 +81,60 @@ signature_variants = [
     "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Catch you soon,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Kind regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Hope to chat soon,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Looking forward,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-def update_record_fields(record_id, updates):
-    airtable.update(record_id, updates)
-
 def parse_use_cases(use_case_field):
-    if isinstance(use_case_field, list):
-        raw = "\n".join(use_case_field)
-    else:
-        raw = str(use_case_field or "")
-    bullets = re.split(r"\n+|^\s*-\s*", raw, flags=re.MULTILINE)
-    return [u.strip("•- \n\r\t") for u in bullets if u.strip()]
+    raw = str(use_case_field or "")
+    return [u.strip() for u in raw.split("|") if u.strip()]
+
+def build_email(fields):
+    name = fields.get("name") or "there"
+    company = fields.get("company name") or "your company"
+    use_cases = parse_use_cases(fields.get("use case"))[:3]
+
+    email = f"""
+{random.choice(subject_variants).format(name=name, company=company)}
+
+{random.choice(paragraph1_templates).format(name=name, company=company)}
+
+{random.choice(paragraph2_variants)}
+
+{random.choice(paragraph3_additional_variants).format(company=company)}
+- {use_cases[0] if len(use_cases) > 0 else ''}
+- {use_cases[1] if len(use_cases) > 1 else ''}
+- {use_cases[2] if len(use_cases) > 2 else ''}
+
+{random.choice(paragraph4b_variants)}
+
+{random.choice(paragraph5_variants).format(company=company)}
+
+{random.choice(paragraph6_variants)}
+
+{random.choice(paragraph7_cta_variants)}
+
+{random.choice(signature_variants)}
+""".strip()
+
+    return email
+
+def update_email_field(record_id, content):
+    airtable.update(record_id, {"email 1": content})
 
 def main():
     records = airtable.get_all()
-    updated_count = 0
+    updated = 0
 
     for record in records:
-        record_id = record["id"]
         fields = record.get("fields", {})
-        name = fields.get("name") or fields.get("contact name") or "there"
-        company = fields.get("company name", "your company")
-        summary_1 = fields.get("niche summary paragraph", "").strip()
-        summary_2 = fields.get("niche summary paragraph 2", "").strip()
+        record_id = record["id"]
+        if not fields.get("email 1"):
+            email_body = build_email(fields)
+            update_email_field(record_id, email_body)
+            updated += 1
+            print(f"✅ Email written for {record_id}")
 
-        updates = {}
-
-        if not fields.get("subject"):
-            updates["subject"] = random.choice(subject_variants)
-
-        if not fields.get("salutation"):
-            updates["salutation"] = random.choice(salutation_variants).replace("{name}", name)
-
-        if not fields.get("paragraph 1 niche opener"):
-            if summary_1:
-                template = random.choice(paragraph1_templates)
-                updates["paragraph 1 niche opener"] = template.format(company=company, summary=summary_1)
-            else:
-                updates["paragraph 1 niche opener"] = random.choice(default_paragraph1_variants)
-
-        if not fields.get("paragraph 2 pitch"):
-            updates["paragraph 2 pitch"] = random.choice(paragraph2_variants)
-
-        if not fields.get("paragraph 3 service tiein") and summary_2:
-            variants = []
-
-            # Combine intro + template
-            phrase = random.choice(paragraph3_intro_phrases)
-            variants.append(random.choice(paragraph3_variants).format(phrase=phrase, summary_2=summary_2))
-
-            # Add one of the hardcoded variants too
-            variants.append(random.choice(paragraph3_additional_variants).format(summary_2=summary_2))
-
-            updates["paragraph 3 service tiein"] = random.choice(variants)
-
-        if not fields.get("paragraph 4 use case 1") and not fields.get("paragraph 4 use case 2") and not fields.get("paragraph 4 use case 3"):
-            use_cases = parse_use_cases(fields.get("use case"))
-            updates["paragraph 4 use case 1"] = use_cases[0] if len(use_cases) > 0 else ""
-            updates["paragraph 4 use case 2"] = use_cases[1] if len(use_cases) > 1 else ""
-            updates["paragraph 4 use case 3"] = use_cases[2] if len(use_cases) > 2 else ""
-
-        if not fields.get("paragraph 4b benefits"):
-            updates["paragraph 4b benefits"] = random.choice(paragraph4b_variants)
-
-        if not fields.get("paragraph 5 invitation"):
-            updates["paragraph 5 invitation"] = random.choice(paragraph5_variants).format(company=company)
-
-        if not fields.get("paragraph 6 closer"):
-            updates["paragraph 6 closer"] = random.choice(paragraph6_variants)
-
-        if not fields.get("paragraph 7 cta"):
-            updates["paragraph 7 cta"] = random.choice(paragraph7_cta_variants)
-
-        if not fields.get("signature"):
-            updates["signature"] = random.choice(signature_variants)
-
-        if updates:
-            update_record_fields(record_id, updates)
-            updated_count += 1
-            print(f"✅ Updated record: {record_id}")
-            print(f"   → Fields updated: {list(updates.keys())}")
-
-    print(f"\n🎯 Done. {updated_count} records updated.")
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     main()
