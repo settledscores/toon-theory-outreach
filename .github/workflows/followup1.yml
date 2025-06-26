@@ -1,33 +1,32 @@
-name: Generate Follow-up 1 Emails
+name: Send First Follow-ups
 
 on:
   workflow_dispatch:
   schedule:
-    # Runs every weekday at 09:15 UTC (10:15 WAT)
-    - cron: "15 9 * * 1-5"
+    - cron: "0 * * * *"  # runs every hour
 
 jobs:
-  generate-followup1:
+  update-email-2:
     runs-on: ubuntu-latest
 
-    env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
-
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install airtable-python-wrapper python-dotenv
 
-      - name: ✉️ Generate Follow-up 1 Emails
-        run: python followup1_generator.py
+      - name: Run Email 2 Update Script
+        env:
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+        run: |
+          python your_script_filename.py
