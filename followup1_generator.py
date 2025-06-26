@@ -100,25 +100,32 @@ def main():
     records = airtable.get_all()
     updated = 0
 
+    print("🔍 Scanning records...")
     random.shuffle(TEMPLATES)
 
     for record in records:
         fields = record.get("fields", {})
         record_id = record["id"]
 
+        print(f"→ Checking record {record_id} for update eligibility")
+
         if fields.get("email 2", "").strip():
+            print("   Skipping — already has email 2")
             continue
 
         if "use case" in fields and "name" in fields and "company name" in fields and "signature" in fields:
             use_cases = clean_use_cases(fields["use case"])
             if len(use_cases) < 2:
-                continue  # not enough clean use cases to generate email
+                print("   Skipping — not enough valid use cases")
+                continue
 
             template = random.choice(TEMPLATES)
             email_content = generate_followup_email(fields, template, use_cases)
             airtable.update(record_id, {"email 2": email_content})
             updated += 1
             print(f"✅ Email 2 written for: {fields['name']}")
+        else:
+            print("   Skipping — missing required fields")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
