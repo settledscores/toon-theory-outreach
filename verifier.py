@@ -1,83 +1,40 @@
 import os
 import time
+import json
 import random
 import socket
 import smtplib
 import socks
-import requests
 import dns.resolver
 
-from urllib.parse import quote
 from stem import Signal
 from stem.control import Controller
 
-# === ENVIRONMENT VARIABLES ===
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
-TOR_PASSWORD = os.getenv("TOR_CONTROL_PASSWORD")
-
-# === SETTINGS ===
+# === CONFIG ===
 TOR_SOCKS_PORT = 9050
 TOR_CONTROL_PORT = 9051
+TOR_PASSWORD = os.getenv("TOR_CONTROL_PASSWORD")  # set this in your shell or .env
+INPUT_FILE = "permutations.txt"
+OUTPUT_FILE = "verified_emails.json"
 SMTP_TIMEOUT = 10
 ROTATE_AFTER = 20
 SLEEP_BETWEEN = (1, 2)
-PAGE_SIZE = 100
 
-# === SOCKS5 PROXY SETUP FOR TOR ===
+# === TOR PROXY SETUP ===
 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", TOR_SOCKS_PORT)
 socket.socket = socks.socksocket
 
-# === ROTATE TOR IDENTITY ===
+# === TOR IP ROTATION ===
 def reset_tor_identity():
     try:
         with Controller.from_port(port=TOR_CONTROL_PORT) as c:
             c.authenticate(password=TOR_PASSWORD)
             c.signal(Signal.NEWNYM)
-            print("🔁 IP rotated via Tor\n")
+            print("🔁 New Tor IP identity requested")
     except Exception as e:
-        print(f"⚠️ Tor IP rotation failed: {e}")
+        print(f"⚠️ Tor control error: {e}")
 
-# === GET RECORDS FROM AIRTABLE ===
-def get_airtable_records(offset=None):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    params = [
-        ("pageSize", PAGE_SIZE),
-        ("fields[]", "Email Permutations")
-    ]
-    if offset:
-        params.append(("offset", offset))
-
-    response = requests.get(url, headers=headers, params=params)
-    if not response.ok:
-        print(f"❌ Airtable API Error {response.status_code}")
-        print(f"↪️ URL: {url}")
-        print(f"↪️ Response: {response.text}")
-        response.raise_for_status()
-
-    return response.json()
-
-# === UPDATE VERIFIED RESULT TO AIRTABLE ===
-def update_verified_email(record_id, verified_email):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}/{record_id}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {"fields": {"Verified Permutation": verified_email}}
-    response = requests.patch(url, headers=headers, json=data)
-    if not response.ok:
-        print(f"❌ Airtable PATCH Error {response.status_code}")
-        print(f"↪️ URL: {url}")
-        print(f"↪️ Response: {response.text}")
-        response.raise_for_status()
-
-# === GET MX RECORD FOR DOMAIN ===
+# === DNS MX LOOKUP ===
 def get_mx(domain):
     try:
         answers = dns.resolver.resolve(domain, "MX")
@@ -85,7 +42,7 @@ def get_mx(domain):
     except:
         return None
 
-# === VERIFY EMAIL OVER SMTP ===
+# === SMTP VERIFICATION ===
 def verify_email(email):
     domain = email.split("@")[-1]
     mx = get_mx(domain)
@@ -101,58 +58,41 @@ def verify_email(email):
     except:
         return False
 
-# === MAIN VERIFICATION LOOP ===
+# === MAIN ===
 def main():
-    print("🚀 Starting email verification with Tor\n")
-    total_checked = 0
-    total_verified = 0
-    total_records = 0
-    offset = None
+    if not os.path.exists(INPUT_FILE):
+        print(f"❌ Input file '{INPUT_FILE}' not found.")
+        return
 
-    while True:
-        batch = get_airtable_records(offset)
-        records = batch.get("records", [])
+    with open(INPUT_FILE, "r") as f:
+        emails = [line.strip() for line in f if line.strip()]
 
-        if not records:
-            break
+    print(f"🚀 Verifying {len(emails)} emails...\n")
 
-        for record in records:
-            total_records += 1
-            record_id = record["id"]
-            fields = record.get("fields", {})
-            perms = fields.get("Email Permutations", "")
+    verified = []
+    checked = 0
 
-            if not perms:
-                continue
+    for email in emails:
+        print(f"🔍 Checking: {email}")
+        checked += 1
+        if verify_email(email):
+            print(f"✅ Valid: {email}\n")
+            verified.append(email)
+        else:
+            print("❌ Invalid\n")
 
-            emails = [e.strip() for e in perms.split(",") if e.strip()]
-            print(f"🔍 [{total_records}] {len(emails)} permutations")
+        time.sleep(random.uniform(*SLEEP_BETWEEN))
 
-            for email in emails:
-                print(f"   ➤ Trying: {email}")
-                total_checked += 1
-                if verify_email(email):
-                    print(f"   ✅ Verified: {email}\n")
-                    update_verified_email(record_id, email)
-                    total_verified += 1
-                    break
-                else:
-                    print("   ❌ Invalid")
+        if checked % ROTATE_AFTER == 0:
+            reset_tor_identity()
+            time.sleep(10)
 
-                time.sleep(random.uniform(*SLEEP_BETWEEN))
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump(verified, f, indent=2)
 
-                if total_checked % ROTATE_AFTER == 0:
-                    reset_tor_identity()
-                    time.sleep(10)
-
-        offset = batch.get("offset")
-        if not offset:
-            break
-
-    print("\n🎯 Done")
-    print(f"🧮 Records processed:  {total_records}")
-    print(f"📬 Emails verified:    {total_verified}")
-    print(f"📤 Permutations tried: {total_checked}")
+    print("✅ Done.")
+    print(f"🧮 Checked: {checked}")
+    print(f"📬 Verified: {len(verified)} saved to '{OUTPUT_FILE}'")
 
 if __name__ == "__main__":
     main()
