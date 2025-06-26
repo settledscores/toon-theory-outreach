@@ -31,11 +31,25 @@ function isValidName(name, businessName) {
   return wordCount >= 2 && wordCount <= 4;
 }
 
-function cleanName(raw) {
-  return raw
+function cleanAndSplitName(raw, businessName = '') {
+  if (!raw) return null;
+
+  let clean = raw
     .replace(/(Mr\.|Ms\.|Mrs\.|Dr\.|CPA|Esq\.|Jr\.|Sr\.)/gi, '')
+    .replace(/[,/]+$/, '') // remove trailing commas/slashes
     .replace(/\s+/g, ' ')
     .trim();
+
+  if (clean.toLowerCase() === businessName.toLowerCase()) return null;
+
+  const parts = clean.split(' ');
+  if (parts.length < 2) return null;
+
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  const middleName = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+
+  return { firstName, middleName, lastName };
 }
 
 async function extractProfile(page, url) {
@@ -82,15 +96,14 @@ async function extractProfile(page, url) {
       };
     });
 
-    data.principalContact = cleanName(data.principalContact);
+    const split = cleanAndSplitName(data.principalContact, data.businessName);
+    if (!split || !data.website || !data.businessName) return null;
 
-    if (
-      !data.website ||
-      !data.businessName ||
-      !isValidName(data.principalContact, data.businessName)
-    ) return null;
+    return {
+      ...data,
+      ...split
+    };
 
-    return data;
   } catch (err) {
     console.error(`❌ Failed to extract: ${url} — ${err.message}`);
     return null;
@@ -114,7 +127,9 @@ async function syncToAirtable(record) {
       'location': record.location,
       'industry': record.industry,
       'years': record.years,
-      'Decision Maker Name': record.principalContact,
+      'First Name': record.firstName,
+      'Middle Name': record.middleName,
+      'Last Name': record.lastName,
       'Decision Maker Title': record.jobTitle
     }
   };
