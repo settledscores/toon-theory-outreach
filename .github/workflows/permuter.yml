@@ -1,23 +1,29 @@
-# .github/workflows/permuter.yml
 name: Run Email Permuter
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Trigger manually from GitHub UI
 
 jobs:
   permute:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyairtable
 
-      - name: Run Permuter
-        run: node permuter.js
+      - name: Run Permuter Script
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+        run: python permuter.py
