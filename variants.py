@@ -35,14 +35,14 @@ paragraph3_additional_variants = [
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
-    "These animations don’t just explain, they convert; often doubling engagement, boosting sales and improving trust.",
+    "These animations don’t just explain, they convert; Many clients see a big lift in engagement, trust, and sales.",
 ]
 
 paragraph5_variants = [
     "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. All at zero cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
     "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings at zero cost to you. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
     "I'd be happy to draft a no-cost, ten-second demo around something core to your brand. Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it.",
-    "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? Absolutely no pressure, just keen to see what this could look like with {company}'s voice behind it."
+    "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? Absolutely no pressure, just keen to see what this could look like with your voice behind it."
 ]
 
 paragraph6_variants = [
@@ -54,7 +54,7 @@ paragraph6_variants = [
 paragraph7_cta_variants = [
     "Feel free to reply if you’d like to explore what this could look like. There’s also a link to our site in my signature if you’d like to take a peek at some of our previous work.",
     "You’ll find a link to our site in the signature if you’d like to check out our past work — and I’d love to hear your thoughts if it sparks anything.",
-    "Reply any time if it feels like a fit. There’s a link in the signature if you’re curious to see what we’ve done for others.",
+    "If it feels like a fit, reply any time. There’s also a link in my signature if you’d like to see a few past projects.",
     "If you're open to chatting further? Just hit reply — and there’s a site link in the signature if you’d like to see a handful of our past projects."
 ]
 
