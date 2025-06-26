@@ -11,7 +11,7 @@ from urllib.parse import quote
 from stem import Signal
 from stem.control import Controller
 
-# === ENV ===
+# === ENVIRONMENT VARIABLES ===
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
@@ -25,11 +25,11 @@ ROTATE_AFTER = 20
 SLEEP_BETWEEN = (1, 2)
 PAGE_SIZE = 100
 
-# === TOR ROUTING ===
+# === SOCKS5 PROXY SETUP FOR TOR ===
 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", TOR_SOCKS_PORT)
 socket.socket = socks.socksocket
 
-# === TOR IP ROTATION ===
+# === ROTATE TOR IDENTITY ===
 def reset_tor_identity():
     try:
         with Controller.from_port(port=TOR_CONTROL_PORT) as c:
@@ -39,22 +39,21 @@ def reset_tor_identity():
     except Exception as e:
         print(f"⚠️ Tor IP rotation failed: {e}")
 
-# === AIRTABLE GET ===
+# === GET RECORDS FROM AIRTABLE ===
 def get_airtable_records(offset=None):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Accept": "application/json"
+        "Content-Type": "application/json"
     }
-    params = {
-        "pageSize": PAGE_SIZE,
-        "fields[]": ["Name", "Domain", "Email Permutations"]
-    }
+    params = [
+        ("pageSize", PAGE_SIZE),
+        ("fields[]", "Email Permutations")
+    ]
     if offset:
-        params["offset"] = offset
+        params.append(("offset", offset))
 
     response = requests.get(url, headers=headers, params=params)
-
     if not response.ok:
         print(f"❌ Airtable API Error {response.status_code}")
         print(f"↪️ URL: {url}")
@@ -63,7 +62,7 @@ def get_airtable_records(offset=None):
 
     return response.json()
 
-# === AIRTABLE PATCH ===
+# === UPDATE VERIFIED RESULT TO AIRTABLE ===
 def update_verified_email(record_id, verified_email):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}/{record_id}"
     headers = {
@@ -72,14 +71,13 @@ def update_verified_email(record_id, verified_email):
     }
     data = {"fields": {"Verified Permutation": verified_email}}
     response = requests.patch(url, headers=headers, json=data)
-
     if not response.ok:
         print(f"❌ Airtable PATCH Error {response.status_code}")
         print(f"↪️ URL: {url}")
         print(f"↪️ Response: {response.text}")
         response.raise_for_status()
 
-# === DNS MX ===
+# === GET MX RECORD FOR DOMAIN ===
 def get_mx(domain):
     try:
         answers = dns.resolver.resolve(domain, "MX")
@@ -87,7 +85,7 @@ def get_mx(domain):
     except:
         return None
 
-# === SMTP VERIFY ===
+# === VERIFY EMAIL OVER SMTP ===
 def verify_email(email):
     domain = email.split("@")[-1]
     mx = get_mx(domain)
@@ -103,7 +101,7 @@ def verify_email(email):
     except:
         return False
 
-# === MAIN ===
+# === MAIN VERIFICATION LOOP ===
 def main():
     print("🚀 Starting email verification with Tor\n")
     total_checked = 0
@@ -122,15 +120,13 @@ def main():
             total_records += 1
             record_id = record["id"]
             fields = record.get("fields", {})
-            name = fields.get("Name", "")
-            domain = fields.get("Domain", "")
             perms = fields.get("Email Permutations", "")
 
-            if not perms or not domain:
+            if not perms:
                 continue
 
             emails = [e.strip() for e in perms.split(",") if e.strip()]
-            print(f"🔍 [{total_records}] {name} ({domain}) — {len(emails)} permutations")
+            print(f"🔍 [{total_records}] {len(emails)} permutations")
 
             for email in emails:
                 print(f"   ➤ Trying: {email}")
