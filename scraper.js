@@ -7,22 +7,15 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  "https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA",
-  "https://www.bbb.org/us/fl/alafaya/category/business-consultant?page=1",
-  "https://www.bbb.org/search?find_country=USA&find_entity=60170-110&find_id=6349_000-000-7524&find_latlng=28.511388%2C-81.308452&find_loc=Orlando%2C%20FL&find_text=Business%20Development&find_type=Category&page=1",
-  "https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=San+Jose%2C+CA&find_country=USA",
-  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA",
-  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=San+Francisco%2C+CA&find_country=USA",
-  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Austin%2C+TX&find_country=USA",
-  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA",
-  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA",
-  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA",
   "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
   "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
   "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA",
   "https://www.bbb.org/search?find_text=Staffing+Agencies&find_entity=&find_type=&find_loc=Washington%2C+PA&find_country=USA",
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
+
+const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
+const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|vi)\b\.?$/i];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -36,15 +29,22 @@ async function humanScroll(page) {
   }
 }
 
+function cleanBusinessName(name) {
+  if (!name) return '';
+  let cleaned = name;
+  for (const suffix of businessSuffixes) {
+    cleaned = cleaned.replace(suffix, '').trim();
+  }
+  return cleaned.replace(/[.,]$/, '').trim();
+}
+
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
 
-  // Remove honorifics and punctuation at ends
-  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
-  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
+  const honorifics = ['Mr\.', 'Mrs\.', 'Ms\.', 'Miss', 'Dr\.', 'Prof\.', 'Mx\.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
 
-  // If comma exists, split name/title
   let namePart = clean;
   let titlePart = '';
   if (clean.includes(',')) {
@@ -53,11 +53,15 @@ function cleanAndSplitName(raw, businessName = '') {
     titlePart = title.trim();
   }
 
-  // Reject reused business name
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
 
-  // Split name by spaces (keep initials with dots)
   const tokens = namePart.split(/\s+/).filter(Boolean);
+
+  // Remove name suffixes (e.g., Jr, Sr, III)
+  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
+    tokens.pop();
+  }
+
   if (tokens.length < 2 || tokens.length > 4) return null;
 
   const firstName = tokens[0];
@@ -111,6 +115,7 @@ async function extractProfile(page, url) {
       };
     });
 
+    data.businessName = cleanBusinessName(data.businessName);
     const split = cleanAndSplitName(data.principalContact, data.businessName);
     if (!split || !data.website || !data.businessName) return null;
 
@@ -118,118 +123,8 @@ async function extractProfile(page, url) {
       ...data,
       ...split
     };
-
   } catch (err) {
     console.error(`❌ Failed to extract: ${url} — ${err.message}`);
     return null;
   }
 }
-
-async function syncToAirtable(record) {
-  if (
-    !process.env.AIRTABLE_API_KEY ||
-    !process.env.AIRTABLE_BASE_ID ||
-    !process.env.SCRAPER_TABLE_NAME
-  ) {
-    console.error('❌ Airtable config missing.');
-    return;
-  }
-
-  const body = {
-    fields: {
-      'business name': record.businessName,
-      'website url': record.website,
-      'location': record.location,
-      'industry': record.industry,
-      'years': record.years,
-      'First Name': record.firstName,
-      'Middle Name': record.middleName,
-      'Last Name': record.lastName,
-      'Decision Maker Title': record.title
-    }
-  };
-
-  try {
-    const res = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-
-    const result = await res.text();
-
-    if (!res.ok) {
-      console.error(`❌ Airtable error (${res.status}): ${result}`);
-    } else {
-      console.log(`✅ Scraped: ${record.businessName}`);
-    }
-  } catch (err) {
-    console.error(`❌ Airtable request failed: ${err.message}`);
-  }
-}
-
-(async () => {
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: '/usr/bin/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
-
-  const seen = new Set();
-
-  for (const baseUrl of NICHES) {
-    console.log(`🔍 Scraping niche: ${baseUrl}`);
-    let pageNum = 1;
-    let validCount = 0;
-    let consecutiveEmpty = 0;
-
-    while (validCount < 50 && consecutiveEmpty < 5) {
-      const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
-      await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
-      await delay(randomBetween(1500, 3000));
-      await humanScroll(page);
-
-      const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')]
-          .map(a => a.href)
-          .filter((href, i, arr) => arr.indexOf(href) === i);
-      });
-
-      if (!links.length) break;
-
-      let scrapedThisPage = 0;
-      for (const link of links) {
-        if (seen.has(link)) continue;
-        seen.add(link);
-
-        const profile = await extractProfile(page, link);
-        if (profile) {
-          const dedupKey = `${profile.businessName}|${profile.website}`;
-          if (!seen.has(dedupKey)) {
-            seen.add(dedupKey);
-            await syncToAirtable(profile);
-            validCount++;
-            scrapedThisPage++;
-          }
-        }
-
-        await delay(randomBetween(5000, 10000));
-        if (validCount >= 50) break;
-      }
-
-      consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
-      pageNum++;
-    }
-
-    console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
-  }
-
-  await browser.close();
-  console.log('✅ All niches done.');
-})();
