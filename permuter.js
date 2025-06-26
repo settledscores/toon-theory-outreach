@@ -3,9 +3,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/${process.env.SCRAPER_TABLE_NAME}`;
+const BASE_ID = process.env.AIRTABLE_BASE_ID;
+const TABLE_NAME = process.env.SCRAPER_TABLE_NAME;
+const API_KEY = process.env.AIRTABLE_API_KEY;
+
+const AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(TABLE_NAME)}`;
 const HEADERS = {
-  Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
+  Authorization: `Bearer ${API_KEY}`,
   'Content-Type': 'application/json'
 };
 
@@ -41,17 +45,27 @@ async function fetchMissingRecords(offset = null) {
   });
   if (offset) params.append('offset', offset);
 
-  const res = await fetch(`${AIRTABLE_BASE_URL}?${params.toString()}`, {
-    method: 'GET',
-    headers: HEADERS
-  });
+  const url = `${AIRTABLE_BASE_URL}?${params.toString()}`;
+
+  console.log('\n🔍 FETCHING RECORDS...');
+  console.log('🔗 URL:', url);
+  console.log('🔐 Headers:', HEADERS);
+
+  const res = await fetch(url, { method: 'GET', headers: HEADERS });
+
+  const body = await res.text();
 
   if (!res.ok) {
-    console.error('❌ Failed to fetch Airtable:', await res.text());
+    console.error('❌ Airtable fetch failed:', body);
     return { records: [], offset: null };
   }
 
-  return await res.json();
+  try {
+    return JSON.parse(body);
+  } catch {
+    console.error('❌ Failed to parse Airtable JSON:', body);
+    return { records: [], offset: null };
+  }
 }
 
 async function updateRecord(id, permutations) {
@@ -106,5 +120,5 @@ async function updateRecord(id, permutations) {
     offset = nextOffset;
   } while (offset);
 
-  console.log(`🎯 Done! ${totalUpdated} records updated with permutations.`);
+  console.log(`\n🎯 Done! ${totalUpdated} records updated with permutations.`);
 })();
