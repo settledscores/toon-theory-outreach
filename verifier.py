@@ -1,98 +1,145 @@
-import os
+import socks
+import smtplib
+import socket
 import time
 import json
+import os
 import random
-import socket
-import smtplib
-import socks
+import subprocess
 import dns.resolver
-
 from stem import Signal
 from stem.control import Controller
+from email.utils import parseaddr
+from datetime import datetime
 
-# === CONFIG ===
-TOR_SOCKS_PORT = 9050
+# Constants
+SOCKS_PROXY = ("127.0.0.1", 9050)
 TOR_CONTROL_PORT = 9051
-TOR_PASSWORD = os.getenv("TOR_CONTROL_PASSWORD")  # set this in your shell or .env
-INPUT_FILE = "permutations.txt"
-OUTPUT_FILE = "verified_emails.json"
-SMTP_TIMEOUT = 10
-ROTATE_AFTER = 20
-SLEEP_BETWEEN = (1, 2)
+MAX_RETRIES = 3
+RETRY_DELAY = 5
+SLEEP_BETWEEN_CHECKS = 7  # ~500/hour
+EHLO_DOMAIN = "outlook.com"
+MX_BYPASS_LIST = [
+    "gmail-smtp-in.l.google.com",
+    "google.com",
+    "outlook.com",
+    "protection.outlook.com",
+    "hotmail.com",
+    "yahoo.com",
+    "secureserver.net",
+    "zoho.com"
+]
 
-# === TOR PROXY SETUP ===
-socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", TOR_SOCKS_PORT)
-socket.socket = socks.socksocket
+# Setup
+os.makedirs("logs", exist_ok=True)
+LOG_FILE = "logs/verifier.log"
+VERIFIED_FILE = "verified_emails.json"
 
-# === TOR IP ROTATION ===
-def reset_tor_identity():
+with open("permutations.txt") as f:
+    emails = [line.strip() for line in f if line.strip()]
+verified = []
+
+def log(message):
+    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    with open(LOG_FILE, "a") as f:
+        f.write(f"{timestamp} {message}\n")
+    print(message)
+
+def is_tor_alive():
+    s = socket.socket()
     try:
-        with Controller.from_port(port=TOR_CONTROL_PORT) as c:
-            c.authenticate(password=TOR_PASSWORD)
-            c.signal(Signal.NEWNYM)
-            print("🔁 New Tor IP identity requested")
-    except Exception as e:
-        print(f"⚠️ Tor control error: {e}")
+        s.settimeout(3)
+        s.connect(SOCKS_PROXY)
+        return True
+    except Exception:
+        return False
+    finally:
+        s.close()
 
-# === DNS MX LOOKUP ===
+def restart_tor():
+    log("⚠️ Restarting Tor...")
+    subprocess.run(["sudo", "systemctl", "restart", "tor"], stdout=subprocess.DEVNULL)
+
+def renew_tor_identity():
+    try:
+        with Controller.from_port(port=TOR_CONTROL_PORT) as controller:
+            controller.authenticate()
+            controller.signal(Signal.NEWNYM)
+            log("🔄 Tor identity rotated.")
+    except Exception as e:
+        log(f"⚠️ Tor control error: {e}")
+
 def get_mx(domain):
     try:
-        answers = dns.resolver.resolve(domain, "MX")
-        return sorted([r.exchange.to_text() for r in answers])[0]
-    except:
-        return None
+        answers = dns.resolver.resolve(domain, 'MX')
+        return sorted([(r.preference, str(r.exchange).rstrip('.')) for r in answers])
+    except Exception as e:
+        log(f"❌ MX lookup failed for {domain}: {e}")
+        return []
 
-# === SMTP VERIFICATION ===
-def verify_email(email):
-    domain = email.split("@")[-1]
-    mx = get_mx(domain)
-    if not mx:
-        return False
-    try:
-        server = smtplib.SMTP(mx, 25, timeout=SMTP_TIMEOUT)
-        server.helo("example.com")
-        server.mail("test@example.com")
-        code, _ = server.rcpt(email)
-        server.quit()
-        return code in [250, 251]
-    except:
-        return False
+def smtp_check(email):
+    domain = email.split("@")[1]
+    mx_records = get_mx(domain)
+    if not mx_records:
+        return False, "no_mx"
 
-# === MAIN ===
-def main():
-    if not os.path.exists(INPUT_FILE):
-        print(f"❌ Input file '{INPUT_FILE}' not found.")
-        return
+    for _, mx in mx_records:
+        if any(bypass in mx for bypass in MX_BYPASS_LIST):
+            log(f"⚠️ Skipping MX-blocked domain: {email} via {mx}")
+            return None, "mx_bypass"
 
-    with open(INPUT_FILE, "r") as f:
-        emails = [line.strip() for line in f if line.strip()]
+        for attempt in range(MAX_RETRIES):
+            try:
+                socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, *SOCKS_PROXY)
+                socket.socket = socks.socksocket
 
-    print(f"🚀 Verifying {len(emails)} emails...\n")
+                server = smtplib.SMTP(timeout=10)
+                server.connect(mx)
+                server.helo(EHLO_DOMAIN)
+                server.mail('test@outlook.com')
+                code, _ = server.rcpt(email)
+                server.quit()
 
-    verified = []
-    checked = 0
+                if code in [250, 251]:
+                    return True, "valid"
+                else:
+                    return False, f"invalid_code_{code}"
 
-    for email in emails:
-        print(f"🔍 Checking: {email}")
-        checked += 1
-        if verify_email(email):
-            print(f"✅ Valid: {email}\n")
-            verified.append(email)
-        else:
-            print("❌ Invalid\n")
+            except smtplib.SMTPServerDisconnected:
+                log(f"🔁 Retry {email} ({attempt+1}) - Disconnected.")
+                time.sleep(RETRY_DELAY)
+            except smtplib.SMTPConnectError as e:
+                return None, f"connect_error: {e}"
+            except Exception as e:
+                return None, f"error: {e}"
+    return False, "timeout"
 
-        time.sleep(random.uniform(*SLEEP_BETWEEN))
+log(f"🚀 Verifying {len(emails)} emails...")
 
-        if checked % ROTATE_AFTER == 0:
-            reset_tor_identity()
-            time.sleep(10)
+for i, email in enumerate(emails):
+    if not is_tor_alive():
+        log("❌ Tor down. Attempting restart...")
+        restart_tor()
+        time.sleep(10)
 
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(verified, f, indent=2)
+    log(f"🔍 Checking: {email}")
+    result, reason = smtp_check(email)
 
-    print("✅ Done.")
-    print(f"🧮 Checked: {checked}")
-    print(f"📬 Verified: {len(verified)} saved to '{OUTPUT_FILE}'")
+    if result:
+        log(f"✅ Valid: {email}")
+        verified.append(email)
+    elif result is False:
+        log(f"❌ Invalid: {email}")
+    elif result is None and reason == "mx_bypass":
+        log(f"⚠️ Skipped due to major MX block: {email}")
+    else:
+        log(f"⚠️ Soft fail: {email} — {reason}")
+        renew_tor_identity()
+        time.sleep(10)
 
-if __name__ == "__main__":
-    main()
+    time.sleep(random.uniform(SLEEP_BETWEEN_CHECKS - 1, SLEEP_BETWEEN_CHECKS + 1))
+
+with open(VERIFIED_FILE, "w") as f:
+    json.dump(verified, f, indent=2)
+
+log(f"✅ Done. Verified {len(verified)} / {len(emails)} saved to '{VERIFIED_FILE}'")
