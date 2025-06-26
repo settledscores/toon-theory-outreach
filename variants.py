@@ -1,6 +1,5 @@
 import os
 import random
-import re
 from airtable import Airtable
 from dotenv import load_dotenv
 
@@ -28,32 +27,29 @@ subject_variants = [
 
 paragraph1_templates = [
     "Hi {name}, I came across {company} recently and wanted to reach out directly.",
-    "Hello {name}, Just saw {company} and thought you might be the right person to speak with.",
+    "Hello {name}, I just saw {company} and thought you might be the right person to speak with.",
     "Hey {name}, I came across {company} recently and thought I’d drop you a quick note.",
-    "Hi {name}, Stumbled on {company} the other day and wanted to get in touch.",
-    "Hi {name}, Stumbled across {company} and thought I’d reach out.",
-    "Hi {name}, Just spotted {company} and thought there could be an opportunity to collaborate.",
+    "Hi {name}, I stumbled on {company} the other day and wanted to get in touch.",
+    "Hi {name}, I stumbled across {company} and thought I’d reach out.",
+    "Hi {name}, I just spotted {company} and thought there could be an opportunity to collaborate.",
     "Hi {name}, Hope you don't mind me reaching out; I came across {company} recently and thought we could collaborate."
 ]
 
 paragraph2_variants = [
     "I'm Trent. I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, founder of Toon Theory – a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed.",
-    "I'm Trent, I lead a creative studio called Toon Theory. We work with businesses like yours to turn abstract nonsense into short, powerful videos that actually stick.",
-    "I'm Trent, I run Toon Theory, an animation studio based in the UK. We focus on helping businesses cut through the noise using clean, hand-drawn storytelling."
+    "I'm Trent, founder of Toon Theory – a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed, especially for B2B services, thought leadership, and data-driven education.",
+    "I'm Trent, I lead a creative studio called Toon Theory. We work with businesses like yours to turn abstract ideas into short, powerful videos that actually stick, especially for B2B services, thought leadership, and data-driven education.",
+    "I'm Trent, I run Toon Theory, an animation studio based in the UK. We focus on helping businesses cut through the noise using clean, hand-drawn storytelling, especially for B2B services, thought leadership, and data-driven education."
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:",
-    "There’s a lot of potential for {company} to benefit from visual storytelling — it often helps others understand what you do much faster. We handle everything end-to-end: scripting, voiceover, design and animation. Folks like you often use it for:"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
-    "Our clients often see up to 2x engagement and 80% stronger retention when they present ideas visually.",
     "These animations don’t just explain, they convert; often doubling engagement, boosting sales and improving trust.",
-    "By turning ideas into clear visuals, our animations consistently drive higher conversions, stronger engagement, and longer message recall.",
-    "We've seen teams cut through noise, capture attention faster, and turn interest into action — all by using the power of animated storytelling."
+    "By turning ideas into clear visuals, our animations consistently drive higher conversions, stronger engagement, and longer message recall."
 ]
 
 paragraph5_variants = [
@@ -86,12 +82,15 @@ signature_variants = [
 
 def parse_use_cases(use_case_field):
     raw = str(use_case_field or "")
-    return [u.strip() for u in raw.split("|") if u.strip()]
+    items = [u.strip() for u in raw.split("|") if u.strip()]
+    return items[:3]
 
 def build_email(fields):
-    name = fields.get("name") or "there"
-    company = fields.get("company name") or "your company"
-    use_cases = parse_use_cases(fields.get("use case"))[:3]
+    name = fields.get("name", "there")
+    company = fields.get("company name", "your company")
+    use_cases = parse_use_cases(fields.get("use case"))
+
+    bullet_block = "\n".join([f"• {uc}" for uc in use_cases])
 
     email = f"""
 {random.choice(subject_variants).format(name=name, company=company)}
@@ -101,9 +100,7 @@ def build_email(fields):
 {random.choice(paragraph2_variants)}
 
 {random.choice(paragraph3_additional_variants).format(company=company)}
-- {use_cases[0] if len(use_cases) > 0 else ''}
-- {use_cases[1] if len(use_cases) > 1 else ''}
-- {use_cases[2] if len(use_cases) > 2 else ''}
+{bullet_block}
 
 {random.choice(paragraph4b_variants)}
 
@@ -128,6 +125,7 @@ def main():
     for record in records:
         fields = record.get("fields", {})
         record_id = record["id"]
+
         if not fields.get("email 1"):
             email_body = build_email(fields)
             update_email_field(record_id, email_body)
