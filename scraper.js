@@ -7,7 +7,21 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA'
+  "https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA",
+  "https://www.bbb.org/us/fl/alafaya/category/business-consultant?page=1",
+  "https://www.bbb.org/search?find_country=USA&find_entity=60170-110&find_id=6349_000-000-7524&find_latlng=28.511388%2C-81.308452&find_loc=Orlando%2C%20FL&find_text=Business%20Development&find_type=Category&page=1",
+  "https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=San+Jose%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=San+Francisco%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Austin%2C+TX&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Indianapolis%2C+IN&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA",
+  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Orlando%2C+FL&find_country=USA",
+  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA",
+  "https://www.bbb.org/search?find_text=Staffing+Agencies&find_entity=&find_type=&find_loc=Washington%2C+PA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
