@@ -30,19 +30,24 @@ IMAP_SERVER = os.environ["IMAP_SERVER"]
 # Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
 
-# Subject line variations
+# Subject line variations (capitalized and fixed)
 SUBJECT_LINES = [
-    "just checking in, {name}", "thought I’d follow up, {name}", "quick ping, {name}",
-    "any thoughts on this, {name}?", "circling back, {name}", "still thinking of {company}",
-    "sketching some ideas for {company}", "a quick follow-up, {name}", "pinging you again, {name}",
-    "any interest on this?", "here’s that idea again, {name}", "worth a peek, {name}?",
-    "still open to this, {name}?", "quick check-in, {name}", "follow-up on that idea for {company}",
-    "creative idea for {company}", "simple explainer?", "visualising {company}'s message",
-    "nudging this up your inbox, {name}", "animation for {company}?",
-    "missed this last time?", "revisiting an idea for {company}",
-    "still thinking of that animation sketch", "starting visual ideas for {company}",
-    "{name}, got a sec?", "where we left off, {name}", "circling back to that visual idea",
-    "quick one for {company}", "a thought worth sharing", "follow-up from Toon Theory"
+    "Just Checking In, {name}",
+    "Thought I’d Follow Up, {name}",
+    "Any Thoughts On This, {name}?",
+    "Circling Back, {name}",
+    "Sketching Some Ideas For {company}",
+    "A Quick Follow-Up, {name}",
+    "Any Interest In This, {name}?",
+    "Here’s That Idea Again, {name}",
+    "Are You Still Open To This, {name}?",
+    "Quick Check-In, {name}",
+    "Following Up On That Idea For {company}",
+    "Nudging This Up Your Inbox, {name}",
+    "Revisiting, Just In Case You Missed This The Last Time, {name}",
+    "{name}, Got A Sec?",
+    "Circling Back To That Idea For {company}",
+    "A Follow-Up From Toon Theory, {name}"
 ]
 
 last_sent_time = None
@@ -53,7 +58,6 @@ def replied_to_message_id(message_id, sender_email):
             imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             imap.select("INBOX")
 
-            # Look for replies from the same recipient using the message ID
             search_criteria = f'(FROM "{sender_email}" (OR HEADER In-Reply-To "{message_id}" HEADER References "{message_id}"))'
             result, data = imap.search(None, search_criteria)
 
