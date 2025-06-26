@@ -12,19 +12,6 @@ airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
 
 # --- Variant Lists ---
 
-subject_variants = [
-    "Let’s make your message stick",
-    "A quick thought for your next project",
-    "Helping your ideas stick visually",
-    "Turn complex into simple (in 90 seconds)",
-    "Your story deserves to be told differently",
-    "How about a different approach to your messaging?",
-    "Making your story unforgettable",
-    "Visual storytelling for busy decision-makers",
-    "Helping messages land better for businesses like {company}",
-    "For when words aren’t enough, {name},"
-]
-
 paragraph1_templates = [
     "Hi {name}, I came across {company} recently and wanted to reach out directly.",
     "Hello {name}, I just saw {company} and thought you might be the right person to speak with.",
@@ -43,13 +30,12 @@ paragraph2_variants = [
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster. Our animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used by folks like you for:"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
     "These animations don’t just explain, they convert; often doubling engagement, boosting sales and improving trust.",
-    "By turning ideas into clear visuals, our animations consistently drive higher conversions, stronger engagement, and longer message recall."
 ]
 
 paragraph5_variants = [
@@ -89,12 +75,9 @@ def build_email(fields):
     name = fields.get("name", "there")
     company = fields.get("company name", "your company")
     use_cases = parse_use_cases(fields.get("use case"))
-
     bullet_block = "\n".join([f"• {uc}" for uc in use_cases])
 
     email = f"""
-{random.choice(subject_variants).format(name=name, company=company)}
-
 {random.choice(paragraph1_templates).format(name=name, company=company)}
 
 {random.choice(paragraph2_variants)}
@@ -106,9 +89,9 @@ def build_email(fields):
 
 {random.choice(paragraph5_variants).format(company=company)}
 
-{random.choice(paragraph6_variants)}
-
 {random.choice(paragraph7_cta_variants)}
+
+{random.choice(paragraph6_variants)}
 
 {random.choice(signature_variants)}
 """.strip()
