@@ -44,7 +44,7 @@ def get_airtable_records(offset=None):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Accept": "application/json"  # Fixes 406 error
+        "Accept": "application/json"
     }
     params = {
         "pageSize": PAGE_SIZE,
@@ -52,8 +52,15 @@ def get_airtable_records(offset=None):
     }
     if offset:
         params["offset"] = offset
+
     response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
+
+    if not response.ok:
+        print(f"❌ Airtable API Error {response.status_code}")
+        print(f"↪️ URL: {url}")
+        print(f"↪️ Response: {response.text}")
+        response.raise_for_status()
+
     return response.json()
 
 # === AIRTABLE PATCH ===
@@ -65,7 +72,12 @@ def update_verified_email(record_id, verified_email):
     }
     data = {"fields": {"Verified Permutation": verified_email}}
     response = requests.patch(url, headers=headers, json=data)
-    response.raise_for_status()
+
+    if not response.ok:
+        print(f"❌ Airtable PATCH Error {response.status_code}")
+        print(f"↪️ URL: {url}")
+        print(f"↪️ Response: {response.text}")
+        response.raise_for_status()
 
 # === DNS MX ===
 def get_mx(domain):
