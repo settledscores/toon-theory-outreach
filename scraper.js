@@ -7,7 +7,6 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Austin%2C+TX&find_country=USA',
   'https://www.bbb.org/us/fl/alafaya/category/business-consultant?page=1'
 ];
 
