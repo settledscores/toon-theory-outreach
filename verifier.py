@@ -11,13 +11,13 @@ from urllib.parse import quote
 from stem import Signal
 from stem.control import Controller
 
-# === Environment Variables ===
+# === ENV ===
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 SCRAPER_TABLE_NAME = os.getenv("SCRAPER_TABLE_NAME")
 TOR_PASSWORD = os.getenv("TOR_CONTROL_PASSWORD")
 
-# === Tor & SMTP Settings ===
+# === SETTINGS ===
 TOR_SOCKS_PORT = 9050
 TOR_CONTROL_PORT = 9051
 SMTP_TIMEOUT = 10
@@ -25,24 +25,27 @@ ROTATE_AFTER = 20
 SLEEP_BETWEEN = (1, 2)
 PAGE_SIZE = 100
 
-# === Use Tor for all outbound SMTP ===
+# === TOR ROUTING ===
 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", TOR_SOCKS_PORT)
 socket.socket = socks.socksocket
 
-# === Reset Tor IP ===
+# === TOR IP ROTATION ===
 def reset_tor_identity():
     try:
-        with Controller.from_port(port=TOR_CONTROL_PORT) as controller:
-            controller.authenticate(password=TOR_PASSWORD)
-            controller.signal(Signal.NEWNYM)
-            print("🔁 Tor identity rotated.")
+        with Controller.from_port(port=TOR_CONTROL_PORT) as c:
+            c.authenticate(password=TOR_PASSWORD)
+            c.signal(Signal.NEWNYM)
+            print("🔁 IP rotated via Tor\n")
     except Exception as e:
-        print(f"⚠️ Failed to rotate Tor identity: {e}")
+        print(f"⚠️ Tor IP rotation failed: {e}")
 
-# === Get Airtable Records ===
+# === AIRTABLE GET ===
 def get_airtable_records(offset=None):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}"
-    headers = {"Authorization": f"Bearer {AIRTABLE_API_KEY}"}
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Accept": "application/json"  # Fixes 406 error
+    }
     params = {
         "pageSize": PAGE_SIZE,
         "fields[]": ["Name", "Domain", "Email Permutations"]
@@ -53,7 +56,7 @@ def get_airtable_records(offset=None):
     response.raise_for_status()
     return response.json()
 
-# === Update Airtable Record ===
+# === AIRTABLE PATCH ===
 def update_verified_email(record_id, verified_email):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{quote(SCRAPER_TABLE_NAME)}/{record_id}"
     headers = {
@@ -64,7 +67,7 @@ def update_verified_email(record_id, verified_email):
     response = requests.patch(url, headers=headers, json=data)
     response.raise_for_status()
 
-# === Get MX Record ===
+# === DNS MX ===
 def get_mx(domain):
     try:
         answers = dns.resolver.resolve(domain, "MX")
@@ -72,7 +75,7 @@ def get_mx(domain):
     except:
         return None
 
-# === SMTP Verify ===
+# === SMTP VERIFY ===
 def verify_email(email):
     domain = email.split("@")[-1]
     mx = get_mx(domain)
@@ -88,17 +91,23 @@ def verify_email(email):
     except:
         return False
 
-# === Main Execution ===
+# === MAIN ===
 def main():
-    print("🚀 Starting email verifier with Tor IP rotation...\n")
-    total = 0
+    print("🚀 Starting email verification with Tor\n")
+    total_checked = 0
+    total_verified = 0
+    total_records = 0
     offset = None
 
     while True:
         batch = get_airtable_records(offset)
         records = batch.get("records", [])
 
+        if not records:
+            break
+
         for record in records:
+            total_records += 1
             record_id = record["id"]
             fields = record.get("fields", {})
             name = fields.get("Name", "")
@@ -109,21 +118,22 @@ def main():
                 continue
 
             emails = [e.strip() for e in perms.split(",") if e.strip()]
-            print(f"👤 {name} ({domain}) → {len(emails)} guesses")
+            print(f"🔍 [{total_records}] {name} ({domain}) — {len(emails)} permutations")
 
             for email in emails:
-                print(f"🔎 {email}")
-                total += 1
+                print(f"   ➤ Trying: {email}")
+                total_checked += 1
                 if verify_email(email):
-                    print(f"✅ Verified: {email}")
+                    print(f"   ✅ Verified: {email}\n")
                     update_verified_email(record_id, email)
+                    total_verified += 1
                     break
                 else:
-                    print("❌ Invalid")
+                    print("   ❌ Invalid")
 
                 time.sleep(random.uniform(*SLEEP_BETWEEN))
 
-                if total % ROTATE_AFTER == 0:
+                if total_checked % ROTATE_AFTER == 0:
                     reset_tor_identity()
                     time.sleep(10)
 
@@ -131,7 +141,10 @@ def main():
         if not offset:
             break
 
-    print("\n🎯 Verification complete.")
+    print("\n🎯 Done")
+    print(f"🧮 Records processed:  {total_records}")
+    print(f"📬 Emails verified:    {total_verified}")
+    print(f"📤 Permutations tried: {total_checked}")
 
 if __name__ == "__main__":
     main()
