@@ -31,7 +31,6 @@ def generate_permutations(first, last, domain):
         f"{f}{last}@{domain}",
         f"{first}{last}@{domain}",
         f"{last}.{first}@{domain}",
-        f"{first}_{last}@{domain}",
         f"{first}{l}@{domain}",
         f"{f}.{last}@{domain}"
     ]))
