@@ -75,19 +75,26 @@ Feel free to reply if this could be worth a shot. You’ll also find a link to o
 """
 ]
 
+SIGNATURES = [
+    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+]
+
 def parse_use_cases(use_case_field):
     raw = str(use_case_field or "")
-    items = [re.sub(r'[^\w\s]', '', uc).lower().strip() for uc in raw.split("|") if uc.strip()]
-    return items[:3]
+    return [re.sub(r'[^\w\s]', '', uc).lower().strip() for uc in raw.split("|") if uc.strip()][:3]
 
-def generate_followup_email(fields, template, use_cases):
+def generate_followup_email(fields, template, use_cases, signature):
     return template.format(
         name=fields.get("name", "[name]").strip(),
         company=fields.get("company name", "[company]").strip(),
         use_case_1=use_cases[0],
         use_case_2=use_cases[1],
         use_case_3=use_cases[2],
-        signature=fields.get("signature", "[signature]").strip()
+        signature=signature
     )
 
 def main():
@@ -101,32 +108,26 @@ def main():
 
         print(f"→ Checking record {record_id} for update eligibility")
 
+        name = fields.get("name")
+        company = fields.get("company name")
         email_2 = fields.get("email 2", "")
         use_case_raw = fields.get("use case", "")
-        name = fields.get("name", "")
-        company = fields.get("company name", "")
-        signature = fields.get("signature", "")
 
-        print(f"   email 2: {'[EMPTY]' if not email_2.strip() else '[FILLED]'}")
-        print(f"   use case: {'[EMPTY]' if not use_case_raw.strip() else use_case_raw}")
-        print(f"   name: {'[MISSING]' if not name else name}")
-        print(f"   company: {'[MISSING]' if not company else company}")
-        print(f"   signature: {'[MISSING]' if not signature else '[OK]'}")
-
+        if not name or not company:
+            print("   Skipping — missing name or company.\n")
+            continue
         if email_2.strip():
             print("   Skipping — email 2 already exists.\n")
             continue
 
         use_cases = parse_use_cases(use_case_raw)
         if len(use_cases) < 3:
-            print("   Skipping — not enough valid use cases.\n")
-            continue
-        if not name or not company or not signature:
-            print("   Skipping — missing required fields.\n")
+            print(f"   Skipping — only found {len(use_cases)} use cases.\n")
             continue
 
         template = random.choice(TEMPLATES)
-        content = generate_followup_email(fields, template, use_cases)
+        signature = random.choice(SIGNATURES)
+        content = generate_followup_email(fields, template, use_cases, signature)
 
         airtable.update(record_id, {"email 2": content})
         updated += 1
