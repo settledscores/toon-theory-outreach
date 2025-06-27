@@ -1,15 +1,16 @@
 name: Send Initial Emails
 
 on:
-  workflow_dispatch:  # Manual only
+  workflow_dispatch:
 
 jobs:
   send-emails:
     runs-on: ubuntu-latest
 
     env:
-      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
-      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
+      NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+      NOCODB_OUTREACH_TABLE_ID: ${{ secrets.NOCODB_OUTREACH_TABLE_ID }}
+      NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
       EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
@@ -17,18 +18,17 @@ jobs:
       SMTP_PORT: ${{ secrets.SMTP_PORT }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.11
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install requests python-dotenv
 
-      - name: 🚀 Run sender script
+      - name: Run sender script
         run: python sender.py
