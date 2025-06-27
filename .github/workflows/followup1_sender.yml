@@ -1,17 +1,14 @@
 name: Follow-up 1 Sender
 
 on:
-  workflow_dispatch:  # allows manual trigger
-  schedule:
-    - cron: '*/10 * * * *'  # runs every 10 minutes, adjust as needed
+  workflow_dispatch:  # manual trigger only
 
 jobs:
   send-followup1:
     runs-on: ubuntu-latest
     env:
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
       SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
       IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
       EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
@@ -27,7 +24,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
+        run: |
+          pip install -r requirements.txt
+          pip install requests python-dotenv pytz
+          
       - name: Run Follow-up 1 Sender
         run: python followup1_sender.py
