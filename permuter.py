@@ -5,9 +5,10 @@ from urllib.parse import urlparse
 # Load secrets from environment
 API_KEY = os.environ.get("NOCODB_API_KEY")
 BASE_URL = os.environ.get("NOCODB_BASE_URL")
-VIEW_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # This is actually the View ID
+PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")
+TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # This is your table slug (not a view ID)
 
-if not all([API_KEY, BASE_URL, VIEW_ID]):
+if not all([API_KEY, BASE_URL, PROJECT_ID, TABLE_ID]):
     raise ValueError("Missing one or more required environment variables.")
 
 HEADERS = {
@@ -33,7 +34,7 @@ def generate_permutations(first, last, domain):
     ]
 
 def fetch_records():
-    url = f"{BASE_URL}/api/v2/views/{VIEW_ID}/records?limit=10000"
+    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}?limit=10000"
     print(f"\n🚀 URL used for fetch: {url}")
     response = requests.get(url, headers=HEADERS)
     if not response.ok:
@@ -45,20 +46,20 @@ def fetch_records():
         print("\n🧪 Sample record:")
         print(records[0])
         print("\n🔑 Keys in first record:", list(records[0].keys()))
-        print("📌 Record ID (used for PATCH):", records[0].get("id"))
+        print("📌 Record ID (used for PATCH):", records[0].get("Id"))
 
     return records
 
-def needs_permutation(fields):
+def needs_permutation(record):
     return (
-        fields.get("First Name") and
-        fields.get("Last Name") and
-        fields.get("website url") and
-        not fields.get("Email Permutations")
+        record.get("First Name") and
+        record.get("Last Name") and
+        record.get("website url") and
+        not record.get("Email Permutations")
     )
 
 def update_record(record_id, permutations):
-    url = f"{BASE_URL}/api/v2/tables/{VIEW_ID}/records/{record_id}"
+    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}/{record_id}"
     data = {
         "Email Permutations": ", ".join(permutations)
     }
@@ -73,15 +74,13 @@ def run():
     updated = 0
 
     for record in records:
-        record_id = record.get("id")
-        fields = record.get("fields", {})
-
-        if not record_id or not needs_permutation(fields):
+        record_id = record.get("Id")
+        if not record_id or not needs_permutation(record):
             continue
 
-        first = fields["First Name"].strip()
-        last = fields["Last Name"].strip()
-        website = fields["website url"].strip()
+        first = record["First Name"].strip()
+        last = record["Last Name"].strip()
+        website = record["website url"].strip()
         domain = extract_domain(website)
 
         if not domain:
