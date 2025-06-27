@@ -7,25 +7,25 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
-  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
-  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA",
-  "https://www.bbb.org/search?find_text=Staffing+Agencies&find_entity=&find_type=&find_loc=Washington%2C+PA&find_country=USA",
-  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
+  "https://www.bbb.org/search?find_text=Legal+Services&find_loc=San+Diego%2C+CA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_loc=San+Diego%2C+CA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_loc=Detroit%2C+MI",
+  "https://www.bbb.org/search?find_text=Staffing+Agencies&find_loc=Washington%2C+PA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_loc=Boston%2C+MA"
 ];
 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
-const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|vi)\b\.?$/i];
+const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const steps = randomBetween(5, 8);
+  const steps = randomBetween(4, 6);
   for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(300, 800));
+    await delay(randomBetween(200, 500));
   }
 }
 
@@ -40,9 +40,11 @@ function cleanBusinessName(name) {
 
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
+  const lowerRaw = raw.toLowerCase();
+  if (lowerRaw.includes('support') || lowerRaw.includes('customer') || lowerRaw.length < 4) return null;
 
-  const honorifics = ['Mr\.', 'Mrs\.', 'Ms\.', 'Miss', 'Dr\.', 'Prof\.', 'Mx\.'];
-  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\s+`, 'i');
+  const honorifics = ['Mr.', 'Mrs.', 'Ms.', 'Miss', 'Dr.', 'Prof.', 'Mx.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
 
   let namePart = clean;
@@ -55,12 +57,8 @@ function cleanAndSplitName(raw, businessName = '') {
 
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
 
-  const tokens = namePart.split(/\s+/).filter(Boolean);
-
-  // Remove name suffixes (e.g., Jr, Sr, III)
-  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
-    tokens.pop();
-  }
+  let tokens = namePart.split(/\s+/).filter(Boolean);
+  tokens = tokens.filter(token => !nameSuffixes.some(regex => regex.test(token)));
 
   if (tokens.length < 2 || tokens.length > 4) return null;
 
@@ -79,7 +77,7 @@ function cleanAndSplitName(raw, businessName = '') {
 async function extractProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
-    await delay(randomBetween(1500, 3000));
+    await delay(randomBetween(1200, 2000));
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
@@ -121,10 +119,122 @@ async function extractProfile(page, url) {
 
     return {
       ...data,
-      ...split
+      ...split,
+      profileLink: url
     };
   } catch (err) {
     console.error(`❌ Failed to extract: ${url} — ${err.message}`);
     return null;
   }
 }
+
+async function syncToBaserow(record) {
+  const apiKey = process.env.BASEROW_API_KEY;
+  const dbId = process.env.BASEROW_DATABASE_ID;
+  const tableId = process.env.BASEROW_SCRAPER_TABLE;
+
+  if (!apiKey || !dbId || !tableId) {
+    console.error('❌ Missing Baserow config.');
+    return;
+  }
+
+  const body = {
+    fields: {
+      'business name': record.businessName,
+      'website url': record.website,
+      'location': record.location,
+      'industry': record.industry,
+      'years': record.years,
+      'First Name': record.firstName,
+      'Middle Name': record.middleName,
+      'Last Name': record.lastName,
+      'Decision Maker Title': record.title,
+      'Profile Link': record.profileLink
+    }
+  };
+
+  try {
+    const res = await fetch(`https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const result = await res.text();
+
+    if (!res.ok) {
+      console.error(`❌ Baserow error (${res.status}): ${result}`);
+    } else {
+      console.log(`✅ Synced: ${record.businessName}`);
+    }
+  } catch (err) {
+    console.error(`❌ Baserow sync failed: ${err.message}`);
+  }
+}
+
+(async () => {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: '/usr/bin/chromium-browser',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 800 });
+
+  const seen = new Set();
+  const deduped = new Set();
+
+  for (const baseUrl of NICHES) {
+    console.log(`🔍 Scraping niche: ${baseUrl}`);
+    let pageNum = 1;
+    let validCount = 0;
+    let consecutiveEmpty = 0;
+
+    while (validCount < 20 && consecutiveEmpty < 5) {
+      const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
+      await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
+      await delay(randomBetween(1000, 2000));
+      await humanScroll(page);
+
+      const links = await page.evaluate(() => {
+        return [...document.querySelectorAll('a[href*="/profile/"]')]
+          .map(a => a.href)
+          .filter((href, i, arr) => arr.indexOf(href) === i);
+      });
+
+      if (!links.length) break;
+
+      let scrapedThisPage = 0;
+      for (const link of links) {
+        if (seen.has(link)) continue;
+        seen.add(link);
+
+        const profile = await extractProfile(page, link);
+        if (profile) {
+          const dedupKey = `${profile.businessName.toLowerCase()}|${profile.website.toLowerCase()}`;
+          if (!deduped.has(dedupKey)) {
+            deduped.add(dedupKey);
+            await syncToBaserow(profile);
+            validCount++;
+            scrapedThisPage++;
+          }
+        }
+
+        await delay(randomBetween(3000, 6000));
+        if (validCount >= 20) break;
+      }
+
+      consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
+      pageNum++;
+    }
+
+    console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
+  }
+
+  await browser.close();
+  console.log('✅ All niches done.');
+})();
