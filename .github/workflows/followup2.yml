@@ -1,18 +1,15 @@
-name: Follow-up 2 Generator
+name: Generate Second Followups
 
 on:
-  schedule:
-    - cron: "55 8 * * 1-5"  # Weekdays at 08:55 UTC
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   followup2:
     runs-on: ubuntu-latest
 
     env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
 
     steps:
       - name: 📥 Checkout repo
@@ -26,6 +23,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install requests python-dotenv
 
       - name: ✉️ Run Follow-up 2 Generator
         run: python followup2_generator.py
