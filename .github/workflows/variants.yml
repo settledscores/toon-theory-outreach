@@ -8,22 +8,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install python-dotenv requests
 
-      - name: 🚀 Run Email Generator
-        run: python variants.py
+      - name: Run Email Generator
         env:
-          BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
-          BASEROW_DATABASE_ID: ${{ secrets.BASEROW_DATABASE_ID }}
-          BASEROW_TABLE_ID: ${{ secrets.BASEROW_TABLE_ID }}
+          NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+          NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
+          NOCODB_OUTREACH_TABLE_ID: ${{ secrets.NOCODB_OUTREACH_TABLE_ID }}
+        run: python variants.py
