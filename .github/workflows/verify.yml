@@ -2,34 +2,29 @@ name: Verify Email Permutations
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'verifier.py'
-      - 'permutations.txt'
 
 jobs:
   verify:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10  # ✅ corrected version
+          python-version: '3.10'
 
-      - name: 📦 Install Dependencies
+      - name: Install dependencies
         run: |
           pip install dnspython PySocks
 
-      - name: 📜 Run Email Verifier
+      - name: Run verifier.py
         run: |
-          echo "Running verifier.py with permutations.txt"
           python verifier.py
 
-      - name: ✅ Show Verified Emails Only (Filtered)
+      - name: Print Valid Emails
         run: |
-          echo "Verified emails:"
+          echo "Verified Emails:"
           grep "\[valid\]" verifier.py || echo "No valid emails found"
