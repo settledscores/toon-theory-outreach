@@ -5,10 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Baserow setup
-BASEROW_API_KEY = os.getenv("BASEROW_API_KEY")
-BASEROW_OUTREACH_TABLE = os.getenv("BASEROW_OUTREACH_TABLE")
-API_BASE = "https://api.baserow.io/api/database"
+# NocoDB setup
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+NOCODB_OUTREACH_TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL")
+API_BASE = f"{NOCODB_BASE_URL}/v1/db/data"
 
 SALUTATIONS = ["Hi there", "Hey there", "Hello there", "Hi", "Hey", "Hello"]
 
@@ -167,16 +169,16 @@ There’s a peek at past projects in my signature.
 ]
 
 def fetch_records():
-    url = f"{API_BASE}/rows/table/{BASEROW_OUTREACH_TABLE}/?user_field_names=true"
-    headers = {"Authorization": f"Token {BASEROW_API_KEY}"}
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows"
+    headers = {"Authorization": f"Bearer {NOCODB_API_KEY}"}
     r = requests.get(url, headers=headers)
     r.raise_for_status()
-    return r.json()["results"]
+    return r.json()["list"]
 
 def update_record(record_id, content):
-    url = f"{API_BASE}/rows/table/{BASEROW_OUTREACH_TABLE}/{record_id}/"
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows/{record_id}"
     headers = {
-        "Authorization": f"Token {BASEROW_API_KEY}",
+        "Authorization": f"Bearer {NOCODB_API_KEY}",
         "Content-Type": "application/json"
     }
     r = requests.patch(url, headers=headers, json={"email 2": content})
@@ -191,27 +193,26 @@ def generate_followup_email(fields, template, salutation, signature):
     )
 
 def main():
-    print("🔍 Scanning Baserow outreach table...")
+    print("🔍 Generating Follow-up 2 emails...")
     records = fetch_records()
     updated = 0
 
     for record in records:
-        fields = record
-        if not fields.get("name") or not fields.get("company name"):
+        if not record.get("name") or not record.get("company name"):
             print("   Skipping — missing name or company.\n")
             continue
-        if fields.get("email 2", "").strip():
+        if record.get("email 2", "").strip():
             print("   Skipping — email 2 already exists.\n")
             continue
 
         template = random.choice(TEMPLATES)
         salutation = random.choice(SALUTATIONS)
         signature = random.choice(SIGNATURES)
-        content = generate_followup_email(fields, template, salutation, signature)
+        content = generate_followup_email(record, template, salutation, signature)
 
-        update_record(fields["id"], content)
+        update_record(record["id"], content)
         updated += 1
-        print(f"✅ Email 2 written for: {fields['name']}\n")
+        print(f"✅ Email 2 written for: {record['name']}\n")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
