@@ -1,19 +1,16 @@
 name: Summarize Web Copy
 
 on:
-  schedule:
-    # Every weekday at 08:45 UTC (09:45 WAT)
-    - cron: "45 8 * * 1-5"
-  workflow_dispatch:
+  workflow_dispatch:  # 🔘 Manual trigger only
 
 jobs:
   summarize:
     runs-on: ubuntu-latest
 
     env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+      BASEROW_DATABASE_ID: ${{ secrets.BASEROW_DATABASE_ID }}
+      BASEROW_TABLE_ID: ${{ secrets.BASEROW_TABLE_ID }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
     steps:
