@@ -1,13 +1,13 @@
 {
   "name": "bbb-scraper",
   "version": "1.0.0",
-  "description": "Stealth Puppeteer scraper for Better Business Bureau profiles with Airtable sync",
+  "description": "Stealth Puppeteer scraper for Better Business Bureau profiles with NocoDB sync",
   "type": "module",
   "main": "scraper.js",
   "scripts": {
     "start": "node scraper.js"
   },
-  "keywords": ["scraper", "bbb", "puppeteer", "stealth", "automation", "airtable"],
+  "keywords": ["scraper", "bbb", "puppeteer", "stealth", "automation", "nocodb"],
   "license": "MIT",
   "dependencies": {
     "puppeteer-core": "^22.8.2",
@@ -16,6 +16,7 @@
     "chalk": "^5.3.0",
     "fs-extra": "^11.2.0",
     "dotenv": "^16.4.5",
-    "node-fetch": "^2.6.11"
+    "node-fetch": "^2.6.11",
+    "axios": "^1.6.8"
   }
 }
