@@ -6,12 +6,14 @@ from groq import Groq
 
 load_dotenv()
 
-# Baserow setup
-BASEROW_API_KEY = os.getenv("BASEROW_API_KEY")
-BASEROW_OUTREACH_TABLE = os.getenv("BASEROW_OUTREACH_TABLE")
-BASE_URL = f"https://api.baserow.io/api/database/rows/table/{BASEROW_OUTREACH_TABLE}"
+# NocoDB setup
+API_KEY = os.getenv("NOCODB_API_KEY")
+BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
+PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+
 HEADERS = {
-    "Authorization": f"Token {BASEROW_API_KEY}",
+    "xc-token": API_KEY,
     "Content-Type": "application/json"
 }
 
@@ -45,12 +47,17 @@ def postprocess_output(text):
     return "\n".join(clean_lines).strip()
 
 def fetch_records():
-    res = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}?limit=200"
+    res = requests.get(url, headers=HEADERS)
     res.raise_for_status()
-    return res.json()["results"]
+    return res.json()["list"]
 
 def update_services_field(record_id, text):
-    res = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json={"services": text})
+    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}/{record_id}"
+    payload = {
+        "services": text
+    }
+    res = requests.patch(url, headers=HEADERS, json=payload)
     res.raise_for_status()
 
 def main():
