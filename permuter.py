@@ -5,11 +5,11 @@ from urllib.parse import urlparse
 # Load secrets from environment
 API_KEY = os.environ.get("NOCODB_API_KEY")
 BASE_URL = os.environ.get("NOCODB_BASE_URL")
-PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")
-TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # This is your table slug (not a view ID)
+PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")      # e.g., 'wbv4do3x'
+TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # e.g., 'muom3qfddoeroow'
 
 if not all([API_KEY, BASE_URL, PROJECT_ID, TABLE_ID]):
-    raise ValueError("Missing one or more required environment variables.")
+    raise ValueError("❌ Missing one or more required environment variables.")
 
 HEADERS = {
     "xc-token": API_KEY,
@@ -74,16 +74,21 @@ def run():
     updated = 0
 
     for record in records:
-        record_id = record.get("Id")
-        if not record_id or not needs_permutation(record):
+        if not needs_permutation(record):
             continue
 
         first = record["First Name"].strip()
         last = record["Last Name"].strip()
         website = record["website url"].strip()
-        domain = extract_domain(website)
+        record_id = record.get("Id")  # NocoDB uses "Id" for primary key
 
+        if not website or not record_id:
+            print(f"⚠️ Skipping record with no website or ID: {record}")
+            continue
+
+        domain = extract_domain(website)
         if not domain:
+            print(f"⚠️ Skipping invalid domain for record ID {record_id}")
             continue
 
         permutations = generate_permutations(first, last, domain)
