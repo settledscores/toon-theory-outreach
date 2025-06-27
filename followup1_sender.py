@@ -13,11 +13,14 @@ import pytz
 
 load_dotenv()
 
-# Baserow config
-API_TOKEN = os.getenv("BASEROW_API_KEY")
-TABLE_ID = os.getenv("BASEROW_OUTREACH_TABLE")
-BASE_URL = "https://api.baserow.io/api/database"
-HEADERS = {"Authorization": f"Token {API_TOKEN}"}
+# NocoDB config
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+NOCODB_OUTREACH_TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL")
+API_BASE = f"{NOCODB_BASE_URL}/v1/db/data"
+
+HEADERS = {"Authorization": f"Bearer {NOCODB_API_KEY}"}
 
 # Email config
 SMTP_SERVER = os.getenv("SMTP_SERVER")
@@ -51,13 +54,13 @@ SUBJECT_LINES = [
 ]
 
 def fetch_records():
-    url = f"{BASE_URL}/rows/table/{TABLE_ID}/?user_field_names=true"
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows"
     r = requests.get(url, headers=HEADERS)
     r.raise_for_status()
-    return r.json()["results"]
+    return r.json()["list"]
 
 def update_record(record_id, updates):
-    url = f"{BASE_URL}/rows/table/{TABLE_ID}/{record_id}/"
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows/{record_id}"
     r = requests.patch(url, headers={**HEADERS, "Content-Type": "application/json"}, json=updates)
     r.raise_for_status()
 
@@ -119,12 +122,10 @@ def main():
 
         reply_flag = str(f.get("reply", "")).lower()
         if reply_flag in ["after initial", "after follow-up 1", "after follow-up 2"]:
-            print(f"⛔ Skipping {f['name']} — reply state: {reply_flag}")
             continue
 
         if replied_to_message_id(f["message id"], f["email"]):
             update_record(f["id"], {"reply": "after initial"})
-            print(f"📩 Reply detected for {f['name']}. Skipping.")
             continue
 
         subject = random.choice(SUBJECT_LINES).format(name=f["name"], company=f["company name"])
