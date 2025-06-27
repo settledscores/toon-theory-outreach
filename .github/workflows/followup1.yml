@@ -1,12 +1,7 @@
-name: Generate Followup Email 1
+name: Generate First Follow Ups
 
 on:
-  push:
-    paths:
-      - followup1_generator.py
-      - .env
-      - .github/workflows/email2_generator.yml
-  workflow_dispatch:
+  workflow_dispatch:  # 🚫 manual trigger only
 
 jobs:
   run-email-generator:
@@ -24,11 +19,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install airtable-python-wrapper python-dotenv
+          pip install python-dotenv requests
 
       - name: Run Email 2 Generator
         env:
-          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-          AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+          BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+          BASEROW_DATABASE_ID: ${{ secrets.BASEROW_DATABASE_ID }}
+          BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
         run: python followup1_generator.py
