@@ -17,12 +17,12 @@ const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_loc=Boston%2C+MA"
 ];
 
-const businessSuffixes = [/
-  \b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i
+const businessSuffixes = [
+  /\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i
 ];
 
-const nameSuffixes = [/
-  \b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\\.d\\.|phd|m\\.d\\.|md|cfa|cfe|cma|cfp|llb|ll\\.b\\.|llm|ll\\.m\\.|rn|np|pa|pmp|pe|p\\.eng|cis|cissp|aia|shrm[-\\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\\s?sigma|ceo|cto|cmo|chro|ret\\.?|gen\\.?|col\\.?|maj\\.?|capt?\\.?|lt\\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi
+const nameSuffixes = [
+  /\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi
 ];
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
