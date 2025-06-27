@@ -138,18 +138,16 @@ async function syncToNocoDB(record) {
   const url = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
 
   const body = {
-    business_name: record.businessName,
-    website_url: record.website,
-    location: record.location,
-    industry: record.industry,
-    years: record.years,
-    first_name: record.firstName,
-    middle_name: record.middleName,
-    last_name: record.lastName,
-    decision_maker_title: record.title,
-    profile_link: record.profileLink
-  };
-
+  "website url": record.website,
+  "location": record.location,
+  "industry": record.industry,
+  "years": record.years,
+  "First Name": record.firstName,
+  "Middle Name": record.middleName,
+  "Last Name": record.lastName,
+  "Decision Maker Title": record.title
+};
+  
   try {
     const res = await fetch(url, {
       method: 'POST',
