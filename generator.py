@@ -1,87 +1,118 @@
 import os
+import smtplib
 import random
-from airtable import Airtable
+from email.mime.text import MIMEText
+from email.utils import make_msgid
+from datetime import datetime
+import requests
 from dotenv import load_dotenv
+import pytz
 
 load_dotenv()
 
-AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
-AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
-AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL")
+PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
 
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 
-subject_variants = [
-    "Let’s make your message stick",
-    "A quick thought for your next project",
-    "Helping your message stick visually",
-    "Turn complex into simple (in 90 seconds or less)",
-    "Your story deserves to be told differently",
-    "How about a different approach to your messaging?",
-    "Making your message unforgettable",
+LAGOS = pytz.timezone("Africa/Lagos")
+
+API_BASE = f"{NOCODB_BASE_URL}/api/v1/projects/{PROJECT_ID}/tables/{TABLE_ID}/rows"
+HEADERS = {
+    "xc-auth": NOCODB_API_KEY,
+    "Content-Type": "application/json"
+}
+
+SUBJECT_LINES = [
+    "Let’s make your message stick", "Helping your story land", "Your idea → a great first impression",
+    "A quick thought for your next launch", "Something different for {company}", 
+    "Helping explain what {company} does — visually", "Here’s a fun idea worth testing", 
+    "Your pitch deserves better than plain text", "Cut through the clutter", 
+    "Explainers that make people pay attention", "Let's make your message unforgettable",
+    "Got a moment, {name}?", "This might help simplify your message", "Show, don’t just tell",
+    "Explainers that engage in 90 seconds", "Visual stories → higher conversions", 
+    "Here’s a visual treatment idea", "Making complex → simple",
+    "Stand out with animated storytelling", "This pitch idea works wonders",
+    "People skim. Let’s grab their eyes.", "Need to simplify your pitch?", 
+    "Making your story stick — fast", "3 ideas for {company}", 
+    "Could animated content help your outreach?", "Animations that boost sales",
+    "Ever tried this in your messaging?", "Turn your message into a scroll-stopper"
 ]
 
+def fetch_records():
+    res = requests.get(API_BASE, headers=HEADERS)
+    res.raise_for_status()
+    return res.json()["list"]
+
+def update_record(record_id, payload):
+    res = requests.patch(f"{API_BASE}/{record_id}", headers=HEADERS, json=payload)
+    res.raise_for_status()
+
+def send_email(to_email, subject, body):
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = FROM_EMAIL
+    msg["To"] = to_email
+    msg["Message-ID"] = make_msgid(domain=FROM_EMAIL.split("@")[-1])
+
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.sendmail(FROM_EMAIL, [to_email], msg.as_string())
+
+    return msg["Message-ID"].strip("<>")
+
 def main():
-    print("🚀 Generating Email 1 from table fields...")
-    records = airtable.get_all()
-    generated_count = 0
+    print("🚀 Sending initial emails via NocoDB...")
+    used_subjects = set()
+    records = fetch_records()
+    sent_count = 0
 
     for record in records:
-        fields = record.get("fields", {})
-        if "email 1" in fields:
+        if sent_count >= 3:
+            break
+
+        name = record.get("name", "")
+        company = record.get("company name", "")
+        email_to = record.get("email", "")
+        email1 = record.get("email 1", "")
+        status = record.get("initial status", "")
+
+        if not all([name, company, email_to, email1]) or status:
             continue
 
-        name = fields.get("name", "there")
-        company = fields.get("company name", "your team")
-        summary_2 = fields.get("niche summary paragraph 2", "").strip()
+        try:
+            subject_template = random.choice([s for s in SUBJECT_LINES if s not in used_subjects])
+            used_subjects.add(subject_template)
+            subject = subject_template.format(name=name, company=company)
 
-        salutation = fields.get("salutation", f"Hi {name},")
-        subject = fields.get("subject") or random.choice(subject_variants)
-        p1 = fields.get("paragraph 1 niche opener", "")
-        p2 = fields.get("paragraph 2 pitch", "")
-        p3 = fields.get("paragraph 3 service tiein", "").replace("[niche summary paragraph 2]", summary_2)
-        uc1 = fields.get("paragraph 4 use case 1", "")
-        uc2 = fields.get("paragraph 4 use case 2", "")
-        uc3 = fields.get("paragraph 4 use case 3", "")
-        p4b = fields.get("paragraph 4b benefits", "")
-        p5 = fields.get("paragraph 5 invitation", "").replace("[company name]", company)
-        p6 = fields.get("paragraph 6 closer", "")
-        p7 = fields.get("paragraph 7 cta", "")
-        sig = fields.get("signature", "Cheers,\nTrent\nwww.toontheory.com")
+            print(f"📤 Sending to {name} ({email_to})")
+            message_id = send_email(email_to, subject, email1)
+            now = datetime.now(LAGOS).isoformat()
 
-        email_body = f"""
-{salutation}
+            update_record(record["id"], {
+                "initial date": now,
+                "initial status": "Sent",
+                "message id": message_id
+            })
 
-{p1}
-
-{p2}
-
-{p3}
-
-1. {uc1}
-2. {uc2}
-3. {uc3}
-
-{p4b}
-
-{p5}
-
-{p7}
-
-{p6}
-
-{sig}
-""".strip()
-
-        airtable.update(record["id"], {
-            "email 1": email_body,
-            "subject": subject.strip()
-        })
-
-        print(f"✅ Composed email for: {fields.get('name', '[No Name]')} | {subject}")
-        generated_count += 1
-
-    print(f"\n🎯 Finished. Total emails generated: {generated_count}")
+            print(f"✅ Email sent and logged for {name}")
+            sent_count += 1
+        except Exception as e:
+            print(f"❌ Failed for {email_to}: {e}")
+            now = datetime.now(LAGOS).isoformat()
+            try:
+                update_record(record["id"], {
+                    "initial date": now,
+                    "initial status": "Failed"
+                })
+            except Exception as err:
+                print(f"⚠️ Failed to log error: {err}")
 
 if __name__ == "__main__":
     main()
