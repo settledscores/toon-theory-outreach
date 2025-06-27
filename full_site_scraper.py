@@ -3,29 +3,35 @@ import requests
 import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from airtable import Airtable
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Airtable setup
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-
-# Headers for crawling
+API_TOKEN = os.getenv("BASEROW_API_KEY")
+TABLE_ID = os.getenv("BASEROW_OUTREACH_TABLE")
+BASE_URL = f"https://api.baserow.io/api/database/rows/table/{TABLE_ID}"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; Bot/0.1; +https://example.com/bot)"
+    "Authorization": f"Token {API_TOKEN}",
+    "Content-Type": "application/json"
 }
 
-# Constants
+CRAWL_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"
+}
+
 MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
 
+def fetch_records():
+    res = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    res.raise_for_status()
+    return res.json()["results"]
+
+def update_record(record_id, payload):
+    res = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json=payload)
+    res.raise_for_status()
+
 def clean_text(text):
-    # Remove non-ASCII and excessive whitespace
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
     return " ".join(text.split())
 
@@ -34,6 +40,10 @@ def extract_visible_text(html):
     for tag in soup(["script", "style", "nav", "footer", "header", "form", "svg", "img", "noscript", "aside"]):
         tag.decompose()
     return " ".join(soup.stripped_strings)
+
+def normalize_url(url):
+    url = url.strip().rstrip("/")
+    return url if url.startswith("http") else f"https://{url}"
 
 def crawl_site(base_url, max_pages=15):
     visited = set()
@@ -47,7 +57,7 @@ def crawl_site(base_url, max_pages=15):
             continue
 
         try:
-            res = requests.get(url, headers=HEADERS, timeout=10)
+            res = requests.get(url, headers=CRAWL_HEADERS, timeout=10)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 visited.add(url)
                 print(f"🕷️ Crawling: {url}")
@@ -65,39 +75,35 @@ def crawl_site(base_url, max_pages=15):
 
     return clean_text(all_text)
 
-def normalize_url(url):
-    url = url.strip().rstrip("/")
-    return url if url.startswith("http") else f"https://{url}"
-
 def main():
-    records = airtable.get_all()
+    records = fetch_records()
     updated_count = 0
 
     for record in records:
-        fields = record.get("fields", {})
-        website = fields.get("website", "")
-        web_copy = fields.get("web copy", "")
+        record_id = record["id"]
+        website = record.get("website", "").strip()
+        existing_copy = record.get("web copy", "").strip()
 
-        if not website or web_copy:
+        if not website or existing_copy:
             continue
 
         norm_url = normalize_url(website)
         print(f"\n🌐 Starting crawl for: {norm_url}")
-        text = crawl_site(norm_url)
+        content = crawl_site(norm_url)
 
-        if len(text.split()) < MIN_WORDS_THRESHOLD:
-            print(f"⚠️ Skipping {norm_url} - not enough meaningful content.")
+        if len(content.split()) < MIN_WORDS_THRESHOLD:
+            print(f"⚠️ Skipping — not enough meaningful text.")
             continue
 
-        trimmed_text = text[:MAX_TEXT_LENGTH]
+        trimmed = content[:MAX_TEXT_LENGTH]
         try:
-            airtable.update(record["id"], {"web copy": trimmed_text})
-            print(f"✅ Updated {website}")
+            update_record(record_id, {"web copy": trimmed})
+            print(f"✅ Updated: {website}")
             updated_count += 1
         except Exception as e:
-            print(f"❌ Failed to update Airtable for {website}: {e}")
+            print(f"❌ Failed to update: {website} — {e}")
 
-    print(f"\n🏁 Done. {updated_count} records updated.")
+    print(f"\n🏁 Done. {updated_count} sites updated.")
 
 if __name__ == "__main__":
     main()
