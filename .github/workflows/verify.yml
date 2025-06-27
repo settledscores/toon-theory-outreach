@@ -1,51 +1,35 @@
-name: Verify Emails
+name: Verify Email Permutations
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'verifier.py'
+      - 'permutations.txt'
 
 jobs:
   verify:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: 📥 Checkout Repo
+        uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: 3.10
 
-      - name: Install dependencies
+      - name: 📦 Install Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y tor torsocks
-          pip install stem dnspython PySocks
+          pip install dnspython PySocks
 
-      - name: Configure Tor
+      - name: 📜 Run Email Verifier
         run: |
-          echo "ControlPort 9051" | sudo tee -a /etc/tor/torrc
-          echo "CookieAuthentication 0" | sudo tee -a /etc/tor/torrc
-          echo "HashedControlPassword $(tor --hash-password my_password)" | sudo tee -a /etc/tor/torrc
+          echo "Running verifier.py with permutations.txt"
+          python verifier.py
 
-      - name: Start Tor service
+      - name: ✅ Show Verified Emails Only (Filtered)
         run: |
-          sudo systemctl start tor
-          sleep 10
-
-      - name: Add permutations.txt if missing
-        run: |
-          if [ ! -f permutations.txt ]; then
-            echo "No permutations.txt file found." > permutations.txt
-          fi
-
-      - name: Run verifier
-        env:
-          TOR_CONTROL_PASSWORD: my_password
-        run: python verifier.py
-
-      - name: Upload verified emails
-        uses: actions/upload-artifact@v4
-        with:
-          name: verified_emails
-          path: verified_emails.json
+          echo "Verified emails:"
+          grep "\[valid\]" verifier.py || echo "No valid emails found"
