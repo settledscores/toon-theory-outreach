@@ -8,9 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
-      BASEROW_DATABASE_ID: ${{ secrets.BASEROW_DATABASE_ID }}
-      BASEROW_SCRAPER_TABLE: ${{ secrets.BASEROW_SCRAPER_TABLE }}
+      NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+      NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
+      NOCODB_PROJECT_ID: ${{ secrets.NOCODB_PROJECT_ID }}
+      NOCODB_SCRAPER_TABLE_ID: ${{ secrets.NOCODB_SCRAPER_TABLE_ID }}
 
     steps:
       - uses: actions/checkout@v4
