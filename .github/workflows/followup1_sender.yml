@@ -1,19 +1,22 @@
 name: Follow-up 1 Sender
 
 on:
-  workflow_dispatch:  # manual trigger only
+  workflow_dispatch:
 
 jobs:
   send-followup1:
     runs-on: ubuntu-latest
+
     env:
-      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
-      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
+      NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+      NOCODB_OUTREACH_TABLE_ID: ${{ secrets.NOCODB_OUTREACH_TABLE_ID }}
+      NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
       SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
       IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
       EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -27,6 +30,6 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install requests python-dotenv pytz
-          
+
       - name: Run Follow-up 1 Sender
         run: python followup1_sender.py
