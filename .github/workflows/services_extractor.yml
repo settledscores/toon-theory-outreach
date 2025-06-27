@@ -1,9 +1,7 @@
 name: Extract Core Offerings
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "33 8 * * 1-5"  # Weekdays at 09:33 WAT
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   extract-services:
