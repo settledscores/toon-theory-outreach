@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 # Load environment variables
 API_KEY = os.environ.get("NOCODB_API_KEY")
 BASE_URL = os.environ.get("NOCODB_BASE_URL")
-TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")
+TABLE_NAME = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # This is now the table *name*, not hash
 
-if not all([API_KEY, BASE_URL, TABLE_ID]):
+if not all([API_KEY, BASE_URL, TABLE_NAME]):
     raise ValueError("❌ Missing one or more required environment variables.")
 
 HEADERS = {
@@ -33,10 +33,12 @@ def generate_permutations(first, last, domain):
     ]
 
 def fetch_records():
-    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
+    url = f"{BASE_URL}/api/v2/tables/{TABLE_NAME}/records?limit=10000"
     print(f"\n🚀 URL used for fetch: {url}")
     
     response = requests.get(url, headers=HEADERS)
+    if not response.ok:
+        print(f"❌ Failed to fetch records: {response.status_code} — {response.text}")
     response.raise_for_status()
 
     records = response.json().get("list", [])
@@ -58,7 +60,7 @@ def needs_permutation(record):
     )
 
 def update_record(record_id, permutations):
-    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records/{record_id}"
+    url = f"{BASE_URL}/api/v2/tables/{TABLE_NAME}/records/{record_id}"
     data = {
         "Email Permutations": ", ".join(permutations)
     }
@@ -76,7 +78,6 @@ def run():
 
     for record in records:
         record_id = record.get("id")
-
         if not record_id:
             print(f"⚠️ Skipping record with no 'id': {record}")
             continue
@@ -90,6 +91,7 @@ def run():
         domain = extract_domain(website)
 
         if not domain:
+            print(f"⚠️ Could not extract domain from: {website}")
             continue
 
         permutations = generate_permutations(first, last, domain)
