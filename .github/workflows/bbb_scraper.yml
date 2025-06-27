@@ -35,9 +35,7 @@ jobs:
             Linux-node-modules-
 
       - name: Install dependencies
-        run: |
-          npm install
-          npm install node-fetch@2 dotenv
+        run: npm install
 
       - name: Run Puppeteer Scraper
         run: npm start
