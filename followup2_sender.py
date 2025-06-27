@@ -1,23 +1,25 @@
-# followup2_sender_test.py
+# followup2_sender_test.py (NocoDB version)
+
 import os
 import smtplib
 import random
 import imaplib
+import requests
+import time
 from email.mime.text import MIMEText
 from email.utils import make_msgid
 from datetime import datetime
-from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
-import time
 
 # Load environment variables
 load_dotenv()
 
-# Airtable config
-AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
-AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
-AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
+# NocoDB config
+NOCODB_API_KEY = os.environ["NOCODB_API_KEY"]
+NOCODB_BASE_URL = os.environ["NOCODB_BASE_URL"].rstrip("/")
+NOCODB_PROJECT_ID = os.environ["NOCODB_PROJECT_ID"]
+NOCODB_OUTREACH_TABLE_ID = os.environ["NOCODB_OUTREACH_TABLE_ID"]
 
 # Email config
 SMTP_SERVER = os.environ["SMTP_SERVER"]
@@ -42,6 +44,11 @@ SUBJECT_LINES = [
     "Open to creative pitches?", "Visual ideas always on hand", "Just in case it got buried",
     "Hope this isn’t too forward"
 ]
+
+HEADERS = {
+    "Authorization": f"Bearer {NOCODB_API_KEY}",
+    "Content-Type": "application/json"
+}
 
 last_sent_time = None
 
@@ -83,18 +90,28 @@ def send_threaded_email(to_email, subject, body, in_reply_to):
     last_sent_time = datetime.now()
     return message_id_3.strip("<>")
 
-def main():
-    print("🚀 Follow-up 2 Sender Test Mode (weekend + 5min interval)")
+def get_nocodb_records():
+    url = f"{NOCODB_BASE_URL}/api/v1/projects/{NOCODB_PROJECT_ID}/tables/{NOCODB_OUTREACH_TABLE_ID}/rows?limit=200"
+    resp = requests.get(url, headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()["list"]
 
-    airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-    records = airtable.get_all()
+def update_nocodb_record(row_id, updates):
+    url = f"{NOCODB_BASE_URL}/api/v1/projects/{NOCODB_PROJECT_ID}/tables/{NOCODB_OUTREACH_TABLE_ID}/rows/{row_id}"
+    response = requests.patch(url, json=updates, headers=HEADERS)
+    response.raise_for_status()
+
+def main():
+    print("🚀 Follow-up 2 Sender Test Mode (NocoDB edition)")
+
+    records = get_nocodb_records()
     sent_count = 0
 
-    for record in records:
+    for row in records:
         if sent_count >= 3:
             break
 
-        fields = record.get("fields", {})
+        fields = row
         required = ["name", "company name", "email", "email 3", "follow-up 1 date", "message id 2"]
         if any(not fields.get(k) for k in required):
             continue
@@ -107,7 +124,7 @@ def main():
             continue
 
         if replied_to_message_id(fields["message id 2"]):
-            airtable.update(record["id"], {"reply": "after follow-up 1"})
+            update_nocodb_record(fields["id"], {"reply": "after follow-up 1"})
             print(f"📩 Reply detected for {fields['name']}. Skipping.")
             continue
 
@@ -121,12 +138,13 @@ def main():
 
         msg_id_3 = send_threaded_email(to_email, subject, body, in_reply_to)
 
-        now = datetime.now(LAGOS)
-        airtable.update(record["id"], {
-            "follow-up 2 date": now.isoformat(),
+        now = datetime.now(LAGOS).isoformat()
+        update_nocodb_record(fields["id"], {
+            "follow-up 2 date": now,
             "follow-up 2 status": "Sent",
             "message id 3": msg_id_3
         })
+
         sent_count += 1
 
 if __name__ == "__main__":
