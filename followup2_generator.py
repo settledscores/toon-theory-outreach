@@ -1,27 +1,28 @@
 import os
 import random
-from airtable import Airtable
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Airtable setup
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+API_TOKEN = os.getenv("BASEROW_API_KEY")
+TABLE_ID = os.getenv("BASEROW_OUTREACH_TABLE")
+BASE_URL = f"https://api.baserow.io/api/database/rows/table/{TABLE_ID}"
+HEADERS = {
+    "Authorization": f"Token {API_TOKEN}",
+    "Content-Type": "application/json"
+}
 
 SALUTATIONS = [
-    "Hi", "Hey", "Hello",
-    "Hi there", "Hey there", "Hello there"
+    "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there"
 ]
 
 SIGNATURES = [
-    "Warm regards,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "All the best,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Cheers,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Take care,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com"
+    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
 TEMPLATES = [
@@ -149,21 +150,30 @@ Whiteboard explainers are great for making complex ideas stick. If that’s some
 
 You’ll find our work in the link below if you want to browse examples.
 
-{signature}""",
+{signature}"""
+]
 
 def build_email(template, name, company, salutation, signature):
     return template.format(name=name, company=company, salutation=salutation, signature=signature)
 
+def fetch_records():
+    r = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    r.raise_for_status()
+    return r.json()["results"]
+
+def update_record(record_id, payload):
+    r = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json=payload)
+    r.raise_for_status()
+
 def main():
-    print("🚀 Generating final follow-up emails (Email 3)...")
-    records = airtable.get_all()
+    print("🚀 Generating Email 3 follow-ups...")
+    records = fetch_records()
     eligible = []
 
     for record in records:
-        fields = record.get("fields", {})
-        name = fields.get("name", "").strip()
-        company = fields.get("company name", "").strip()
-        email3 = fields.get("email 3", "").strip()
+        name = record.get("name", "").strip()
+        company = record.get("company name", "").strip()
+        email3 = record.get("email 3", "").strip()
         record_id = record["id"]
 
         print(f"→ Checking {record_id}...")
@@ -172,25 +182,26 @@ def main():
             eligible.append((record_id, name, company))
             print("   ✅ Eligible")
         else:
-            print("   ❌ Skipping ;  missing name/company or email 3 already exists")
+            print("   ❌ Skipping — missing name/company or email 3 already exists")
 
     if not eligible:
         print("⚠️ No eligible records found.")
         return
 
     random.shuffle(eligible)
-
     updated = 0
-    for i, (record_id, name, company) in enumerate(eligible):
+
+    for record_id, name, company in eligible:
         template = random.choice(TEMPLATES)
         salutation = random.choice(SALUTATIONS)
         signature = random.choice(SIGNATURES)
         content = build_email(template, name, company, salutation, signature)
-        airtable.update(record_id, {"email 3": content})
+
+        update_record(record_id, {"email 3": content})
         updated += 1
         print(f"✅ Email 3 written for {name}")
 
-    print(f"\n🎯 Done. {updated} final follow-ups sent.")
+    print(f"\n🎯 Done. {updated} follow-ups generated.")
 
 if __name__ == "__main__":
     main()
