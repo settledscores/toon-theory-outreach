@@ -4,29 +4,29 @@ import random
 from email.mime.text import MIMEText
 from email.utils import make_msgid
 from datetime import datetime
-from airtable import Airtable
 from dotenv import load_dotenv
 import pytz
+import requests
 
-# Load environment variables
 load_dotenv()
 
-# Airtable config
-AIRTABLE_BASE_ID = os.environ["AIRTABLE_BASE_ID"]
-AIRTABLE_TABLE_NAME = os.environ["AIRTABLE_TABLE_NAME"]
-AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
+# Config
+BASEROW_API_KEY = os.getenv("BASEROW_API_KEY")
+BASEROW_OUTREACH_TABLE = os.getenv("BASEROW_OUTREACH_TABLE")
+BASE_URL = f"https://api.baserow.io/api/database/rows/table/{BASEROW_OUTREACH_TABLE}"
+HEADERS = {
+    "Authorization": f"Token {BASEROW_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-# Email config
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
-EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
-FROM_EMAIL = os.environ["FROM_EMAIL"]
-SMTP_PORT = 465  # SSL
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 
-# Timezone
 LAGOS = pytz.timezone("Africa/Lagos")
 
-# Subject line rotation
 SUBJECT_LINES = [
     "Let’s make your message stick",
     "A quick thought for your next project",
@@ -55,14 +55,21 @@ SUBJECT_LINES = [
     "Let’s make it click — visually"
 ]
 
+def fetch_records():
+    res = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    res.raise_for_status()
+    return res.json()["results"]
+
+def update_record(record_id, payload):
+    res = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json=payload)
+    res.raise_for_status()
+
 def send_email(to_email, subject, body):
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
-
-    # Generate and set Message-ID
-    message_id = make_msgid(domain=FROM_EMAIL.split('@')[-1])
+    message_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])
     msg["Message-ID"] = message_id
 
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
@@ -72,60 +79,69 @@ def send_email(to_email, subject, body):
     return message_id.strip("<>")
 
 def main():
-    print("\U0001F680 Starting email sender...")
+    print("🚀 Sending initial emails...")
 
-    airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
-    records = airtable.get_all()
+    used_subjects = set()
+    records = fetch_records()
     sent_count = 0
 
     for record in records:
         if sent_count >= 3:
             break
 
-        fields = record.get("fields", {})
-        required = ["name", "company name", "email", "email 1"]
-        missing = [k for k in required if not fields.get(k)]
+        fields = record
+        record_id = fields["id"]
 
-        if missing:
-            print(f"⏭️ Skipping record — missing fields: {', '.join(missing)}")
+        name = fields.get("name", "").strip()
+        company = fields.get("company name", "").strip()
+        email_to = fields.get("email", "").strip()
+        email1 = fields.get("email 1", "").strip()
+        status = fields.get("initial status", "")
+
+        if not all([name, company, email_to, email1]):
+            print(f"⏭️ Skipping {record_id} — missing required fields")
             continue
 
-        if fields.get("initial status"):
-            print(f"⏭️ Skipping {fields['name']} — already marked as sent or failed")
+        if status:
+            print(f"⏭️ Skipping {name} — already marked as sent or failed")
             continue
 
         try:
-            company = fields["company name"]
-            subject_template = random.choice(SUBJECT_LINES)
+            available_subjects = [s for s in SUBJECT_LINES if s not in used_subjects]
+            if not available_subjects:
+                used_subjects.clear()
+                available_subjects = SUBJECT_LINES.copy()
+
+            subject_template = random.choice(available_subjects)
+            used_subjects.add(subject_template)
             subject = subject_template.format(company=company)
-            body = fields["email 1"]
 
-            print(f"📤 Sending to {fields['name']} ({fields['email']})")
-            message_id = send_email(fields["email"], subject, body)
+            print(f"📤 Sending to {name} ({email_to})")
+            message_id = send_email(email_to, subject, email1)
 
-            now = datetime.now(LAGOS)
+            now = datetime.now(LAGOS).isoformat()
             update_payload = {
-                "initial date": now.isoformat(),
+                "initial date": now,
                 "initial status": "Sent",
                 "message id": message_id
             }
 
-            airtable.update(record["id"], update_payload)
-            print(f"✅ Airtable updated for: {fields['name']}")
+            update_record(record_id, update_payload)
+            print(f"✅ Updated Baserow for {name}")
             sent_count += 1
 
         except Exception as e:
-            print(f"❌ Failed for {fields.get('email')}: {e}")
-            now = datetime.now(LAGOS)
+            print(f"❌ Failed for {email_to}: {e}")
+            now = datetime.now(LAGOS).isoformat()
             fail_payload = {
-                "initial date": now.isoformat(),
+                "initial date": now,
                 "initial status": "Failed"
             }
             try:
-                airtable.update(record["id"], fail_payload)
-                print(f"⚠️ Logged failure for {fields.get('name')}")
-            except Exception as update_error:
-                print(f"❌ Airtable update error after failure: {update_error}")
+                update_record(record_id, fail_payload)
+                print(f"⚠️ Logged failure for {name}")
+            except Exception as uerr:
+                print(f"❌ Error updating failure: {uerr}")
 
 if __name__ == "__main__":
     main()
