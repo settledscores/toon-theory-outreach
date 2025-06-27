@@ -132,16 +132,18 @@ async function extractProfile(page, url) {
 
 async function syncToNocoDB(record) {
   const API_KEY = process.env.NOCODB_API_KEY;
-  const BASE_URL = 'https://app.nocodb.com'; // e.g. https://yourdomain.nocodb.app
-  const PROJECT_ID = process.env.NOCODB_PROJECT_ID;
-  const TABLE_ID = process.env.NOCODB_SCRAPER_TABLE_ID;
+  const BASE_URL = 'https://app.nocodb.com'; // hardcoded base URL
+  const PROJECT_ID = 'wbv4do3x';              // hardcoded project ID
+  const TABLE_ID = 'muom3qfddoeroow';         // hardcoded table ID
 
-  if (!API_KEY || !BASE_URL || !PROJECT_ID || !TABLE_ID) {
-    console.error('❌ Missing NocoDB configuration in environment variables.');
+  if (!API_KEY) {
+    console.error('❌ Missing NocoDB API key in environment variables.');
     return;
   }
 
   const url = `${BASE_URL}/api/v1/db/data/v1/${PROJECT_ID}/${TABLE_ID}`;
+  console.log('Using NocoDB URL:', url);
+
   const body = {
     business_name: record.businessName,
     website_url: record.website,
