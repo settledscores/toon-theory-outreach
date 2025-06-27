@@ -1,68 +1,75 @@
 import os
-from pyairtable import Table
+import requests
 from urllib.parse import urlparse
 
-# Load environment variables
-API_KEY = os.environ.get("AIRTABLE_API_KEY")
-BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-TABLE_NAME = os.environ.get("SCRAPER_TABLE_NAME")
+# Load secrets from environment
+API_KEY = os.environ.get("NOCODB_API_KEY")
+BASE_URL = os.environ.get("NOCODB_BASE_URL")
+PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")
+TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")
 
-if not all([API_KEY, BASE_ID, TABLE_NAME]):
+if not all([API_KEY, BASE_URL, PROJECT_ID, TABLE_ID]):
     raise ValueError("Missing one or more required environment variables.")
 
-table = Table(API_KEY, BASE_ID, TABLE_NAME)
+HEADERS = {
+    "xc-token": API_KEY,
+    "Content-Type": "application/json"
+}
 
 def extract_domain(url):
     try:
-        domain = urlparse(url).netloc.replace("www.", "")
-        return domain.lower()
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path
+        return domain.replace("www.", "").lower()
     except:
         return ""
 
 def generate_permutations(first, last, domain):
-    first = first.lower().strip()
-    last = last.lower().strip()
-
+    first = first.lower()
+    last = last.lower()
+    f = first[0]
     return [
         f"{first}@{domain}",
         f"{first}.{last}@{domain}",
         f"{first}{last}@{domain}"
     ]
 
-def needs_permutation(record):
-    fields = record.get("fields", {})
-    return (
-        fields.get("First Name") and
-        fields.get("Last Name") and
-        fields.get("website url") and
-        not fields.get("Email Permutations")
-    )
+def fetch_records():
+    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}?limit=10000"
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    return response.json().get("list", [])
 
-def update_record(record):
-    fields = record.get("fields", {})
-    first = fields["First Name"].strip()
-    last = fields["Last Name"].strip()
-    website = fields["website url"].strip()
-
-    domain = extract_domain(website)
-    if not domain:
-        return
-
-    perms = generate_permutations(first, last, domain)
-    table.update(record["id"], {
-        "Email Permutations": ", ".join(perms)
-    })
-    print(f"✅ Updated: {first} {last} → {len(perms)} permutations")
+def update_record(record_id, permutations):
+    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}/{record_id}"
+    data = {
+        "Email Permutations": ", ".join(permutations)
+    }
+    response = requests.patch(url, headers=HEADERS, json=data)
+    response.raise_for_status()
 
 def run():
     print("🔍 Fetching records...")
-    records = table.all()
+    records = fetch_records()
     updated = 0
 
     for record in records:
-        if needs_permutation(record):
-            update_record(record)
-            updated += 1
+        first = record.get("First Name", "").strip()
+        last = record.get("Last Name", "").strip()
+        website = record.get("website url", "").strip()
+        existing = record.get("Email Permutations")
+
+        if not first or not last or not website or existing:
+            continue
+
+        domain = extract_domain(website)
+        if not domain:
+            continue
+
+        permutations = generate_permutations(first, last, domain)
+        update_record(record["Id"], permutations)
+        print(f"✅ Updated: {first} {last} → {len(permutations)} permutations")
+        updated += 1
 
     print(f"🎯 Done. {updated} records updated.")
 
