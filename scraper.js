@@ -1,11 +1,13 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
+import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
 puppeteer.use(StealthPlugin());
 
+// 🟩 Scraper Targets
 const NICHES = [
   "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
   "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
@@ -14,68 +16,50 @@ const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
-const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
-const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi];
+// 🟩 Static Variables
+const API_KEY = 'UtubR5TLlqxOZOAmodTkqjAyImTpXyYlTYFVXM2p';
+const BASE_URL = 'https://app.nocodb.com';
+const TABLE_ID = 'ms0nic0srwe82cw';
+const VIEW_ID = 'vw5b7hiliawyo6eo';
 
+// 🟩 Utility
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+// 🟩 Human scroll simulation
 async function humanScroll(page) {
-  const steps = randomBetween(5, 8);
-  for (let i = 0; i < steps; i++) {
+  for (let i = 0; i < randomBetween(5, 8); i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
     await delay(randomBetween(300, 800));
   }
 }
 
+// 🟩 Name cleaning helpers
 function cleanBusinessName(name) {
-  if (!name) return '';
-  let cleaned = name;
-  for (const suffix of businessSuffixes) {
-    cleaned = cleaned.replace(suffix, '').trim();
-  }
-  return cleaned.replace(/[.,]$/, '').trim();
+  return name?.replace(/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i, '').replace(/[.,]$/, '').trim();
 }
 
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
-
-  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
-  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
+  const honorificRegex = /^(Mr\.|Mrs\.|Ms\.|Miss|Dr\.|Prof\.|Mx\.)\s+/i;
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
-
-  let namePart = clean;
-  let titlePart = '';
-  if (clean.includes(',')) {
-    const [name, title] = clean.split(',', 2);
-    namePart = name.trim();
-    titlePart = title.trim();
-  }
-
+  let namePart = clean, titlePart = '';
+  if (clean.includes(',')) [namePart, titlePart] = clean.split(',').map(s => s.trim());
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
 
-  let tokens = namePart.split(/\s+/).filter(Boolean);
-
-  // Remove name suffixes (e.g., Jr, Sr, III)
-  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
-    tokens.pop();
-  }
-
+  const tokens = namePart.split(/\s+/);
   if (tokens.length < 2 || tokens.length > 4) return null;
 
-  const firstName = tokens[0];
-  const lastName = tokens[tokens.length - 1];
-  const middleName = tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '';
-
   return {
-    firstName,
-    middleName,
-    lastName,
+    firstName: tokens[0],
+    middleName: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
+    lastName: tokens[tokens.length - 1],
     title: titlePart
   };
 }
 
+// 🟩 BBB Profile Extractor
 async function extractProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
@@ -84,33 +68,16 @@ async function extractProfile(page, url) {
 
     const data = await page.evaluate(() => {
       const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('"business_name"'));
-      const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
-      const businessName = businessNameMatch?.[1] || '';
-
-      const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
-      )?.href || '';
-
+      const businessName = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/)?.[1] || '';
+      const website = [...document.querySelectorAll('a')].find(a => a.innerText.toLowerCase().includes('visit website') && a.href.startsWith('http'))?.href || '';
       const fullText = document.body.innerText;
-
-      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
-      const location = locationMatch?.[0] || '';
-
-      const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
-      const principalContactRaw = principalMatch?.[1]?.trim() || '';
-
-      const yearsMatch = fullText.match(/Business Started:\s*(.+)/i);
-      const years = yearsMatch?.[1]?.split('\n')[0].trim() || '';
-
-      const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
-      const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
 
       return {
         businessName,
-        principalContact: principalContactRaw,
-        location,
-        years,
-        industry,
+        principalContact: fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i)?.[1]?.trim() || '',
+        location: fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/)?.[0] || '',
+        years: fullText.match(/Business Started:\s*(.+)/i)?.[1]?.split('\n')[0].trim() || '',
+        industry: fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i)?.[1]?.split('\n').map(t => t.trim()).join(', ') || '',
         website
       };
     });
@@ -130,16 +97,22 @@ async function extractProfile(page, url) {
   }
 }
 
+// 🟩 NocoDB Connectivity Test
+async function verifyNocoDBConnection() {
+  const url = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records?offset=0&limit=1&viewId=${VIEW_ID}`;
+  try {
+    const res = await axios.get(url, { headers: { 'xc-token': API_KEY } });
+    console.log(`✅ NocoDB test passed — ${res.data?.list?.length} records accessible`);
+    return true;
+  } catch (err) {
+    console.error(`❌ NocoDB connection failed:`, err.response?.data || err.message);
+    return false;
+  }
+}
+
+// 🟩 POST to NocoDB
 async function syncToNocoDB(record) {
-  // HARD-CODED VALUES HERE:
-  const API_KEY = 'UtubR5TLlqxOZOAmodTkqjAyImTpXyYlTYFVXM2p'; // <-- your actual API key
-  const BASE_URL = 'https://app.nocodb.com';
-  const PROJECT_ID = 'wbv4do3x';
-  const TABLE_ID = 'muom3qfddoeroow';
-
-  const url = `${BASE_URL}/api/v1/db/data/v1/${PROJECT_ID}/${TABLE_ID}`;
-  console.log('Using NocoDB URL:', url);
-
+  const url = `${BASE_URL}/api/v1/db/data/v1/wbv4do3x/${TABLE_ID}`;
   const body = {
     business_name: record.businessName,
     website_url: record.website,
@@ -156,15 +129,11 @@ async function syncToNocoDB(record) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'xc-auth': API_KEY,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'xc-auth': API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
 
     const data = await res.json();
-
     if (!res.ok) {
       console.error(`❌ NocoDB error (${res.status}): ${JSON.stringify(data)}`);
     } else {
@@ -175,7 +144,10 @@ async function syncToNocoDB(record) {
   }
 }
 
+// 🟩 Main Runner
 (async () => {
+  if (!(await verifyNocoDBConnection())) return;
+
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
@@ -190,9 +162,7 @@ async function syncToNocoDB(record) {
 
   for (const baseUrl of NICHES) {
     console.log(`🔍 Scraping niche: ${baseUrl}`);
-    let pageNum = 1;
-    let validCount = 0;
-    let consecutiveEmpty = 0;
+    let pageNum = 1, validCount = 0, consecutiveEmpty = 0;
 
     while (validCount < 20 && consecutiveEmpty < 5) {
       const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
@@ -200,11 +170,9 @@ async function syncToNocoDB(record) {
       await delay(randomBetween(1000, 2000));
       await humanScroll(page);
 
-      const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')]
-          .map(a => a.href)
-          .filter((href, i, arr) => arr.indexOf(href) === i);
-      });
+      const links = await page.evaluate(() =>
+        [...document.querySelectorAll('a[href*="/profile/"]')].map(a => a.href).filter((href, i, arr) => arr.indexOf(href) === i)
+      );
 
       if (!links.length) break;
 
