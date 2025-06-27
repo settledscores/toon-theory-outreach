@@ -132,7 +132,7 @@ async function extractProfile(page, url) {
 
 async function syncToNocoDB(record) {
   const API_KEY = process.env.NOCODB_API_KEY;
-  const BASE_URL = process.env.NOCODB_BASE_URL; // e.g. https://yourdomain.nocodb.app
+  const BASE_URL = 'https://app.nocodb.com'; // e.g. https://yourdomain.nocodb.app
   const PROJECT_ID = process.env.NOCODB_PROJECT_ID;
   const TABLE_ID = process.env.NOCODB_SCRAPER_TABLE_ID;
 
