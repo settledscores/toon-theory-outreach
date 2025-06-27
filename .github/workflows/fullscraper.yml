@@ -1,18 +1,15 @@
 name: Crawl Full Site for Web Copy
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "15 8 * * 1-5"
+  workflow_dispatch:  # Manual only
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
 
     steps:
       - name: 📥 Checkout repository
@@ -26,7 +23,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install requests beautifulsoup4 python-dotenv
 
       - name: 🌐 Run Full Site Web Scraper
         run: python full_site_scraper.py
