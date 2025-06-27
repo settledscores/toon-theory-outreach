@@ -5,10 +5,9 @@ from urllib.parse import urlparse
 # Load secrets from environment
 API_KEY = os.environ.get("NOCODB_API_KEY")
 BASE_URL = os.environ.get("NOCODB_BASE_URL")
-PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")
 TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")
 
-if not all([API_KEY, BASE_URL, PROJECT_ID, TABLE_ID]):
+if not all([API_KEY, BASE_URL, TABLE_ID]):
     raise ValueError("Missing one or more required environment variables.")
 
 HEADERS = {
@@ -35,13 +34,13 @@ def generate_permutations(first, last, domain):
     ]
 
 def fetch_records():
-    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}?limit=10000"
+    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
     return response.json().get("list", [])
 
 def update_record(record_id, permutations):
-    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}/{record_id}"
+    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records/{record_id}"
     data = {
         "Email Permutations": ", ".join(permutations)
     }
