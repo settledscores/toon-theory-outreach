@@ -23,7 +23,8 @@ jobs:
 
       - name: Run Permuter Script
         env:
-          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-          SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+          NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+          NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
+          NOCODB_PROJECT_ID: ${{ secrets.NOCODB_PROJECT_ID }}
+          NOCODB_SCRAPER_TABLE_ID: ${{ secrets.NOCODB_SCRAPER_TABLE_ID }}
         run: python permuter.py
