@@ -1,4 +1,4 @@
-name: Run BBB Scraper (Airtable + Debug)
+name: Run BBB Scraper
 
 on:
   workflow_dispatch:
@@ -8,9 +8,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-      SCRAPER_TABLE_NAME: ${{ secrets.SCRAPER_TABLE_NAME }}
+      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
+      BASEROW_DATABASE_ID: ${{ secrets.BASEROW_DATABASE_ID }}
+      BASEROW_SCRAPER_TABLE: ${{ secrets.BASEROW_SCRAPER_TABLE }}
 
     steps:
       - uses: actions/checkout@v4
