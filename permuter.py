@@ -20,20 +20,14 @@ def extract_domain(url):
         return ""
 
 def generate_permutations(first, last, domain):
-    f = first[0].lower()
-    l = last[0].lower()
-    first = first.lower()
-    last = last.lower()
+    first = first.lower().strip()
+    last = last.lower().strip()
 
-    return list(set([
-        f"{first}.{last}@{domain}",
+    return [
         f"{first}@{domain}",
-        f"{f}{last}@{domain}",
-        f"{first}{last}@{domain}",
-        f"{last}.{first}@{domain}",
-        f"{first}{l}@{domain}",
-        f"{f}.{last}@{domain}"
-    ]))
+        f"{first}.{last}@{domain}",
+        f"{first}{last}@{domain}"
+    ]
 
 def needs_permutation(record):
     fields = record.get("fields", {})
