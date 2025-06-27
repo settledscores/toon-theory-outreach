@@ -131,15 +131,11 @@ async function extractProfile(page, url) {
 }
 
 async function syncToNocoDB(record) {
-  const API_KEY = process.env.NOCODB_API_KEY;
-  const BASE_URL = 'https://app.nocodb.com'; // hardcoded base URL
-  const PROJECT_ID = 'wbv4do3x';              // hardcoded project ID
-  const TABLE_ID = 'muom3qfddoeroow';         // hardcoded table ID
-
-  if (!API_KEY) {
-    console.error('❌ Missing NocoDB API key in environment variables.');
-    return;
-  }
+  // HARD-CODED VALUES HERE:
+  const API_KEY = 'UtubR5TLlqxOZOAmodTkqjAyImTpXyYlTYFVXM2p'; // <-- your actual API key
+  const BASE_URL = 'https://app.nocodb.com';
+  const PROJECT_ID = 'wbv4do3x';
+  const TABLE_ID = 'muom3qfddoeroow';
 
   const url = `${BASE_URL}/api/v1/db/data/v1/${PROJECT_ID}/${TABLE_ID}`;
   console.log('Using NocoDB URL:', url);
