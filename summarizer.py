@@ -1,16 +1,21 @@
 import os
 import re
-from airtable import Airtable
+import requests
 from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
 
-# Airtable setup
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+# NocoDB setup
+API_KEY = os.getenv("NOCODB_API_KEY")
+BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
+PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+
+HEADERS = {
+    "xc-token": API_KEY,
+    "Content-Type": "application/json"
+}
 
 # Groq setup
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -36,27 +41,40 @@ def generate_prompt(cleaned_text):
 def postprocess_output(text):
     # Remove any leftover "Here is..." or similar model artifacts
     lines = text.splitlines()
-    clean_lines = [line for line in lines if not re.match(r"(?i)^here\s+(is|are)\b", line.strip())]
+    clean_lines = [line for line in lines if not re.match(r"(?i)^here\\s+(is|are)\\b", line.strip())]
     return "\n".join(clean_lines).strip()
 
 
+def fetch_records():
+    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}?limit=200"
+    res = requests.get(url, headers=HEADERS)
+    res.raise_for_status()
+    return res.json()["list"]
+
+
 def update_mini_scrape(record_id, text):
-    airtable.update(record_id, {"mini scrape": text})
+    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}/{record_id}"
+    payload = {
+        "mini scrape": text
+    }
+    res = requests.patch(url, headers=HEADERS, json=payload)
+    res.raise_for_status()
 
 
 def main():
-    records = airtable.get_all()
+    print("🧹 Cleaning web copy for mini scrape...")
+    records = fetch_records()
     updated = 0
 
     for record in records:
-        fields = record.get("fields", {})
-        full_text = fields.get("web copy", "")
-        mini_scrape = fields.get("mini scrape", "")
+        full_text = record.get("web copy", "")
+        mini_scrape = record.get("mini scrape", "")
+        website = record.get("website", "[no website]")
 
         if not full_text or mini_scrape:
             continue
 
-        print(f"🧹 Cleaning for: {fields.get('website', '[no website]')}")
+        print(f"🧹 Cleaning for: {website}")
 
         cleaned = clean_text(full_text)
         truncated = truncate_text(cleaned)
