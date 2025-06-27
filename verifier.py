@@ -8,7 +8,13 @@ import logging
 from email.utils import parseaddr
 from pathlib import Path
 
-# Static list of Webshare proxies
+# Force IPv4-only to avoid PySocks IPv6 failures
+_original_getaddrinfo = socket.getaddrinfo
+def force_ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+socket.getaddrinfo = force_ipv4_getaddrinfo
+
+# Webshare proxies
 PROXIES = [
     {"host": "198.23.239.134", "port": 6540, "user": "grkwzeug", "pass": "p87xh2t5n1o9"},
     {"host": "207.244.217.165", "port": 6712, "user": "grkwzeug", "pass": "p87xh2t5n1o9"},
@@ -22,19 +28,18 @@ PROXIES = [
     {"host": "173.0.9.70", "port": 5653, "user": "grkwzeug", "pass": "p87xh2t5n1o9"},
 ]
 
-# Email verification logic
 RETRY_CODES = [421, 450, 451, 452, 550]
 MAX_RETRIES = 3
 SMTP_TIMEOUT = 10
-LOG_LEVEL = logging.INFO
 
-# Set up logger
-logging.basicConfig(level=LOG_LEVEL, format='[%(asctime)s] %(message)s')
-
+# Logger setup
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(message)s',
+)
 
 def get_random_proxy():
     return random.choice(PROXIES)
-
 
 def configure_proxy(proxy):
     socks.setdefaultproxy(
@@ -47,35 +52,32 @@ def configure_proxy(proxy):
     )
     socket.socket = socks.socksocket
 
-
 def get_mx_record(domain):
     try:
         answers = dns.resolver.resolve(domain, 'MX')
         records = sorted([(r.preference, str(r.exchange).rstrip('.')) for r in answers])
         return records[0][1] if records else None
     except Exception as e:
-        logging.warning(f"❌ MX lookup failed for domain {domain}: {e}")
+        logging.warning(f"❌ MX lookup failed for {domain}: {e}")
         return None
-
 
 def smtp_check(email, mx_host, proxy):
     try:
         configure_proxy(proxy)
         server = smtplib.SMTP(mx_host, 25, timeout=SMTP_TIMEOUT)
         server.helo()
-        server.mail('test@example.com')
+        server.mail('probe@example.com')
         code, message = server.rcpt(email)
         server.quit()
         return code, message.decode() if isinstance(message, bytes) else str(message)
     except Exception as e:
         return None, str(e)
 
-
 def verify_email(email):
     name, addr = parseaddr(email.strip())
     if '@' not in addr:
-        return email, 'invalid', 'Not a valid email address'
-    
+        return email, 'invalid', 'Not a valid email format'
+
     domain = addr.split('@')[-1]
     mx_host = get_mx_record(domain)
     if not mx_host:
@@ -85,7 +87,7 @@ def verify_email(email):
         proxy = get_random_proxy()
         code, msg = smtp_check(addr, mx_host, proxy)
         if code is None:
-            logging.warning(f"⚠️ [{email}] Attempt {attempt}: Proxy/SMTP error - {msg}")
+            logging.warning(f"⚠️ [{email}] Attempt {attempt}: Proxy/SMTP error – {msg}")
             time.sleep(1)
             continue
 
@@ -101,18 +103,15 @@ def verify_email(email):
 
     return email, 'unknown', 'Max retries exceeded'
 
-
-def load_emails(file_path="permutations.txt"):
+def load_emails(filepath="permutations.txt"):
     try:
-        path = Path(file_path)
+        path = Path(filepath)
         if not path.exists():
-            raise FileNotFoundError(f"{file_path} not found.")
-        with path.open("r") as f:
-            return [line.strip() for line in f if line.strip()]
+            raise FileNotFoundError(f"{filepath} not found.")
+        return [line.strip() for line in path.read_text().splitlines() if line.strip()]
     except Exception as e:
-        logging.error(f"Failed to read email list: {e}")
+        logging.error(f"🚫 Failed to read {filepath}: {e}")
         return []
-
 
 def verify_batch(emails):
     results = []
@@ -122,16 +121,25 @@ def verify_batch(emails):
         logging.info(f"✅ [{result[1]}] {result[0]} – {result[2]}")
     return results
 
+def save_results(results, path="verified.csv"):
+    with open(path, "w") as f:
+        f.write("email,status,reason\n")
+        for email, status, reason in results:
+            if status == "valid":
+                f.write(f"{email},{status},{reason}\n")
 
 if __name__ == "__main__":
     emails = load_emails("permutations.txt")
     if not emails:
-        logging.error("No emails found in permutations.txt. Exiting.")
+        logging.error("❌ No emails to verify. Exiting.")
         exit(1)
 
-    logging.info(f"Loaded {len(emails)} emails from permutations.txt")
+    logging.info(f"📥 Loaded {len(emails)} emails from permutations.txt")
     results = verify_batch(emails)
 
     print("\nFinal Results:\n")
     for email, status, reason in results:
         print(f"{email}: {status} - {reason}")
+
+    save_results(results)
+    logging.info("📤 Saved valid emails to verified.csv")
