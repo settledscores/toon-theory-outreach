@@ -128,57 +128,46 @@ async function extractProfile(page, url) {
   }
 }
 
-async function syncToBaserow(record) {
-  const apiKey = process.env.BASEROW_API_KEY;
-  const dbId = process.env.BASEROW_DATABASE_ID;
-  const tableId = process.env.BASEROW_SCRAPER_TABLE;
+async function syncToNocoDB(record) {
+  const url = `${process.env.NOCODB_BASE_URL}/api/v1/projects/${process.env.NOCODB_PROJECT_ID}/tables/${process.env.NOCODB_SCRAPER_TABLE_ID}/rows`;
 
-  if (!apiKey || !dbId || !tableId) {
-    console.error('❌ Missing Baserow config.');
-    return;
-  }
-
-  const body = {
-    fields: {
-      'business name': record.businessName,
-      'website url': record.website,
-      'location': record.location,
-      'industry': record.industry,
-      'years': record.years,
-      'First Name': record.firstName,
-      'Middle Name': record.middleName,
-      'Last Name': record.lastName,
-      'Decision Maker Title': record.title,
-      'Profile Link': record.profileLink
-    }
+  const payload = {
+    "business name": record.businessName,
+    "website url": record.website,
+    "location": record.location,
+    "industry": record.industry,
+    "years": record.years,
+    "First Name": record.firstName,
+    "Middle Name": record.middleName,
+    "Last Name": record.lastName,
+    "Decision Maker Title": record.title,
+    "Profile Link": record.profileLink
   };
 
   try {
-    const res = await fetch(`https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Token ${apiKey}`,
-        'Content-Type': 'application/json'
+        "xc-auth": process.env.NOCODB_API_KEY,
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
 
-    const result = await res.text();
-
+    const text = await res.text();
     if (!res.ok) {
-      console.error(`❌ Baserow error (${res.status}): ${result}`);
+      console.error(`❌ NocoDB sync error (${res.status}): ${text}`);
     } else {
       console.log(`✅ Synced: ${record.businessName}`);
     }
   } catch (err) {
-    console.error(`❌ Baserow sync failed: ${err.message}`);
+    console.error(`❌ NocoDB sync failed: ${err.message}`);
   }
 }
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: '/usr/bin/chromium-browser',
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
@@ -218,7 +207,7 @@ async function syncToBaserow(record) {
           const dedupKey = `${profile.businessName.toLowerCase()}|${profile.website.toLowerCase()}`;
           if (!deduped.has(dedupKey)) {
             deduped.add(dedupKey);
-            await syncToBaserow(profile);
+            await syncToNocoDB(profile);
             validCount++;
             scrapedThisPage++;
           }
