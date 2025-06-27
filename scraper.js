@@ -146,6 +146,7 @@ async function syncToNocoDB(record) {
   "Middle Name": record.middleName,
   "Last Name": record.lastName,
   "Decision Maker Title": record.title
+  "business name": record.businessName,
 };
   
   try {
