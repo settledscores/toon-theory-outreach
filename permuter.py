@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 # Load secrets from environment
 API_KEY = os.environ.get("NOCODB_API_KEY")
 BASE_URL = os.environ.get("NOCODB_BASE_URL")
-TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")
+VIEW_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # This is actually the View ID
 
-if not all([API_KEY, BASE_URL, TABLE_ID]):
+if not all([API_KEY, BASE_URL, VIEW_ID]):
     raise ValueError("Missing one or more required environment variables.")
 
 HEADERS = {
@@ -33,16 +33,14 @@ def generate_permutations(first, last, domain):
     ]
 
 def fetch_records():
-    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
+    url = f"{BASE_URL}/api/v2/views/{VIEW_ID}/records?limit=10000"
     print(f"\n🚀 URL used for fetch: {url}")
     response = requests.get(url, headers=HEADERS)
-    
     if not response.ok:
         print(f"❌ Failed to fetch records: {response.status_code} — {response.text}")
     response.raise_for_status()
-    
     records = response.json().get("list", [])
-    
+
     if records:
         print("\n🧪 Sample record:")
         print(records[0])
@@ -51,24 +49,22 @@ def fetch_records():
 
     return records
 
-def needs_permutation(record):
+def needs_permutation(fields):
     return (
-        record.get("First Name") and
-        record.get("Last Name") and
-        record.get("website url") and
-        not record.get("Email Permutations")
+        fields.get("First Name") and
+        fields.get("Last Name") and
+        fields.get("website url") and
+        not fields.get("Email Permutations")
     )
 
 def update_record(record_id, permutations):
-    url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records/{record_id}"
+    url = f"{BASE_URL}/api/v2/tables/{VIEW_ID}/records/{record_id}"
     data = {
         "Email Permutations": ", ".join(permutations)
     }
     response = requests.patch(url, headers=HEADERS, json=data)
     if not response.ok:
         print(f"❌ Failed to update record {record_id}: {response.status_code} — {response.text}")
-    else:
-        print(f"✅ Updated record {record_id}")
     response.raise_for_status()
 
 def run():
@@ -78,12 +74,14 @@ def run():
 
     for record in records:
         record_id = record.get("id")
-        if not record_id or not needs_permutation(record):
+        fields = record.get("fields", {})
+
+        if not record_id or not needs_permutation(fields):
             continue
 
-        first = record["First Name"].strip()
-        last = record["Last Name"].strip()
-        website = record["website url"].strip()
+        first = fields["First Name"].strip()
+        last = fields["Last Name"].strip()
+        website = fields["website url"].strip()
         domain = extract_domain(website)
 
         if not domain:
@@ -91,6 +89,7 @@ def run():
 
         permutations = generate_permutations(first, last, domain)
         update_record(record_id, permutations)
+        print(f"✅ Updated: {first} {last} → {len(permutations)} permutations")
         updated += 1
 
     print(f"\n🎯 Done. {updated} records updated.")
