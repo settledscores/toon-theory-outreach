@@ -1,29 +1,30 @@
 name: Generate Second Followups
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:
 
 jobs:
   followup2:
     runs-on: ubuntu-latest
 
     env:
-      BASEROW_API_KEY: ${{ secrets.BASEROW_API_KEY }}
-      BASEROW_OUTREACH_TABLE: ${{ secrets.BASEROW_OUTREACH_TABLE }}
+      NOCODB_API_KEY: ${{ secrets.NOCODB_API_KEY }}
+      NOCODB_OUTREACH_TABLE_ID: ${{ secrets.NOCODB_OUTREACH_TABLE_ID }}
+      NOCODB_BASE_URL: ${{ secrets.NOCODB_BASE_URL }}
 
     steps:
-      - name: 📥 Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install requests python-dotenv
 
-      - name: ✉️ Run Follow-up 2 Generator
+      - name: Run Follow-up 2 Generator
         run: python followup2_generator.py
