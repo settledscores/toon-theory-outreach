@@ -119,7 +119,123 @@ Just one last follow-up in case you missed my previous notes. I would still be h
 
 It could help simplify one of your key offerings or assist with your latest project launch. If you are a little curious, just hit reply or check out some of our past work, which is already linked in my signature.
 
-{signature}"""
+{signature}""",
+
+        """{salutation} {name},
+
+I just wanted to check in again and see if the idea of using whiteboard animation for {company} has sparked any interest. Animation can be a great way to highlight key messages and bring stories to life in a memorable way.
+
+If you'd like, I can put together a simple draft or a short sample video to show how this could work for you.
+
+You can also find examples of our previous work linked in my signature. Please don’t hesitate to reply if you want to explore this.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Following up once more because I think animation could really help {company} communicate ideas in a clear and compelling way. Many of our clients have seen great results from adding this creative approach to their messaging.
+
+I’d be happy to sketch out a quick visual or script that suits your brand and goals.
+
+Feel free to reply if you’d like to see what this might look like. You’ll find links to our past projects in my signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+I hope this note finds you well. I’m reaching out again to offer a creative way for {company} to stand out using animated whiteboard videos.
+
+Even a short, simple animation can make complex ideas easier to understand and more engaging for your audience.
+
+If that sounds interesting, I’d be glad to prepare a brief demo or script to share with you.
+
+Please reply anytime. Past examples are linked in my signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Just wanted to reconnect in case my previous notes got buried. If you have any questions or thoughts about using whiteboard animation at {company}, I'd be more than happy to answer them..
+
+It’s a creative way to explain what you do, and it can really help with marketing, training, or internal communications.
+
+If you’d like, I can send over a quick teaser or script sample.
+
+You’ll find some of our past work in my signature. I’m here if you want to chat.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Checking in again to share how whiteboard animation could help {company} communicate clearly and creatively with your audience.
+
+Animation can make even the most complicated topics accessible and interesting, which often leads to better engagement.
+
+If you’re open to it, I’d love to draft a short visual concept for you to review.
+
+Feel free to reply anytime, and you can see examples of our work linked below.
+
+{signature}""",
+
+    """{salutation} {name},
+
+I wanted to reach out once more to highlight the potential benefits of whiteboard animation for {company}.
+
+Whether it’s for sales, marketing, onboarding, or internal messaging, animation can be a great tool to simplify ideas and keep people interested.
+
+If you’re curious, I’d be happy to create a short sample or script that fits your goals.
+
+Please reply whenever you’re ready. Past projects are linked in my signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Just following up again because I think animation could add real value to {company}’s messaging.
+
+It’s an engaging way to capture attention and explain what makes your business unique.
+
+If it sounds useful, I’d be glad to prepare a quick visual sample or script to show you what’s possible.
+
+You can reply anytime, and links to our past work are in the signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+I’m checking in one last time about the opportunity to use whiteboard animation at {company}.
+
+Many teams find that even short animations help clarify their message and make their content more memorable.
+
+If you’d like, I can put together a brief draft to help you explore this option.
+
+Please feel free to reply at any time. Examples of our work are linked in my signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Just wanted to follow up to see if you’ve had a chance to consider adopting whiteboard animation to supercharge {company}'s messaging.
+
+It’s a creative way to bring your ideas to life and connect with your audience more effectively.
+
+If you’re interested, I’d be happy to share a quick demo or script tailored to your needs.
+
+You’ll find past examples linked in my signature. Reply whenever you’re ready.
+
+{signature}""",
+
+    """{salutation} {name},
+
+I wanted to check in one last time to offer support if you’re thinking about how {company} could benefit from whiteboard animation.
+
+We’ve helped many businesses explain their offerings clearly and creatively through short, engaging videos.
+
+If you’d like, I can draft a quick sample to show how this might work for you.
+
+Please don’t hesitate to reply. Our past projects are linked below.
+
+{signature}""",
 ]
 
 def build_email(template, name, company, salutation, signature):
