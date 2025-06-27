@@ -1,10 +1,11 @@
-import puppeteer from 'puppeteer-extra';
+import puppeteer from 'puppeteer';
+import puppeteerExtra from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
 dotenv.config();
-puppeteer.use(StealthPlugin());
+puppeteerExtra.use(StealthPlugin());
 
 const NICHES = [
   "https://www.bbb.org/search?find_text=Legal+Services&find_loc=San+Diego%2C+CA",
@@ -129,9 +130,18 @@ async function extractProfile(page, url) {
 }
 
 async function syncToNocoDB(record) {
-  const url = `${process.env.NOCODB_BASE_URL}/api/v1/projects/${process.env.NOCODB_PROJECT_ID}/tables/${process.env.NOCODB_SCRAPER_TABLE_ID}/rows`;
+  const apiKey = process.env.NOCODB_API_KEY;
+  const baseUrl = process.env.NOCODB_BASE_URL;
+  const projectId = process.env.NOCODB_PROJECT_ID;
+  const tableId = process.env.NOCODB_SCRAPER_TABLE_ID;
 
-  const payload = {
+  if (!apiKey || !baseUrl || !projectId || !tableId) {
+    console.error('❌ Missing NocoDB config.');
+    return;
+  }
+
+  const url = `${baseUrl}/api/v1/db/data/${projectId}/${tableId}`;
+  const body = {
     "business name": record.businessName,
     "website url": record.website,
     "location": record.location,
@@ -148,15 +158,16 @@ async function syncToNocoDB(record) {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        "xc-auth": process.env.NOCODB_API_KEY,
-        "Content-Type": "application/json"
+        'xc-token': apiKey,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     });
 
-    const text = await res.text();
+    const result = await res.text();
+
     if (!res.ok) {
-      console.error(`❌ NocoDB sync error (${res.status}): ${text}`);
+      console.error(`❌ NocoDB error (${res.status}): ${result}`);
     } else {
       console.log(`✅ Synced: ${record.businessName}`);
     }
@@ -166,8 +177,8 @@ async function syncToNocoDB(record) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch({
-    headless: true,
+  const browser = await puppeteerExtra.launch({
+    headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
