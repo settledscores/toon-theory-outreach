@@ -5,13 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASEROW_API_KEY = os.getenv("BASEROW_API_KEY")
-BASEROW_DATABASE_ID = os.getenv("BASEROW_DATABASE_ID")
-BASEROW_TABLE_ID = os.getenv("BASEROW_TABLE_ID")
-API_BASE = "https://api.baserow.io/api/database/rows/table"
+# NocoDB setup
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
+NOCODB_PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+NOCODB_OUTREACH_TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
 
+API_BASE = f"{NOCODB_BASE_URL}/api/v1/db/data/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}"
 HEADERS = {
-    "Authorization": f"Token {BASEROW_API_KEY}"
+    "xc-token": NOCODB_API_KEY,
+    "Content-Type": "application/json"
 }
 
 class VariantRotator:
@@ -148,19 +151,17 @@ def build_email(fields):
     return email
 
 def update_email_field(row_id, email_body):
-    url = f"{API_BASE}/{BASEROW_TABLE_ID}/{row_id}/"
-    data = {"email 1": email_body}
-    response = requests.patch(url, json=data, headers=HEADERS)
+    url = f"{API_BASE}/{row_id}"
+    response = requests.patch(url, headers=HEADERS, json={"email 1": email_body})
     response.raise_for_status()
 
 def main():
-    url = f"{API_BASE}/{BASEROW_TABLE_ID}/?user_field_names=true"
+    url = f"{API_BASE}?limit=200"
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
-    records = response.json().get("results", [])
+    records = response.json().get("list", [])
 
     updated = 0
-
     for row in records:
         if not row.get("email 1"):
             email = build_email(row)
