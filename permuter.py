@@ -17,7 +17,8 @@ HEADERS = {
 
 def extract_domain(url):
     try:
-        domain = urlparse(url).netloc or urlparse(url).path
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path
         return domain.replace("www.", "").lower()
     except:
         return ""
@@ -30,14 +31,6 @@ def generate_permutations(first, last, domain):
         f"{first}.{last}@{domain}",
         f"{first}{last}@{domain}"
     ]
-
-def needs_permutation(record):
-    return (
-        record.get("First Name") and
-        record.get("Last Name") and
-        record.get("website url") and
-        not record.get("Email Permutations")
-    )
 
 def fetch_records():
     url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
@@ -53,12 +46,22 @@ def fetch_records():
 
     return records
 
+def needs_permutation(record):
+    return (
+        record.get("First Name") and
+        record.get("Last Name") and
+        record.get("website url") and
+        not record.get("Email Permutations")
+    )
+
 def update_record(record_id, permutations):
     url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records/{record_id}"
     data = {
         "Email Permutations": ", ".join(permutations)
     }
     response = requests.patch(url, headers=HEADERS, json=data)
+    if not response.ok:
+        print(f"❌ Failed to update record {record_id}: {response.status_code} — {response.text}")
     response.raise_for_status()
 
 def run():
@@ -74,18 +77,14 @@ def run():
         last = record["Last Name"].strip()
         website = record["website url"].strip()
         domain = extract_domain(website)
-
-        if not domain:
-            continue
-
         record_id = record.get("id")
-        if not record_id:
-            print(f"⚠️ Skipping record with no 'id': {record}")
+
+        if not domain or not record_id:
             continue
 
-        perms = generate_permutations(first, last, domain)
-        update_record(record_id, perms)
-        print(f"✅ Updated: {first} {last} → {len(perms)} permutations")
+        permutations = generate_permutations(first, last, domain)
+        update_record(record_id, permutations)
+        print(f"✅ Updated: {first} {last} → {len(permutations)} permutations")
         updated += 1
 
     print(f"\n🎯 Done. {updated} records updated.")
