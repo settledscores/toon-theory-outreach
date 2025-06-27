@@ -5,11 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_TOKEN = os.getenv("BASEROW_API_KEY")
-TABLE_ID = os.getenv("BASEROW_OUTREACH_TABLE")
-BASE_URL = f"https://api.baserow.io/api/database/rows/table/{TABLE_ID}"
+# NocoDB config
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+NOCODB_OUTREACH_TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL")
+API_BASE = f"{NOCODB_BASE_URL}/v1/db/data"
 HEADERS = {
-    "Authorization": f"Token {API_TOKEN}",
+    "Authorization": f"Bearer {NOCODB_API_KEY}",
     "Content-Type": "application/json"
 }
 
@@ -28,69 +31,51 @@ SIGNATURES = [
 TEMPLATES = [
     """{salutation} {name},
 
-Just circling back in case the timing makes more sense now. I still believe whiteboard animation could simplify something {company} is working on; whether that’s a pitch, process, or product.
+Just circling back in case the timing makes more sense now. I still believe whiteboard animation could amplify something {company} is working on, whether that is a pitch, process, or product.
 
-If you’d like to test the waters, I’m happy to sketch something out to show what it might look like.
+If you would like to test the waters, I am happy to sketch something out to show what it might look like.
 
-You’ll find past examples linked in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Still happy to share a quick sketch or visual sample if it’s helpful. Many of our clients use animation to break down services, explain strategy, or walk users through a process.
-
-If {company} has anything you’re trying to simplify, I’d love to help you explore it.
-
-You’ll find past examples in the signature below.
+You will find past examples linked in my signature. Feel free to reply if you would like to explore this.
 
 {signature}""",
 
     """{salutation} {name},
 
-Thought I’d check in one last time.
+I am still happy to share a quick sketch or visual sample if it is helpful. Many of our clients use animation to break down services, explain strategy, or walk users through dashboards and pages.
 
-If you're still curious what an explainer might look like for {company}, I’d be glad to share something rough; a short sketch, or script to get the ball rolling.
+If {company} has anything you are trying to simplify, I would love to help you explore it. Just reply if you want me to send something over.
 
-You can find our work in the link below.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Wanted to quickly follow up before I wrap things on my end.
-
-Whiteboard animation is often a good fit for simplifying messaging, especially when you're trying to break through noise or explain something fast.
-
-Let me know if you'd like to test an idea visually.
+You will find past examples in the signature below.
 
 {signature}""",
 
     """{salutation} {name},
 
-Just reaching out again before I archive this thread. If now’s a better time to try animation, I’d love to put something together.
+Thought I would check in one last time.
 
-Even a 10-second sketch can be a useful way to explore what’s possible.
+If you are still curious what an animated whiteboard explainer might look like for {company}, I would be glad to share something rough, a short teaser, or a script to get the ball rolling.
 
-Reply anytime.
-
-{signature}""",
-
-    """{salutation} {name},
-
-If you’re still considering new ways to share what {company} does, whiteboard storytelling could be a great tool.
-
-I’d be happy to send over a short visual draft to get the ideas flowing.
-
-No pressure; just a creative option to keep in mind.
+You can find our work in the link below. Reply anytime if you are interested.
 
 {signature}""",
 
     """{salutation} {name},
 
-Hope this isn’t too forward; I just really think there’s potential to show off what {company} does through animation.
+Just reaching out again before I close this thread. If you think animated storytelling could be of value to {company}, I would love to put something together.
 
-If you'd like to see what that might look like, I’d be happy to sketch something out.
+Even a 10-second sketch can be a useful way to explore what is possible.
+
+Feel free to reply anytime.
+
+{signature}""",
+
+    """{salutation} {name},
+
+If you are still considering creative ways to showcase what {company} does, animated storytelling could be a great tool to accelerate conversions.
+
+I would be happy to send over a short visual teaser to get the ideas flowing.
+
+No pressure, just a creative option to keep in mind. Reply anytime or take a peek at some of our previous work. The link is in my signature.
 
 {signature}""",
 
@@ -98,57 +83,41 @@ If you'd like to see what that might look like, I’d be happy to sketch somethi
 
 Circling back once more before I close the loop.
 
-If there’s anything at {company} you’ve been meaning to simplify, an animation could help bring that to life.
+If there is anything at {company} you have been meaning to simplify, such as those quarterly reports your team never reads, whiteboard animation could help bring that to life.
 
-Happy to draft something visual if you'd like to see what that might look like.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Reaching out one last time. If you're still exploring creative ways to explain what you do, this might be a great fit.
-
-I’d be glad to put together a simple teaser or sketch if you're curious.
+I would be happy to draft something visual if you want to see what that might look like. You can reply anytime or check out some of our previous work on our website, linked in my signature.
 
 {signature}""",
 
     """{salutation} {name},
 
-Sometimes even a 10-second sketch can make a big difference when explaining something new.
+Reaching out one last time before I close the loop. If you are still exploring creative ways to showcase what {company} offers, this could be a great fit.
 
-I’d be happy to share one if you're interested in exploring animation for {company}.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Hope your week’s going okay. I’m wrapping up some projects and wanted to reach out again before I close things out.
-
-If you'd still like to explore using video to share what {company} does, I’d love to help.
+I would be glad to put together a simple teaser or sketch if you are curious. Reply anytime or check out some of our past projects. The link is in my signature.
 
 {signature}""",
 
     """{salutation} {name},
 
-A quick follow-up before I close out my list. If now’s not the right time, no worries at all.
+I hope your week is going well. I am wrapping up some projects and wanted to reach out again before I close things out.
 
-But if you’re curious about how animation might help {company}, I’m still open to sharing a quick visual idea.
-
-{signature}""",
-
-    """{salutation} {name},
-
-No pressure at all; just following up to say I’d still be happy to sketch something for {company} if you're curious.
-
-It could help simplify something you already offer, or clarify a new direction.
+If you would still like to explore using whiteboard videos to support {company}'s messaging, I would love to help. Simply reply or take a peek at some of our previous work on our website, which is linked in my signature.
 
 {signature}""",
 
     """{salutation} {name},
 
-Whiteboard explainers are great for making complex ideas stick. If that’s something you’ve been thinking about at {company}, I’d love to share a quick draft.
+A quick follow-up before I close out my list. If now is not the right time, no worries at all.
 
-You’ll find our work in the link below if you want to browse examples.
+But if you are curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. The link is in the signature.
+
+{signature}""",
+
+    """{salutation} {name},
+
+Just one last follow-up in case you missed my previous notes. I would still be happy to sketch a teaser for {company} if you are curious to see what whiteboard animation can do.
+
+It could help simplify one of your key offerings or assist with your latest project launch. If you are a little curious, just hit reply or check out some of our past work, which is already linked in my signature.
 
 {signature}"""
 ]
@@ -157,12 +126,14 @@ def build_email(template, name, company, salutation, signature):
     return template.format(name=name, company=company, salutation=salutation, signature=signature)
 
 def fetch_records():
-    r = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows?user_field_names=true"
+    r = requests.get(url, headers=HEADERS)
     r.raise_for_status()
-    return r.json()["results"]
+    return r.json()["list"]
 
 def update_record(record_id, payload):
-    r = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json=payload)
+    url = f"{API_BASE}/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}/rows/{record_id}"
+    r = requests.patch(url, headers=HEADERS, json=payload)
     r.raise_for_status()
 
 def main():
