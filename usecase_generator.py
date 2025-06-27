@@ -7,12 +7,16 @@ from groq import Groq
 
 load_dotenv()
 
-# Baserow setup
-API_KEY = os.getenv("BASEROW_API_KEY")
-DATABASE_ID = os.getenv("BASEROW_DATABASE_ID")
-TABLE_ID = os.getenv("BASEROW_TABLE_ID")
-HEADERS = {"Authorization": f"Token {API_KEY}"}
-BASE_URL = f"https://api.baserow.io/api/database/rows/table/{TABLE_ID}"
+# NocoDB setup
+API_KEY = os.getenv("NOCODB_API_KEY")
+BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
+PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+
+HEADERS = {
+    "xc-token": API_KEY,
+    "Content-Type": "application/json"
+}
 
 # Groq setup
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -45,7 +49,6 @@ Services:
 Mini Scrape:
 {mini_scrape}
 """
-
     try:
         response = client.chat.completions.create(
             model="llama3-70b-8192",
@@ -61,18 +64,25 @@ Mini Scrape:
 
 def fetch_records():
     all_records = []
-    url = BASE_URL
-    while url:
+    offset = 0
+    limit = 100
+
+    while True:
+        url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}?limit={limit}&offset={offset}"
         res = requests.get(url, headers=HEADERS)
         res.raise_for_status()
         data = res.json()
-        all_records.extend(data["results"])
-        url = data.get("next")
+        batch = data.get("list", [])
+        if not batch:
+            break
+        all_records.extend(batch)
+        offset += limit
+
     return all_records
 
 
 def update_use_case(record_id, text):
-    url = f"{BASE_URL}/{record_id}/"
+    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}/{record_id}"
     response = requests.patch(url, headers=HEADERS, json={"use_case": text})
     response.raise_for_status()
 
