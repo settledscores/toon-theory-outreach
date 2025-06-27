@@ -43,7 +43,15 @@ def fetch_records():
     url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
-    return response.json().get("list", [])
+    records = response.json().get("list", [])
+
+    if records:
+        print("\n🧪 Sample record:")
+        print(records[0])
+        print("\n🔑 Keys in first record:", list(records[0].keys()))
+        print("📌 Record ID (used for PATCH):", records[0].get("id"))
+
+    return records
 
 def update_record(record_id, permutations):
     url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records/{record_id}"
@@ -70,12 +78,17 @@ def run():
         if not domain:
             continue
 
+        record_id = record.get("id")
+        if not record_id:
+            print(f"⚠️ Skipping record with no 'id': {record}")
+            continue
+
         perms = generate_permutations(first, last, domain)
-        update_record(record["id"], perms)
+        update_record(record_id, perms)
         print(f"✅ Updated: {first} {last} → {len(perms)} permutations")
         updated += 1
 
-    print(f"🎯 Done. {updated} records updated.")
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     run()
