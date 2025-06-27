@@ -1,16 +1,18 @@
 import os
 import random
-from airtable import Airtable
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-airtable = Airtable(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, AIRTABLE_API_KEY)
+BASEROW_API_KEY = os.getenv("BASEROW_API_KEY")
+BASEROW_DATABASE_ID = os.getenv("BASEROW_DATABASE_ID")
+BASEROW_TABLE_ID = os.getenv("BASEROW_TABLE_ID")
+API_BASE = "https://api.baserow.io/api/database/rows/table"
 
-# --- Variant Rotator ---
+HEADERS = {
+    "Authorization": f"Token {BASEROW_API_KEY}"
+}
 
 class VariantRotator:
     def __init__(self, items):
@@ -27,7 +29,7 @@ class VariantRotator:
             self._reshuffle()
         return self.pool.pop()
 
-# --- Variant Lists ---
+# --- All Variants Included (No Omissions) ---
 
 paragraph1_templates = [
     "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
@@ -48,10 +50,10 @@ paragraph2_variants = [
 
 paragraph3_additional_variants = [
     "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used for:\n",
-    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end—illustration, scripting, voice, and storyboarding—and they’re often used for:\n",
-    "Visual storytelling could be a strong lever for {company}, especially when clarity and connection are key.\n\nWe take care of the entire process—from script to storyboard to final voiceover—and they’re typically applied to:\n",
-    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift—script, visuals, voice—and these are often created for:\n",
-    "For {company}, a short explainer could help communicate key ideas more clearly and quickly.\n\nWe take care of everything—writing, illustrating, voicing, and producing—so you can focus on results. These typically support:\n"
+    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end; illustration, scripting, voice, and storyboarding; and they’re often used for:\n",
+    "Visual storytelling could be a strong lever for {company}, especially when clarity and connection are vital.\n\nWe take care of the entire process; from script to storyboard to final voiceover; and they’re typically applied in:\n",
+    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift; script, visuals, voice; and these are often created for:\n",
+    "For {company}, a short explainer could help communicate key ideas more clearly and quickly.\n\nWe take care of everything; writing, illustrating, voicing, and producing; so you can focus on results. These typically support:\n"
 ]
 
 paragraph4b_variants = [
@@ -95,14 +97,12 @@ paragraph7_cta_variants = [
 ]
 
 signature_variants = [
-    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+    "Warm regards,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com"
 ]
-
-# --- Rotation Setup ---
 
 rotators = {
     "p1": VariantRotator(paragraph1_templates),
@@ -114,8 +114,6 @@ rotators = {
     "p7": VariantRotator(paragraph7_cta_variants),
     "sig": VariantRotator(signature_variants),
 }
-
-# --- Utility Functions ---
 
 def parse_use_cases(use_case_field):
     raw = str(use_case_field or "")
@@ -149,22 +147,26 @@ def build_email(fields):
 
     return email
 
-def update_email_field(record_id, content):
-    airtable.update(record_id, {"email 1": content})
+def update_email_field(row_id, email_body):
+    url = f"{API_BASE}/{BASEROW_TABLE_ID}/{row_id}/"
+    data = {"email 1": email_body}
+    response = requests.patch(url, json=data, headers=HEADERS)
+    response.raise_for_status()
 
 def main():
-    records = airtable.get_all()
+    url = f"{API_BASE}/{BASEROW_TABLE_ID}/?user_field_names=true"
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    records = response.json().get("results", [])
+
     updated = 0
 
-    for record in records:
-        fields = record.get("fields", {})
-        record_id = record["id"]
-
-        if not fields.get("email 1"):
-            email_body = build_email(fields)
-            update_email_field(record_id, email_body)
+    for row in records:
+        if not row.get("email 1"):
+            email = build_email(row)
+            update_email_field(row["id"], email)
+            print(f"✅ Email written for: {row.get('company name', 'Unknown')}")
             updated += 1
-            print(f"✅ Email written for {record_id}")
 
     print(f"\n🎯 Done. {updated} records updated.")
 
