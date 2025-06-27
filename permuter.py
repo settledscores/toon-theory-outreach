@@ -17,8 +17,7 @@ HEADERS = {
 
 def extract_domain(url):
     try:
-        parsed = urlparse(url)
-        domain = parsed.netloc or parsed.path
+        domain = urlparse(url).netloc or urlparse(url).path
         return domain.replace("www.", "").lower()
     except:
         return ""
@@ -26,12 +25,19 @@ def extract_domain(url):
 def generate_permutations(first, last, domain):
     first = first.lower()
     last = last.lower()
-    f = first[0]
     return [
         f"{first}@{domain}",
         f"{first}.{last}@{domain}",
         f"{first}{last}@{domain}"
     ]
+
+def needs_permutation(record):
+    return (
+        record.get("First Name") and
+        record.get("Last Name") and
+        record.get("website url") and
+        not record.get("Email Permutations")
+    )
 
 def fetch_records():
     url = f"{BASE_URL}/api/v2/tables/{TABLE_ID}/records?limit=10000"
@@ -53,21 +59,20 @@ def run():
     updated = 0
 
     for record in records:
-        first = record.get("First Name", "").strip()
-        last = record.get("Last Name", "").strip()
-        website = record.get("website url", "").strip()
-        existing = record.get("Email Permutations")
-
-        if not first or not last or not website or existing:
+        if not needs_permutation(record):
             continue
 
+        first = record["First Name"].strip()
+        last = record["Last Name"].strip()
+        website = record["website url"].strip()
         domain = extract_domain(website)
+
         if not domain:
             continue
 
-        permutations = generate_permutations(first, last, domain)
-        update_record(record["Id"], permutations)
-        print(f"✅ Updated: {first} {last} → {len(permutations)} permutations")
+        perms = generate_permutations(first, last, domain)
+        update_record(record["id"], perms)
+        print(f"✅ Updated: {first} {last} → {len(perms)} permutations")
         updated += 1
 
     print(f"🎯 Done. {updated} records updated.")
