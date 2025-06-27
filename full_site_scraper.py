@@ -7,11 +7,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_TOKEN = os.getenv("BASEROW_API_KEY")
-TABLE_ID = os.getenv("BASEROW_OUTREACH_TABLE")
-BASE_URL = f"https://api.baserow.io/api/database/rows/table/{TABLE_ID}"
+NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
+NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL")
+PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
+TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
+
+API_BASE = f"{NOCODB_BASE_URL}/api/v1/projects/{PROJECT_ID}/tables/{TABLE_ID}/rows"
 HEADERS = {
-    "Authorization": f"Token {API_TOKEN}",
+    "xc-auth": NOCODB_API_KEY,
     "Content-Type": "application/json"
 }
 
@@ -23,12 +26,12 @@ MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
 
 def fetch_records():
-    res = requests.get(BASE_URL + "?user_field_names=true", headers=HEADERS)
+    res = requests.get(API_BASE, headers=HEADERS)
     res.raise_for_status()
-    return res.json()["results"]
+    return res.json()["list"]
 
 def update_record(record_id, payload):
-    res = requests.patch(f"{BASE_URL}/{record_id}/", headers=HEADERS, json=payload)
+    res = requests.patch(f"{API_BASE}/{record_id}", headers=HEADERS, json=payload)
     res.raise_for_status()
 
 def clean_text(text):
@@ -92,7 +95,7 @@ def main():
         content = crawl_site(norm_url)
 
         if len(content.split()) < MIN_WORDS_THRESHOLD:
-            print(f"⚠️ Skipping — not enough meaningful text.")
+            print("⚠️ Skipping — not enough meaningful text.")
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
