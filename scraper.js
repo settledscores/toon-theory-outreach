@@ -2,13 +2,16 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
-import axios from 'axios';
 
 dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
-  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA"
+  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA",
+  "https://www.bbb.org/search?find_text=Staffing+Agencies&find_entity=&find_type=&find_loc=Washington%2C+PA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
@@ -53,6 +56,7 @@ function cleanAndSplitName(raw, businessName = '') {
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
 
   let tokens = namePart.split(/\s+/).filter(Boolean);
+
   if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
     tokens.pop();
   }
@@ -126,13 +130,14 @@ async function extractProfile(page, url) {
 }
 
 async function syncToNocoDB(record) {
-  const API_KEY = 'UtubR5TLlqxOZOAmodTkqjAyImTpXyYlTYFVXM2p';
-  const BASE_URL = 'https://app.nocodb.com';
-  const PROJECT_ID = 'wbv4do3x';
-  const TABLE_ID = 'muom3qfddoeroow';
+  const API_KEY = process.env.NOCODB_API_KEY;
+  const BASE_URL = process.env.NOCODB_BASE_URL;
+  const TABLE_ID = process.env.NOCODB_SCRAPER_TABLE_ID;
 
-  const url = `${BASE_URL}/api/v1/db/data/v1/${PROJECT_ID}/${TABLE_ID}`;
+  const url = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
+
   const body = {
+    "business name": record.businessName,
     "website url": record.website,
     "profile link": record.profileLink,
     "location": record.location,
@@ -148,7 +153,7 @@ async function syncToNocoDB(record) {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'xc-auth': API_KEY,
+        'xc-token': API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
