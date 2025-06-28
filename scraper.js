@@ -123,12 +123,10 @@ async function extractProfile(page, url) {
 
 async function getAccessToken() {
   const res = await fetch(`${BASE_URL}/api/v2.1/dtable/app-access-token/`, {
-    method: 'POST',
+    method: 'GET',
     headers: {
-      'Authorization': `Token ${API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ dtable_uuid: BASE_UUID })
+      'Authorization': `Token ${API_KEY}`
+    }
   });
 
   if (!res.ok) {
@@ -143,7 +141,6 @@ async function getAccessToken() {
 async function syncToSeaTable(records) {
   try {
     const accessToken = await getAccessToken();
-
     const url = `${BASE_URL}/api/v2/dtable-db/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
 
     const res = await fetch(url, {
