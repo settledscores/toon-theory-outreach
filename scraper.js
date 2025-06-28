@@ -40,11 +40,9 @@ function cleanBusinessName(name) {
 
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
-
   const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
   const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
-
   let namePart = clean;
   let titlePart = '';
   if (clean.includes(',')) {
@@ -52,21 +50,15 @@ function cleanAndSplitName(raw, businessName = '') {
     namePart = name.trim();
     titlePart = title.trim();
   }
-
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
-
   let tokens = namePart.split(/\s+/).filter(Boolean);
-
   if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
     tokens.pop();
   }
-
   if (tokens.length < 2 || tokens.length > 4) return null;
-
   const firstName = tokens[0];
   const lastName = tokens[tokens.length - 1];
   const middleName = tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '';
-
   return {
     firstName,
     middleName,
@@ -98,9 +90,6 @@ async function extractProfile(page, url) {
       const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
       const principalContactRaw = principalMatch?.[1]?.trim() || '';
 
-      const yearsMatch = fullText.match(/Business Started:\s*(.+)/i);
-      const years = yearsMatch?.[1]?.split('\n')[0].trim() || '';
-
       const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
       const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
 
@@ -108,7 +97,6 @@ async function extractProfile(page, url) {
         businessName,
         principalContact: principalContactRaw,
         location,
-        years,
         industry,
         website
       };
@@ -119,9 +107,14 @@ async function extractProfile(page, url) {
     if (!split || !data.website || !data.businessName) return null;
 
     return {
-      ...data,
-      ...split,
-      profileLink: url
+      "business name": data.businessName,
+      "website url": data.website,
+      "location": data.location,
+      "industry": data.industry,
+      "First Name": split.firstName,
+      "Middle Name": split.middleName,
+      "Last Name": split.lastName,
+      "Decision Maker Title": split.title
     };
   } catch (err) {
     console.error(`❌ Failed to extract: ${url} — ${err.message}`);
@@ -129,45 +122,32 @@ async function extractProfile(page, url) {
   }
 }
 
-async function syncToNocoDB(record) {
-  const API_KEY = process.env.NOCODB_API_KEY;
-  const BASE_URL = process.env.NOCODB_BASE_URL;
-  const TABLE_ID = process.env.NOCODB_SCRAPER_TABLE_ID;
+async function syncToSeaTable(records) {
+  const API_KEY = process.env.SEATABLE_API_KEY;
+  const BASE_URL = process.env.SEATABLE_BASE_URL;
+  const PROJECT_ID = process.env.SEATABLE_PROJECT_ID;
+  const TABLE_ID = process.env.SEATABLE_SCRAPER_TABLE_ID;
 
-  const url = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
-
-  const body = {
-    "business name": record.businessName,
-    "website url": record.website,
-    "profile link": record.profileLink,
-    "location": record.location,
-    "industry": record.industry,
-    "years": record.years,
-    "First Name": record.firstName,
-    "Middle Name": record.middleName,
-    "Last Name": record.lastName,
-    "Decision Maker Title": record.title
-  };
+  const url = `${BASE_URL}/api/v2/dtable/app-access/table/${PROJECT_ID}/${TABLE_ID}/batch-create`;
 
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'xc-token': API_KEY,
+        'Authorization': `Token ${API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ records })
     });
 
-    const data = await res.json();
-
+    const result = await res.json();
     if (!res.ok) {
-      console.error(`❌ NocoDB error (${res.status}): ${JSON.stringify(data)}`);
+      console.error(`❌ SeaTable error (${res.status}): ${JSON.stringify(result)}`);
     } else {
-      console.log(`✅ Synced: ${record.businessName}`);
+      console.log(`✅ Synced ${records.length} records to SeaTable`);
     }
   } catch (err) {
-    console.error(`❌ NocoDB sync failed: ${err.message}`);
+    console.error(`❌ SeaTable sync failed: ${err.message}`);
   }
 }
 
@@ -183,6 +163,7 @@ async function syncToNocoDB(record) {
 
   const seen = new Set();
   const deduped = new Set();
+  const allRecords = [];
 
   for (const baseUrl of NICHES) {
     console.log(`🔍 Scraping niche: ${baseUrl}`);
@@ -211,10 +192,11 @@ async function syncToNocoDB(record) {
 
         const profile = await extractProfile(page, link);
         if (profile) {
-          const dedupKey = `${profile.businessName.toLowerCase()}|${profile.website.toLowerCase()}`;
+          const dedupKey = `${profile["business name"].toLowerCase()}|${profile["website url"].toLowerCase()}`;
           if (!deduped.has(dedupKey)) {
             deduped.add(dedupKey);
-            await syncToNocoDB(profile);
+            allRecords.push(profile);
+            console.log('📦', profile);
             validCount++;
             scrapedThisPage++;
           }
@@ -232,5 +214,7 @@ async function syncToNocoDB(record) {
   }
 
   await browser.close();
+  console.log(`📤 Sending ${allRecords.length} total records to SeaTable...`);
+  await syncToSeaTable(allRecords);
   console.log('✅ All niches done.');
 })();
