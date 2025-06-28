@@ -121,9 +121,10 @@ async function extractProfile(page, url) {
 async function syncToSeaTable(records) {
   const API_KEY = process.env.SEATABLE_API_KEY;
   const BASE_URL = process.env.SEATABLE_BASE_URL;
-  const TABLE_ID = process.env.SEATABLE_SCRAPER_TABLE_ID;
+  const DTABLE_UUID = process.env.SEATABLE_DTABLE_UUID;
+  const TABLE_NAME = process.env.SEATABLE_SCRAPER_TABLE_NAME;
 
-  const url = `${BASE_URL}/api/v2/dtable-db/table/${TABLE_ID}/records/batch/`;
+  const url = `${BASE_URL}/api/v2/dtable-db/dtables/${DTABLE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
 
   try {
     const res = await fetch(url, {
@@ -172,11 +173,11 @@ async function syncToSeaTable(records) {
       await delay(randomBetween(1000, 2000));
       await humanScroll(page);
 
-      const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')]
+      const links = await page.evaluate(() =>
+        [...document.querySelectorAll('a[href*="/profile/"]')]
           .map(a => a.href)
-          .filter((href, i, arr) => arr.indexOf(href) === i);
-      });
+          .filter((href, i, arr) => arr.indexOf(href) === i)
+      );
 
       if (!links.length) break;
 
