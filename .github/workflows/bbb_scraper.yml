@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Install Chromium
@@ -16,42 +16,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y chromium-browser
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Cache node_modules
+      - name: Cache Dependencies
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: Linux-node-modules-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            Linux-node-modules-
+          key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
-      - name: Run BBB Puppeteer Scraper
+      - name: Run Scraper
         run: npm start
 
-      - name: Upload scraped leads JSON
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: scraped-leads-json
-          path: leads/scraped_leads.json
-
-      - name: Upload Screenshots (if any)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bbb-screenshots
-          path: bbb_screenshot_*.png
-
-      - name: Upload HTML Snapshots (if any)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bbb-html
-          path: bbb_html_*.html
+          commit_message: "⬆️ Update scraped_leads.json"
