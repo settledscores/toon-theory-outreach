@@ -4,7 +4,6 @@ import fetch from 'node-fetch';
 
 puppeteer.use(StealthPlugin());
 
-// ✅ Hardcoded SeaTable values
 const BASE_URL = 'https://cloud.seatable.io';
 const API_KEY = 'c2beb2333e140b5698cbe5e5031aa3b0743e7013';
 const BASE_UUID = 'd603f65e-b769-448c-b7c8-4f155c3f38b0';
@@ -17,8 +16,12 @@ const NICHES = [
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
-const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi];
+const businessSuffixes = [/
+  \b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i
+];
+const nameSuffixes = [/
+  \b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi
+];
 
 async function humanScroll(page) {
   const steps = randomBetween(5, 8);
@@ -40,8 +43,8 @@ function cleanBusinessName(name) {
 
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
-  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
-  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
+  const honorifics = ['Mr\.', 'Mrs\.', 'Ms\.', 'Miss', 'Dr\.', 'Prof\.', 'Mx\.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
   let namePart = clean;
   let titlePart = '';
@@ -56,13 +59,10 @@ function cleanAndSplitName(raw, businessName = '') {
     tokens.pop();
   }
   if (tokens.length < 2 || tokens.length > 4) return null;
-  const firstName = tokens[0];
-  const lastName = tokens[tokens.length - 1];
-  const middleName = tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '';
   return {
-    firstName,
-    middleName,
-    lastName,
+    firstName: tokens[0],
+    middleName: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
+    lastName: tokens[tokens.length - 1],
     title: titlePart
   };
 }
@@ -74,31 +74,18 @@ async function extractProfile(page, url) {
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
-      const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('"business_name"'));
+      const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('business_name'));
       const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
       const businessName = businessNameMatch?.[1] || '';
-
-      const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
-      )?.href || '';
-
+      const website = Array.from(document.querySelectorAll('a')).find(a => a.innerText.toLowerCase().includes('visit website'))?.href || '';
       const fullText = document.body.innerText;
-      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
+      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}/);
       const location = locationMatch?.[0] || '';
-
       const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
       const principalContactRaw = principalMatch?.[1]?.trim() || '';
-
       const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
       const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
-
-      return {
-        businessName,
-        principalContact: principalContactRaw,
-        location,
-        industry,
-        website
-      };
+      return { businessName, principalContact: principalContactRaw, location, industry, website };
     });
 
     data.businessName = cleanBusinessName(data.businessName);
@@ -123,49 +110,35 @@ async function extractProfile(page, url) {
 
 async function getAccessToken() {
   const res = await fetch(`${BASE_URL}/api/v2.1/dtable/app-access-token/`, {
-    method: 'GET',
+    method: 'POST',
     headers: {
-      'Authorization': `Token ${API_KEY}`
-    }
+      Authorization: `Token ${API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ dtable_uuid: BASE_UUID })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()).access_token;
+}
+
+async function syncToSeaTable(records) {
+  const token = await getAccessToken();
+  const url = `${BASE_URL}/api/v2/dtable-db/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ records })
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Token exchange failed: ${text}`);
-  }
-
-  const json = await res.json();
-  return json.access_token;
-}
-
-async function syncToSeaTable(records) {
-  try {
-    const accessToken = await getAccessToken();
-
-    const url = `${BASE_URL}/dtable-server/api/v1/dtables/${BASE_UUID}/batch/`;
-    const operations = records.map(record => ({
-      operation: 'insert',
-      record,
-      table_name: TABLE_NAME
-    }));
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ operations })
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      console.error(`❌ SeaTable API Error (${res.status}):`, json);
-    } else {
-      console.log(`✅ Synced ${records.length} records to SeaTable`);
-    }
-  } catch (err) {
-    console.error(`❌ SeaTable sync failed: ${err.message}`);
+    console.error(`❌ SeaTable API error (${res.status}):`, text);
+  } else {
+    console.log(`✅ Synced ${records.length} records to SeaTable`);
   }
 }
 
@@ -184,7 +157,6 @@ async function syncToSeaTable(records) {
   const allRecords = [];
 
   for (const baseUrl of NICHES) {
-    console.log(`🔍 Scraping niche: ${baseUrl}`);
     let pageNum = 1;
     let validCount = 0;
     let consecutiveEmpty = 0;
@@ -195,42 +167,32 @@ async function syncToSeaTable(records) {
       await delay(randomBetween(1000, 2000));
       await humanScroll(page);
 
-      const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')]
-          .map(a => a.href)
-          .filter((href, i, arr) => arr.indexOf(href) === i);
-      });
-
+      const links = await page.evaluate(() => [...document.querySelectorAll('a[href*="/profile/"]')].map(a => a.href));
       if (!links.length) break;
 
       let scrapedThisPage = 0;
       for (const link of links) {
         if (seen.has(link)) continue;
         seen.add(link);
-
         const profile = await extractProfile(page, link);
         if (profile) {
-          const dedupKey = `${profile["business name"].toLowerCase()}|${profile["website url"].toLowerCase()}`;
-          if (!deduped.has(dedupKey)) {
-            deduped.add(dedupKey);
+          const key = `${profile["business name"].toLowerCase()}|${profile["website url"].toLowerCase()}`;
+          if (!deduped.has(key)) {
+            deduped.add(key);
             allRecords.push(profile);
             console.log('📦', profile);
             validCount++;
             scrapedThisPage++;
           }
         }
-
         await delay(randomBetween(3000, 6000));
         if (validCount >= 3) break;
       }
-
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
-
     console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
-
   await browser.close();
   console.log(`📤 Sending ${allRecords.length} total records to SeaTable...`);
   await syncToSeaTable(allRecords);
