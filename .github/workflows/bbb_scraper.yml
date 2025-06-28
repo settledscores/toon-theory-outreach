@@ -2,8 +2,6 @@ name: Run BBB Scraper
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *' # optional daily run at 3AM UTC
 
 jobs:
   scrape:
@@ -12,13 +10,11 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
       - name: Install dependencies
         run: npm install
@@ -26,19 +22,17 @@ jobs:
       - name: Run scraper
         run: npm start
 
-      - name: Show Git status
-        run: git status
-
-      - name: Commit and push if leads updated
+      - name: Show scraped_leads.json
+        if: always()
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          echo "📂 leads/scraped_leads.json contents:"
+          cat leads/scraped_leads.json || echo "❌ File not found"
 
-          if git diff --quiet leads/scraped_leads.json; then
-            echo "🟡 No changes in leads/scraped_leads.json"
-          else
-            git add leads/scraped_leads.json
-            git commit -m "🤖 Auto-update scraped_leads.json [skip ci]"
-            git push
-            echo "✅ Changes committed"
-          fi
+      - name: Commit and push updated JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --no-rebase
+          git add leads/scraped_leads.json
+          git commit -m "🔄 Auto-update scraped_leads.json [bot]" || echo "No changes to commit"
+          git push
