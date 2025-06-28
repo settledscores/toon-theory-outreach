@@ -121,10 +121,9 @@ async function extractProfile(page, url) {
 async function syncToSeaTable(records) {
   const API_KEY = process.env.SEATABLE_API_KEY;
   const BASE_URL = process.env.SEATABLE_BASE_URL;
-  const PROJECT_ID = process.env.SEATABLE_PROJECT_ID;
   const TABLE_ID = process.env.SEATABLE_SCRAPER_TABLE_ID;
 
-  const url = `${BASE_URL}/api/v2/dtable/app-access/table/${PROJECT_ID}/${TABLE_ID}/batch-create`;
+  const url = `${BASE_URL}/api/v2/dtable-db/table/${TABLE_ID}/records/batch/`;
 
   try {
     const res = await fetch(url, {
@@ -174,7 +173,9 @@ async function syncToSeaTable(records) {
       await humanScroll(page);
 
       const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')].map(a => a.href).filter((href, i, arr) => arr.indexOf(href) === i);
+        return [...document.querySelectorAll('a[href*="/profile/"]')]
+          .map(a => a.href)
+          .filter((href, i, arr) => arr.indexOf(href) === i);
       });
 
       if (!links.length) break;
@@ -197,7 +198,7 @@ async function syncToSeaTable(records) {
         }
 
         await delay(randomBetween(3000, 6000));
-        if (validCount >= 50) break;
+        if (validCount >= 3) break;
       }
 
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
