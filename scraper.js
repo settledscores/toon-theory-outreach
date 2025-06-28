@@ -7,6 +7,10 @@ dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
+  "https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=60533-000&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA",
+  "https://www.bbb.org/search?find_text=Management+Consultant&find_entity=&find_type=&find_loc=Detroit%2C+MI&find_country=USA",
+  "https://www.bbb.org/search?find_text=Staffing+Agencies&find_entity=&find_type=&find_loc=Washington%2C+PA&find_country=USA",
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
@@ -167,16 +171,14 @@ async function syncToSeaTable(records) {
     let validCount = 0;
     let consecutiveEmpty = 0;
 
-    while (validCount < 20 && consecutiveEmpty < 5) {
+    while (validCount < 50 && consecutiveEmpty < 5) {
       const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
       await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1000, 2000));
       await humanScroll(page);
 
       const links = await page.evaluate(() => {
-        return [...document.querySelectorAll('a[href*="/profile/"]')]
-          .map(a => a.href)
-          .filter((href, i, arr) => arr.indexOf(href) === i);
+        return [...document.querySelectorAll('a[href*="/profile/"]')].map(a => a.href).filter((href, i, arr) => arr.indexOf(href) === i);
       });
 
       if (!links.length) break;
@@ -199,7 +201,7 @@ async function syncToSeaTable(records) {
         }
 
         await delay(randomBetween(3000, 6000));
-        if (validCount >= 20) break;
+        if (validCount >= 50) break;
       }
 
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
