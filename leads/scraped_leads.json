@@ -1,6 +1,26 @@
 {
-  "scraped_at": null,
-  "total": 0,
-  "records": []
+  "scraped_at": "2025-06-28T20:35:24.534Z",
+  "total": 2,
+  "records": [
+    {
+      "business name": "Accountant Analytics",
+      "website url": "https://accountantanalytics.com/",
+      "location": "Austin, TX 78717",
+      "industry": "Accounting, Tax Return Preparation, Accountant, Bookkeeping Services, Taxes",
+      "First Name": "Barton",
+      "Middle Name": "",
+      "Last Name": "Bumpus",
+      "Decision Maker Title": "Owner"
+    },
+    {
+      "business name": "Sharagon Bookkeeping Services",
+      "website url": "https://sharagon.com/",
+      "location": "Austin, TX 78701",
+      "industry": "Bookkeeping Services, Payroll Services",
+      "First Name": "Sharis",
+      "Middle Name": "",
+      "Last Name": "Tanue",
+      "Decision Maker Title": "Owner/Director"
+    }
+  ]
 }
-
