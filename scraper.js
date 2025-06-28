@@ -2,8 +2,13 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs/promises';
 import path from 'path';
+import fetch from 'node-fetch';
 
 puppeteer.use(StealthPlugin());
+
+const GIST_ID = '0dbf7ff7a0dc089bd1458f12f132d232';
+const GIST_FILENAME = 'scraped_leads.json';
+const GITHUB_TOKEN = process.env.GIST_TOKEN;
 
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
@@ -100,19 +105,34 @@ async function extractProfile(page, url) {
   }
 }
 
-async function saveToJSON(records) {
-  const leadsDir = path.join(process.cwd(), 'leads');
-  const file = path.join(leadsDir, 'scraped_leads.json');
-  await fs.mkdir(leadsDir, { recursive: true });
+async function updateGist(records) {
+  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'bbb-scraper'
+    },
+    body: JSON.stringify({
+      files: {
+        [GIST_FILENAME]: {
+          content: JSON.stringify({
+            scraped_at: new Date().toISOString(),
+            total: records.length,
+            records
+          }, null, 2)
+        }
+      }
+    })
+  });
 
-  const data = {
-    scraped_at: new Date().toISOString(),
-    total: records.length,
-    records
-  };
+  if (!res.ok) {
+    const error = await res.text();
+    console.error(`❌ Failed to update gist: ${res.status} ${error}`);
+    throw new Error(error);
+  }
 
-  await fs.writeFile(file, JSON.stringify(data, null, 2));
-  console.log(`✅ Saved ${records.length} leads to ${file}`);
+  console.log(`✅ Gist updated with ${records.length} records.`);
 }
 
 (async () => {
@@ -161,15 +181,13 @@ async function saveToJSON(records) {
         await delay(randomBetween(3000, 6000));
         if (validCount >= 3) break;
       }
-
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
-
     console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
 
   await browser.close();
-  await saveToJSON(allRecords);
+  await updateGist(allRecords);
   console.log('✅ All niches done.');
 })();
