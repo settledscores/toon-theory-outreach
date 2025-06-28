@@ -1,3 +1,5 @@
+name: Run BBB Scraper
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
