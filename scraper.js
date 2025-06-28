@@ -2,13 +2,9 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs/promises';
 import path from 'path';
-import fetch from 'node-fetch';
+import { execSync } from 'child_process';
 
 puppeteer.use(StealthPlugin());
-
-const GIST_ID = '0dbf7ff7a0dc089bd1458f12f132d232';
-const GIST_FILENAME = 'scraped_leads.json';
-const GITHUB_TOKEN = process.env.GIST_TOKEN;
 
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
@@ -31,11 +27,10 @@ async function humanScroll(page) {
 
 function cleanBusinessName(name) {
   if (!name) return '';
-  let cleaned = name;
   for (const suffix of businessSuffixes) {
-    cleaned = cleaned.replace(suffix, '').trim();
+    name = name.replace(suffix, '').trim();
   }
-  return cleaned.replace(/[.,]$/, '').trim();
+  return name.replace(/[.,]$/, '').trim();
 }
 
 function cleanAndSplitName(raw, businessName = '') {
@@ -43,18 +38,11 @@ function cleanAndSplitName(raw, businessName = '') {
   const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
   const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
-  let namePart = clean;
-  let titlePart = '';
-  if (clean.includes(',')) {
-    const [name, title] = clean.split(',', 2);
-    namePart = name.trim();
-    titlePart = title.trim();
-  }
+  let namePart = clean, titlePart = '';
+  if (clean.includes(',')) [namePart, titlePart] = clean.split(',', 2).map(s => s.trim());
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
   let tokens = namePart.split(/\s+/).filter(Boolean);
-  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
-    tokens.pop();
-  }
+  if (tokens.length > 2 && nameSuffixes.some(r => r.test(tokens[tokens.length - 1]))) tokens.pop();
   if (tokens.length < 2 || tokens.length > 4) return null;
   return {
     firstName: tokens[0],
@@ -74,15 +62,13 @@ async function extractProfile(page, url) {
       const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('business_name'));
       const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
       const businessName = businessNameMatch?.[1] || '';
-      const website = Array.from(document.querySelectorAll('a')).find(a => a.innerText.toLowerCase().includes('visit website'))?.href || '';
+      const website = [...document.querySelectorAll('a')].find(a => a.textContent.toLowerCase().includes('visit website'))?.href || '';
       const fullText = document.body.innerText;
-      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}/);
-      const location = locationMatch?.[0] || '';
-      const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
-      const principalContactRaw = principalMatch?.[1]?.trim() || '';
+      const location = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}/)?.[0] || '';
+      const principal = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i)?.[1]?.trim() || '';
       const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
       const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
-      return { businessName, principalContact: principalContactRaw, location, industry, website };
+      return { businessName, principalContact: principal, location, industry, website };
     });
 
     data.businessName = cleanBusinessName(data.businessName);
@@ -100,39 +86,27 @@ async function extractProfile(page, url) {
       "Decision Maker Title": split.title
     };
   } catch (err) {
-    console.error(`❌ Failed to extract: ${url} — ${err.message}`);
+    console.error(`❌ Failed on ${url} — ${err.message}`);
     return null;
   }
 }
 
-async function updateGist(records) {
-  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'bbb-scraper'
-    },
-    body: JSON.stringify({
-      files: {
-        [GIST_FILENAME]: {
-          content: JSON.stringify({
-            scraped_at: new Date().toISOString(),
-            total: records.length,
-            records
-          }, null, 2)
-        }
-      }
-    })
-  });
+async function saveAndCommit(records) {
+  const filePath = path.join('leads', 'scraped_leads.json');
+  await fs.mkdir('leads', { recursive: true });
 
-  if (!res.ok) {
-    const error = await res.text();
-    console.error(`❌ Failed to update gist: ${res.status} ${error}`);
-    throw new Error(error);
-  }
+  const previous = await fs.readFile(filePath, 'utf8').catch(() => '[]');
+  const previousData = JSON.parse(previous);
+  const newRecords = [...previousData, ...records];
 
-  console.log(`✅ Gist updated with ${records.length} records.`);
+  await fs.writeFile(filePath, JSON.stringify(newRecords, null, 2));
+  console.log(`✅ Saved ${records.length} new leads.`);
+
+  execSync(`git config user.name "github-actions"`);
+  execSync(`git config user.email "github-actions@github.com"`);
+  execSync(`git add ${filePath}`);
+  execSync(`git commit -m "⬆️ Update scraped leads [${new Date().toISOString()}]" || echo "No changes to commit."`);
+  execSync(`git push`);
 }
 
 (async () => {
@@ -145,25 +119,19 @@ async function updateGist(records) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  const seen = new Set();
-  const deduped = new Set();
-  const allRecords = [];
+  const seen = new Set(), deduped = new Set(), records = [];
 
   for (const baseUrl of NICHES) {
-    let pageNum = 1;
-    let validCount = 0;
-    let consecutiveEmpty = 0;
-
+    let pageNum = 1, validCount = 0, consecutiveEmpty = 0;
     while (validCount < 3 && consecutiveEmpty < 5) {
       const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
       await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1000, 2000));
       await humanScroll(page);
-
       const links = await page.evaluate(() => [...document.querySelectorAll('a[href*="/profile/"]')].map(a => a.href));
       if (!links.length) break;
 
-      let scrapedThisPage = 0;
+      let scraped = 0;
       for (const link of links) {
         if (seen.has(link)) continue;
         seen.add(link);
@@ -172,22 +140,21 @@ async function updateGist(records) {
           const key = `${profile["business name"].toLowerCase()}|${profile["website url"].toLowerCase()}`;
           if (!deduped.has(key)) {
             deduped.add(key);
-            allRecords.push(profile);
+            records.push(profile);
             console.log('📦', profile);
             validCount++;
-            scrapedThisPage++;
+            scraped++;
           }
         }
         await delay(randomBetween(3000, 6000));
         if (validCount >= 3) break;
       }
-      consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
+      consecutiveEmpty = scraped === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
-    console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
+    console.log(`🏁 Done with: ${baseUrl} — ${validCount} saved`);
   }
 
   await browser.close();
-  await updateGist(allRecords);
-  console.log('✅ All niches done.');
+  await saveAndCommit(records);
 })();
