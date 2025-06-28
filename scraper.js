@@ -1,14 +1,9 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import fetch from 'node-fetch';
+import fs from 'fs/promises';
+import path from 'path';
 
 puppeteer.use(StealthPlugin());
-
-// Load environment variables
-const BASE_URL = process.env.SEATABLE_BASE_URL;
-const API_KEY = process.env.SEATABLE_API_KEY;
-const BASE_UUID = process.env.SEATABLE_BASE_UUID;
-const TABLE_NAME = process.env.SEATABLE_SCRAPER_TABLE_NAME;
 
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
@@ -105,28 +100,19 @@ async function extractProfile(page, url) {
   }
 }
 
-async function syncToSeaTable(records) {
-  const url = `${BASE_URL}/api/v2.1/dtable/${BASE_UUID}/records/batch/`;
+async function saveToJSON(records) {
+  const leadsDir = path.join(process.cwd(), 'leads');
+  const file = path.join(leadsDir, 'scraped_leads.json');
+  await fs.mkdir(leadsDir, { recursive: true });
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Token ${API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      table_name: TABLE_NAME,
-      records
-    })
-  });
+  const data = {
+    scraped_at: new Date().toISOString(),
+    total: records.length,
+    records
+  };
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(`❌ SeaTable API error (${res.status}):`, text);
-    throw new Error(text);
-  } else {
-    console.log(`✅ Synced ${records.length} records to SeaTable`);
-  }
+  await fs.writeFile(file, JSON.stringify(data, null, 2));
+  console.log(`✅ Saved ${records.length} leads to ${file}`);
 }
 
 (async () => {
@@ -175,14 +161,15 @@ async function syncToSeaTable(records) {
         await delay(randomBetween(3000, 6000));
         if (validCount >= 3) break;
       }
+
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
+
     console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
 
   await browser.close();
-  console.log(`📤 Sending ${allRecords.length} total records to SeaTable...`);
-  await syncToSeaTable(allRecords);
+  await saveToJSON(allRecords);
   console.log('✅ All niches done.');
 })();
