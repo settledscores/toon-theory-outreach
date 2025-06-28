@@ -1,14 +1,17 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 
-dotenv.config();
 puppeteer.use(StealthPlugin());
 
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
+
+const SEATABLE_API_KEY = 'c2beb2333e140b5698cbe5e5031aa3b0743e7013';
+const SEATABLE_BASE_URL = 'https://cloud.seatable.io';
+const SEATABLE_DTABLE_UUID = 'd603f65e-b769-448c-b7c8-4f155c3f38b0';
+const SEATABLE_SCRAPER_TABLE_NAME = 'Scraper Leads';
 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
 const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi];
@@ -27,11 +30,10 @@ async function humanScroll(page) {
 
 function cleanBusinessName(name) {
   if (!name) return '';
-  let cleaned = name;
   for (const suffix of businessSuffixes) {
-    cleaned = cleaned.replace(suffix, '').trim();
+    name = name.replace(suffix, '').trim();
   }
-  return cleaned.replace(/[.,]$/, '').trim();
+  return name.replace(/[.,]$/, '').trim();
 }
 
 function cleanAndSplitName(raw, businessName = '') {
@@ -39,8 +41,7 @@ function cleanAndSplitName(raw, businessName = '') {
   const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
   const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
-  let namePart = clean;
-  let titlePart = '';
+  let namePart = clean, titlePart = '';
   if (clean.includes(',')) {
     const [name, title] = clean.split(',', 2);
     namePart = name.trim();
@@ -48,19 +49,12 @@ function cleanAndSplitName(raw, businessName = '') {
   }
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
   let tokens = namePart.split(/\s+/).filter(Boolean);
-  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
-    tokens.pop();
-  }
+  if (tokens.length > 2 && nameSuffixes.some(r => r.test(tokens[tokens.length - 1]))) tokens.pop();
   if (tokens.length < 2 || tokens.length > 4) return null;
   const firstName = tokens[0];
   const lastName = tokens[tokens.length - 1];
   const middleName = tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '';
-  return {
-    firstName,
-    middleName,
-    lastName,
-    title: titlePart
-  };
+  return { firstName, middleName, lastName, title: titlePart };
 }
 
 async function extractProfile(page, url) {
@@ -70,32 +64,14 @@ async function extractProfile(page, url) {
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
-      const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('"business_name"'));
-      const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
-      const businessName = businessNameMatch?.[1] || '';
-
-      const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
-      )?.href || '';
-
+      const script = [...document.querySelectorAll('script')].find(s => s.textContent.includes('"business_name"'));
+      const businessName = script?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/)?.[1] || '';
+      const website = [...document.querySelectorAll('a')].find(a => a.innerText.toLowerCase().includes('visit website') && a.href.includes('http'))?.href || '';
       const fullText = document.body.innerText;
-
-      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/);
-      const location = locationMatch?.[0] || '';
-
-      const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
-      const principalContactRaw = principalMatch?.[1]?.trim() || '';
-
-      const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
-      const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
-
-      return {
-        businessName,
-        principalContact: principalContactRaw,
-        location,
-        industry,
-        website
-      };
+      const location = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}(-\d{4})?/)?.[0] || '';
+      const principal = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i)?.[1]?.trim() || '';
+      const industry = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i)?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
+      return { businessName, principalContact: principal, location, industry, website };
     });
 
     data.businessName = cleanBusinessName(data.businessName);
@@ -119,18 +95,13 @@ async function extractProfile(page, url) {
 }
 
 async function syncToSeaTable(records) {
-  const API_KEY = process.env.SEATABLE_API_KEY;
-  const BASE_URL = process.env.SEATABLE_BASE_URL;
-  const DTABLE_UUID = process.env.SEATABLE_DTABLE_UUID;
-  const TABLE_NAME = process.env.SEATABLE_SCRAPER_TABLE_NAME;
-
-  const url = `${BASE_URL}/api/v2/dtable-db/dtables/${DTABLE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
+  const url = `${SEATABLE_BASE_URL}/api/v2/dtable-db/dtables/${SEATABLE_DTABLE_UUID}/tables/${encodeURIComponent(SEATABLE_SCRAPER_TABLE_NAME)}/records/batch/`;
 
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${API_KEY}`,
+        'Authorization': `Token ${SEATABLE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ records })
