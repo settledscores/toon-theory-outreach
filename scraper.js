@@ -1,24 +1,19 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 
-dotenv.config();
 puppeteer.use(StealthPlugin());
 
-// ✅ Environment configuration (from GitHub Actions secrets or .env)
+// Load environment variables
 const BASE_URL = process.env.SEATABLE_BASE_URL;
 const API_KEY = process.env.SEATABLE_API_KEY;
 const BASE_UUID = process.env.SEATABLE_BASE_UUID;
-const WORKSPACE_ID = process.env.SEATABLE_WORKSPACE_ID;
-const TABLE_NAME = process.env.SEATABLE_TABLE_NAME;
+const TABLE_NAME = process.env.SEATABLE_SCRAPER_TABLE_NAME;
 
-// ✅ Niche URLs
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
-// ✅ Utilities
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -110,26 +105,13 @@ async function extractProfile(page, url) {
   }
 }
 
-async function getAccessToken() {
-  const res = await fetch(`${BASE_URL}/api/v2.1/workspace/${WORKSPACE_ID}/dtable/${BASE_UUID}/access-token/`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()).access_token;
-}
-
 async function syncToSeaTable(records) {
-  const token = await getAccessToken();
   const url = `${BASE_URL}/api/v2/dtable-db/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${API_KEY}`, // using direct base token
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ records })
@@ -138,6 +120,7 @@ async function syncToSeaTable(records) {
   if (!res.ok) {
     const text = await res.text();
     console.error(`❌ SeaTable API error (${res.status}):`, text);
+    throw new Error(text);
   } else {
     console.log(`✅ Synced ${records.length} records to SeaTable`);
   }
@@ -192,7 +175,6 @@ async function syncToSeaTable(records) {
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
-
     console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
 
