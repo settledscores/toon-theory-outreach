@@ -122,7 +122,7 @@ async function extractProfile(page, url) {
 }
 
 async function getAccessToken() {
-  const res = await fetch(`${BASE_URL}/api/v2/dtable/app-access-token/`, {
+  const res = await fetch(`${BASE_URL}/api/v2.1/dtable/app-access-token/`, {
     method: 'POST',
     headers: {
       'Authorization': `Token ${API_KEY}`,
