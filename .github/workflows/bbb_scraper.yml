@@ -1,12 +1,21 @@
 name: Run BBB Scraper
 
+on:
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
+    env:
+      SEATABLE_API_KEY: ${{ secrets.SEATABLE_API_KEY }}
+      SEATABLE_BASE_URL: ${{ secrets.SEATABLE_BASE_URL }}
+      SEATABLE_PROJECT_ID: ${{ secrets.SEATABLE_PROJECT_ID }}
+      SEATABLE_SCRAPER_TABLE_ID: ${{ secrets.SEATABLE_SCRAPER_TABLE_ID }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Chromium
         run: |
@@ -29,17 +38,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run Puppeteer Scraper
+      - name: Run BBB Puppeteer Scraper
         run: npm start
 
-      - name: Upload Screenshot(s)
+      - name: Upload Screenshots (if any)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bbb-screenshots
           path: bbb_screenshot_*.png
 
-      - name: Upload HTML Snapshots
+      - name: Upload HTML Snapshots (if any)
         if: always()
         uses: actions/upload-artifact@v4
         with:
