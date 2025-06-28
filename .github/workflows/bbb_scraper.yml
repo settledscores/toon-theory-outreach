@@ -8,35 +8,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: ⚙️ Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-
+      - name: 📦 Install dependencies
+        run: npm install
 
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --progress=false
+      - name: 🧼 Ensure leads folder exists
+        run: mkdir -p leads && touch leads/scraped_leads.json
 
-      - name: Run BBB Puppeteer Scraper
+      - name: 🕷️ Run scraper
         run: npm start
 
-      - name: Auto Commit Scraped Leads
-        if: always()
+      - name: 📤 Auto-commit scraped leads if changed
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.json
-          git commit -m "🟢 Auto-update scraped leads"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit."
+          else
+            git commit -m "🤖 Update scraped_leads.json [auto]" && git push
+          fi
