@@ -3,6 +3,9 @@ name: Run BBB Scraper
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # ✅ Required to allow commit and push
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -11,28 +14,29 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-
+
       - name: Install dependencies
         run: npm install
 
-      - name: Run scraper
+      - name: Run BBB Scraper
         run: npm start
 
-      - name: Show scraped_leads.json
-        if: always()
-        run: |
-          echo "📂 leads/scraped_leads.json contents:"
-          cat leads/scraped_leads.json || echo "❌ File not found"
-
-      - name: Commit and push updated JSON
+      - name: Commit updated leads
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --no-rebase
           git add leads/scraped_leads.json
           git commit -m "🔄 Auto-update scraped_leads.json [bot]" || echo "No changes to commit"
-          git push
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
