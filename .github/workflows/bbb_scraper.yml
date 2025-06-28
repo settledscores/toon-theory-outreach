@@ -7,12 +7,6 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
 
-    env:
-      SEATABLE_API_KEY: ${{ secrets.SEATABLE_API_KEY }}
-      SEATABLE_BASE_URL: ${{ secrets.SEATABLE_BASE_URL }}
-      SEATABLE_BASE_UUID: ${{ secrets.SEATABLE_BASE_UUID }}
-      SEATABLE_SCRAPER_TABLE_NAME: ${{ secrets.SEATABLE_SCRAPER_TABLE_NAME }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,6 +34,13 @@ jobs:
 
       - name: Run BBB Puppeteer Scraper
         run: npm start
+
+      - name: Upload scraped leads JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-leads-json
+          path: leads/scraped_leads.json
 
       - name: Upload Screenshots (if any)
         if: always()
