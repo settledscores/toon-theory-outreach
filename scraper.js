@@ -141,7 +141,13 @@ async function getAccessToken() {
 async function syncToSeaTable(records) {
   try {
     const accessToken = await getAccessToken();
-    const url = `${BASE_URL}/api/v2/dtable-db/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
+
+    const url = `${BASE_URL}/dtable-server/api/v1/dtables/${BASE_UUID}/batch/`;
+    const operations = records.map(record => ({
+      operation: 'insert',
+      record,
+      table_name: TABLE_NAME
+    }));
 
     const res = await fetch(url, {
       method: 'POST',
@@ -149,7 +155,7 @@ async function syncToSeaTable(records) {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ records })
+      body: JSON.stringify({ operations })
     });
 
     const json = await res.json();
