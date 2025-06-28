@@ -10,8 +10,9 @@ jobs:
     env:
       SEATABLE_API_KEY: ${{ secrets.SEATABLE_API_KEY }}
       SEATABLE_BASE_URL: ${{ secrets.SEATABLE_BASE_URL }}
-      SEATABLE_PROJECT_ID: ${{ secrets.SEATABLE_PROJECT_ID }}
-      SEATABLE_SCRAPER_TABLE_ID: ${{ secrets.SEATABLE_SCRAPER_TABLE_ID }}
+      SEATABLE_BASE_UUID: ${{ secrets.SEATABLE_BASE_UUID }}
+      SEATABLE_WORKSPACE_ID: ${{ secrets.SEATABLE_WORKSPACE_ID }}
+      SEATABLE_TABLE_NAME: ${{ secrets.SEATABLE_TABLE_NAME }}
 
     steps:
       - name: Checkout repository
