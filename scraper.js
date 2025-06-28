@@ -4,10 +4,9 @@ import fetch from 'node-fetch';
 
 puppeteer.use(StealthPlugin());
 
-// 🔐 ENV VARS
-const BASE_URL = process.env.SEATABLE_BASE_URL; // e.g. https://cloud.seatable.io
-const API_KEY = process.env.SEATABLE_API_KEY; // base access token
-const BASE_UUID = process.env.SEATABLE_BASE_UUID; // e.g. d603f65e-b769-...
+const BASE_URL = process.env.SEATABLE_BASE_URL;
+const API_KEY = process.env.SEATABLE_API_KEY; // base token
+const BASE_UUID = process.env.SEATABLE_BASE_UUID;
 const TABLE_NAME = process.env.SEATABLE_SCRAPER_TABLE_NAME;
 
 const NICHES = [
@@ -106,12 +105,12 @@ async function extractProfile(page, url) {
 }
 
 async function syncToSeaTable(records) {
-  const url = `${BASE_URL}/dtable-db/api/v2.0/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
+  const url = `${BASE_URL}/api/v2/dtable-db/dtables/${BASE_UUID}/tables/${encodeURIComponent(TABLE_NAME)}/records/batch/`;
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Token ${API_KEY}`, // ✅ correct header for base tokens
+      Authorization: `Token ${API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ records })
