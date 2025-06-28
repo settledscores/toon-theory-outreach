@@ -9,64 +9,99 @@ puppeteer.use(StealthPlugin());
 const BASE_URL = 'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=Category&find_loc=Austin%2C+TX&find_country=USA';
 const scrapedFilePath = path.join('leads', 'scraped_leads.json');
 
+const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
+const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
+
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function humanScroll(page) {
-  const steps = randomBetween(4, 8);
+  const steps = randomBetween(5, 8);
   for (let i = 0; i < steps; i++) {
-    await page.mouse.move(randomBetween(0, 800), randomBetween(0, 600));
+    await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(500, 1500));
+    await delay(randomBetween(300, 800));
   }
+}
+
+function cleanBusinessName(name) {
+  if (!name) return '';
+  let cleaned = name;
+  for (const suffix of businessSuffixes) {
+    cleaned = cleaned.replace(suffix, '').trim();
+  }
+  return cleaned.replace(/[.,]$/, '').trim();
+}
+
+function cleanAndSplitName(raw, businessName = '') {
+  if (!raw) return null;
+  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
+  let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
+  let namePart = clean;
+  let titlePart = '';
+  if (clean.includes(',')) {
+    const [name, title] = clean.split(',', 2);
+    namePart = name.trim();
+    titlePart = title.trim();
+  }
+  if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
+  let tokens = namePart.split(/\s+/).filter(Boolean);
+  if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
+    tokens.pop();
+  }
+  if (tokens.length < 2 || tokens.length > 4) return null;
+  return {
+    firstName: tokens[0],
+    middleName: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
+    lastName: tokens[tokens.length - 1],
+    title: titlePart
+  };
 }
 
 async function scrapeProfile(page, url) {
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
     console.log(`🧭 Scraping profile: ${url}`);
-    await delay(randomBetween(2000, 4000));
+    await delay(randomBetween(1500, 3000));
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
-      const safeText = el => el?.innerText?.trim() || '';
-
-      const scriptTag = Array.from(document.querySelectorAll('script'))
-        .find(s => s.textContent.includes('"business_name"'));
+      const scriptTag = [...document.querySelectorAll('script')].find(s => s.textContent.includes('business_name'));
       const businessNameMatch = scriptTag?.textContent.match(/"business_name"\s*:\s*"([^"]+)"/);
       const businessName = businessNameMatch?.[1] || '';
-
-      const website = Array.from(document.querySelectorAll('a')).find(a =>
-        a.innerText.toLowerCase().includes('visit website') && a.href.includes('http')
-      )?.href || '';
-
-      const addressMatch = document.body.innerText.match(/(?:[A-Z][a-z]+,)?\s?[A-Z]{2}\s\d{5}(-\d{4})?/);
-      const location = addressMatch?.[0]?.trim() || '';
-
-      const mgmtMatch = document.body.innerText.match(/Business Management:\s*(Mr\.|Ms\.|Mrs\.|Dr\.)?\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s*(Owner|CEO|Manager|President|Founder)?/i);
-      const principalContact = mgmtMatch?.[2]?.trim() || '';
-      const jobTitle = mgmtMatch?.[3]?.trim() || '';
-
-      const yearsMatch = document.body.innerText.match(/Business Started:\s*(.+)/i);
-      const years = yearsMatch?.[1]?.trim().split('\n')[0] || '';
-
-      const industryMatch = document.body.innerText.match(/Business Categories\s+([\s\S]*?)\n[A-Z]/i);
-      const industry = industryMatch?.[1]?.split('\n').map(s => s.trim()).filter(Boolean).join(', ') || '';
-
-      return {
-        businessName,
-        principalContact,
-        jobTitle,
-        location,
-        years,
-        industry,
-        website
-      };
+      const website = Array.from(document.querySelectorAll('a')).find(a => a.innerText.toLowerCase().includes('visit website'))?.href || '';
+      const fullText = document.body.innerText;
+      const locationMatch = fullText.match(/\b[A-Z][a-z]+,\s[A-Z]{2}\s\d{5}/);
+      const location = locationMatch?.[0] || '';
+      const principalMatch = fullText.match(/Principal Contacts\s+(.*?)(\n|$)/i);
+      const principalContactRaw = principalMatch?.[1]?.trim() || '';
+      const industryMatch = fullText.match(/Business Categories\s+([\s\S]+?)\n[A-Z]/i);
+      const industry = industryMatch?.[1]?.split('\n').map(t => t.trim()).join(', ') || '';
+      return { businessName, principalContact: principalContactRaw, location, industry, website };
     });
 
-    console.log('📋 Scraped Data:');
-    console.table(data);
-    return data;
+    data.businessName = cleanBusinessName(data.businessName);
+    const split = cleanAndSplitName(data.principalContact, data.businessName);
+
+    if (!split || !data.website || !data.businessName) {
+      console.log('⚠️ Invalid or incomplete profile. Skipping...');
+      return null;
+    }
+
+    const record = {
+      "business name": data.businessName,
+      "website url": data.website,
+      "location": data.location,
+      "industry": data.industry,
+      "First Name": split.firstName,
+      "Middle Name": split.middleName,
+      "Last Name": split.lastName,
+      "Decision Maker Title": split.title
+    };
+
+    console.table(record);
+    return record;
 
   } catch (err) {
     console.error(`❌ Error scraping ${url}:`, err.message);
@@ -75,28 +110,27 @@ async function scrapeProfile(page, url) {
 }
 
 async function updateLeadsJson(newData) {
+  console.log('📝 Updating scraped_leads.json...');
+  await fsExtra.ensureDir(path.dirname(scrapedFilePath));
+
   let existing = { scraped_at: '', total: 0, records: [] };
 
   if (await fsExtra.pathExists(scrapedFilePath)) {
-    const raw = await fs.readFile(scrapedFilePath, 'utf-8');
-    existing = JSON.parse(raw);
+    try {
+      const raw = await fs.readFile(scrapedFilePath, 'utf-8');
+      existing = JSON.parse(raw);
+      console.log(`📊 Loaded ${existing.records.length} existing records`);
+    } catch (err) {
+      console.warn('⚠️ Failed to parse existing JSON. Starting fresh.');
+    }
   }
 
-  const dedupeKey = `${newData.businessName}|${newData.website}`;
+  const dedupeKey = `${newData["business name"]}|${newData["website url"]}`;
   const map = new Map(
     existing.records.map(r => [`${r["business name"]}|${r["website url"]}`, r])
   );
 
-  map.set(dedupeKey, {
-    "business name": newData.businessName,
-    "website url": newData.website,
-    "location": newData.location,
-    "industry": newData.industry,
-    "years": newData.years,
-    "Decision Maker Name": newData.principalContact,
-    "Decision Maker Title": newData.jobTitle
-  });
-
+  map.set(dedupeKey, newData);
   const final = Array.from(map.values());
 
   await fs.writeFile(scrapedFilePath, JSON.stringify({
