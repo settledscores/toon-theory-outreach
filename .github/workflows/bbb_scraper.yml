@@ -2,40 +2,43 @@ name: Run BBB Scraper
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # optional daily run at 3AM UTC
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
         run: npm install
 
-      - name: Run BBB scraper
+      - name: Run scraper
         run: npm start
 
-      - name: Commit scraped leads JSON
+      - name: Show Git status
+        run: git status
+
+      - name: Commit and push if leads updated
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add leads/scraped_leads.json
-          git commit -m "🤖 Auto-update scraped_leads.json [skip ci]" || echo "No changes to commit"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          if git diff --quiet leads/scraped_leads.json; then
+            echo "🟡 No changes in leads/scraped_leads.json"
+          else
+            git add leads/scraped_leads.json
+            git commit -m "🤖 Auto-update scraped_leads.json [skip ci]"
+            git push
+            echo "✅ Changes committed"
+          fi
