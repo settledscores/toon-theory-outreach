@@ -167,7 +167,7 @@ async function syncToSeaTable(records) {
     let validCount = 0;
     let consecutiveEmpty = 0;
 
-    while (validCount < 50 && consecutiveEmpty < 5) {
+    while (validCount < 3 && consecutiveEmpty < 5) {
       const pagedUrl = baseUrl.includes('page=') ? baseUrl.replace(/page=\d+/, `page=${pageNum}`) : `${baseUrl}&page=${pageNum}`;
       await page.goto(pagedUrl, { waitUntil: 'domcontentloaded', timeout: 0 });
       await delay(randomBetween(1000, 2000));
