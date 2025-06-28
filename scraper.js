@@ -1,18 +1,24 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 
+dotenv.config();
 puppeteer.use(StealthPlugin());
 
-const BASE_URL = 'https://cloud.seatable.io';
-const API_KEY = 'c2beb2333e140b5698cbe5e5031aa3b0743e7013';
-const BASE_UUID = 'd603f65e-b769-448c-b7c8-4f155c3f38b0';
-const TABLE_NAME = 'Scraper Leads';
+// ✅ Environment configuration (from GitHub Actions secrets or .env)
+const BASE_URL = process.env.SEATABLE_BASE_URL;
+const API_KEY = process.env.SEATABLE_API_KEY;
+const BASE_UUID = process.env.SEATABLE_BASE_UUID;
+const WORKSPACE_ID = process.env.SEATABLE_WORKSPACE_ID;
+const TABLE_NAME = process.env.SEATABLE_TABLE_NAME;
 
+// ✅ Niche URLs
 const NICHES = [
   "https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Boston%2C+MA&find_country=USA"
 ];
 
+// ✅ Utilities
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -39,8 +45,8 @@ function cleanBusinessName(name) {
 
 function cleanAndSplitName(raw, businessName = '') {
   if (!raw) return null;
-  const honorifics = ['Mr\.', 'Mrs\.', 'Ms\.', 'Miss', 'Dr\.', 'Prof\.', 'Mx\.'];
-  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\s+`, 'i');
+  const honorifics = ['Mr\\.', 'Mrs\\.', 'Ms\\.', 'Miss', 'Dr\\.', 'Prof\\.', 'Mx\\.'];
+  const honorificRegex = new RegExp(`^(${honorifics.join('|')})\\s+`, 'i');
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
   let namePart = clean;
   let titlePart = '';
@@ -105,13 +111,12 @@ async function extractProfile(page, url) {
 }
 
 async function getAccessToken() {
-  const res = await fetch(`${BASE_URL}/api/v2.1/dtable/app-access-token/`, {
-    method: 'POST',
+  const res = await fetch(`${BASE_URL}/api/v2.1/workspace/${WORKSPACE_ID}/dtable/${BASE_UUID}/access-token/`, {
+    method: 'GET',
     headers: {
-      Authorization: `Token ${API_KEY}`,
+      Authorization: `Bearer ${API_KEY}`,
       'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ dtable_uuid: BASE_UUID })
+    }
   });
   if (!res.ok) throw new Error(await res.text());
   return (await res.json()).access_token;
@@ -187,8 +192,10 @@ async function syncToSeaTable(records) {
       consecutiveEmpty = scrapedThisPage === 0 ? consecutiveEmpty + 1 : 0;
       pageNum++;
     }
+
     console.log(`🏁 Finished: ${baseUrl} — ${validCount} saved`);
   }
+
   await browser.close();
   console.log(`📤 Sending ${allRecords.length} total records to SeaTable...`);
   await syncToSeaTable(allRecords);
