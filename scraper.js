@@ -97,7 +97,20 @@ async function scrapeProfile(page, url) {
       "First Name": split.firstName,
       "Middle Name": split.middleName,
       "Last Name": split.lastName,
-      "Decision Maker Title": split.title
+      "Decision Maker Title": split.title,
+      "web copy": "",
+      "use cases": "",
+      "services": "",
+      "email 1": "",
+      "email 2": "",
+      "email 3": "",
+      "message id": "",
+      "message id 2": "",
+      "message id 3": "",
+      "initial date": "",
+      "follow-up 1 date": "",
+      "follow-up 2 date": "",
+      "reply": ""
     };
 
     console.log(`✅ Scraped ${split.firstName} ${split.middleName} ${split.lastName} of ${data.businessName}`);
