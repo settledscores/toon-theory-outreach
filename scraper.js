@@ -52,9 +52,9 @@ function cleanAndSplitName(raw, businessName = '') {
   }
   if (tokens.length < 2 || tokens.length > 4) return null;
   return {
-    firstName: tokens[0],
-    middleName: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
-    lastName: tokens[tokens.length - 1],
+    firstname: tokens[0],
+    middlename: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
+    lastname: tokens[tokens.length - 1],
     title: titlePart
   };
 }
@@ -94,26 +94,27 @@ async function scrapeProfile(page, url) {
       "website url": data.website,
       "location": data.location,
       "industry": data.industry,
-      "First Name": split.firstName,
-      "Middle Name": split.middleName,
-      "Last Name": split.lastName,
-      "Decision Maker Title": split.title,
-      "web copy": "",
-      "use cases": "",
+      "firstname": split.firstname,
+      "middlename": split.middlename,
+      "lastname": split.lastname,
+      "title": split.title,
+      "email": "",
+      "webcopy": "",
+      "usecases": "",
       "services": "",
-      "email 1": "",
-      "email 2": "",
-      "email 3": "",
-      "message id": "",
-      "message id 2": "",
-      "message id 3": "",
-      "initial date": "",
-      "follow-up 1 date": "",
-      "follow-up 2 date": "",
+      "email1": "",
+      "email2": "",
+      "email3": "",
+      "messageid": "",
+      "messageid2": "",
+      "messageid3": "",
+      "initialdate": "",
+      "followup1date": "",
+      "followup2date": "",
       "reply": ""
     };
 
-    console.log(`✅ Scraped ${split.firstName} ${split.middleName} ${split.lastName} of ${data.businessName}`);
+    console.log(`✅ Scraped ${split.firstname} ${split.middlename} ${split.lastname} of ${data.businessName}`);
     return record;
 
   } catch (err) {
