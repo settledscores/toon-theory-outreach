@@ -1,20 +1,9 @@
 import os
-import requests
+import json
 from urllib.parse import urlparse
 
-# Load secrets from environment
-API_KEY = os.environ.get("NOCODB_API_KEY")
-BASE_URL = os.environ.get("NOCODB_BASE_URL")
-PROJECT_ID = os.environ.get("NOCODB_PROJECT_ID")      # e.g., 'wbv4do3x'
-TABLE_ID = os.environ.get("NOCODB_SCRAPER_TABLE_ID")  # e.g., 'muom3qfddoeroow'
-
-if not all([API_KEY, BASE_URL, PROJECT_ID, TABLE_ID]):
-    raise ValueError("❌ Missing one or more required environment variables.")
-
-HEADERS = {
-    "xc-token": API_KEY,
-    "Content-Type": "application/json"
-}
+INPUT_PATH = "leads/scraped_leads.json"
+OUTPUT_PATH = "leads/permutations.txt"
 
 def extract_domain(url):
     try:
@@ -33,70 +22,41 @@ def generate_permutations(first, last, domain):
         f"{first}{last}@{domain}"
     ]
 
-def fetch_records():
-    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}?limit=10000"
-    print(f"\n🚀 URL used for fetch: {url}")
-    response = requests.get(url, headers=HEADERS)
-    if not response.ok:
-        print(f"❌ Failed to fetch records: {response.status_code} — {response.text}")
-    response.raise_for_status()
-    records = response.json().get("list", [])
+def main():
+    print("📥 Loading scraped leads...")
+    try:
+        with open(INPUT_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"❌ Failed to read scraped_leads.json: {e}")
+        return
 
-    if records:
-        print("\n🧪 Sample record:")
-        print(records[0])
-        print("\n🔑 Keys in first record:", list(records[0].keys()))
-        print("📌 Record ID (used for PATCH):", records[0].get("Id"))
+    all_permutations = set()
 
-    return records
+    for record in data.get("records", []):
+        first = record.get("first name", "").strip()
+        last = record.get("last name", "").strip()
+        website = record.get("website url", "").strip()
 
-def needs_permutation(record):
-    return (
-        record.get("First Name") and
-        record.get("Last Name") and
-        record.get("website url") and
-        not record.get("Email Permutations")
-    )
-
-def update_record(record_id, permutations):
-    url = f"{BASE_URL}/api/v1/db/data/noco/{PROJECT_ID}/{TABLE_ID}/{record_id}"
-    data = {
-        "Email Permutations": ", ".join(permutations)
-    }
-    response = requests.patch(url, headers=HEADERS, json=data)
-    if not response.ok:
-        print(f"❌ Failed to update record {record_id}: {response.status_code} — {response.text}")
-    response.raise_for_status()
-
-def run():
-    print("🔍 Fetching records...")
-    records = fetch_records()
-    updated = 0
-
-    for record in records:
-        if not needs_permutation(record):
-            continue
-
-        first = record["First Name"].strip()
-        last = record["Last Name"].strip()
-        website = record["website url"].strip()
-        record_id = record.get("Id")  # NocoDB uses "Id" for primary key
-
-        if not website or not record_id:
-            print(f"⚠️ Skipping record with no website or ID: {record}")
+        if not (first and last and website):
             continue
 
         domain = extract_domain(website)
         if not domain:
-            print(f"⚠️ Skipping invalid domain for record ID {record_id}")
             continue
 
-        permutations = generate_permutations(first, last, domain)
-        update_record(record_id, permutations)
-        print(f"✅ Updated: {first} {last} → {len(permutations)} permutations")
-        updated += 1
+        perms = generate_permutations(first, last, domain)
+        all_permutations.update(perms)
 
-    print(f"\n🎯 Done. {updated} records updated.")
+    if not all_permutations:
+        print("⚠️ No permutations generated.")
+        return
+
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        f.write("\n".join(sorted(all_permutations)))
+
+    print(f"✅ Saved {len(all_permutations)} permutations to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
-    run()
+    main()
