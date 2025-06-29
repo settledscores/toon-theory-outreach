@@ -1,5 +1,5 @@
 {
-  "scraped_at": "2025-06-28T20:35:24.534Z",
+  "scraped_at": "2025-06-29T16:29:54.784Z",
   "total": 2,
   "records": [
     {
@@ -10,7 +10,20 @@
       "First Name": "Barton",
       "Middle Name": "",
       "Last Name": "Bumpus",
-      "Decision Maker Title": "Owner"
+      "Decision Maker Title": "Owner",
+      "web copy": "",
+      "use cases": "",
+      "services": "",
+      "email 1": "",
+      "email 2": "",
+      "email 3": "",
+      "message id": "",
+      "message id 2": "",
+      "message id 3": "",
+      "initial date": "",
+      "follow-up 1 date": "",
+      "follow-up 2 date": "",
+      "reply": ""
     },
     {
       "business name": "Sharagon Bookkeeping Services",
@@ -20,7 +33,20 @@
       "First Name": "Sharis",
       "Middle Name": "",
       "Last Name": "Tanue",
-      "Decision Maker Title": "Owner/Director"
+      "Decision Maker Title": "Owner/Director",
+      "web copy": "",
+      "use cases": "",
+      "services": "",
+      "email 1": "",
+      "email 2": "",
+      "email 3": "",
+      "message id": "",
+      "message id 2": "",
+      "message id 3": "",
+      "initial date": "",
+      "follow-up 1 date": "",
+      "follow-up 2 date": "",
+      "reply": ""
     }
   ]
 }
