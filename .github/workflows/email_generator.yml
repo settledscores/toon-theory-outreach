@@ -3,6 +3,9 @@ name: Generate Emails
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # ✅ Needed for push to succeed
+
 jobs:
   update-emails:
     runs-on: ubuntu-latest
@@ -30,9 +33,10 @@ jobs:
       - name: Commit changes
         run: |
           git add leads/scraped_leads.json
-          git diff --cached --quiet || git commit -m "chore: update emails from update_emails.py"
+          git diff --cached --quiet || git commit -m "chore: update emails from email_generator.py"
 
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: master
