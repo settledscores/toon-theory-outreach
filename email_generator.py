@@ -35,7 +35,6 @@ signatures = [
     "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-# Email 1 — Rotating blocks
 paragraph1_templates = [
     "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
     "Hello {name},\n\nI just saw {company} and thought you might be the right person to speak with.",
@@ -114,7 +113,7 @@ def parse_use_cases(raw):
 def build_email1(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
-    use_cases = "\n".join(parse_use_cases(lead.get("use case")))
+    use_cases = "\n".join(parse_use_cases(lead.get("use cases", "")))
 
     return f"""{rotators["p1"].next().format(name=name, company=company)}
 
@@ -133,21 +132,24 @@ def build_email1(lead):
 
 {rotators["sig"].next()}"""
 
+# --- Load/Save ---
+
 def load_leads():
     with open(LEADS_FILE, "r", encoding="utf-8") as f:
-        leads = json.load(f)
+        data = json.load(f)
+        leads = data.get("records", [])
         if isinstance(leads, list) and all(isinstance(x, dict) for x in leads):
-            return leads
-        raise ValueError("❌ leads/scraped_leads.json must be a list of dicts.")
+            return data, leads
+        raise ValueError("❌ 'records' must be a list of dicts inside the JSON.")
 
-def save_leads(leads):
+def save_leads(data):
     with open(LEADS_FILE, "w", encoding="utf-8") as f:
-        json.dump(leads, f, indent=2, ensure_ascii=False)
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 # --- Main Logic ---
 
 def main():
-    leads = load_leads()
+    data, leads = load_leads()
     updated = 0
 
     for lead in leads:
@@ -155,7 +157,8 @@ def main():
             lead["email 1"] = build_email1(lead)
             updated += 1
 
-    save_leads(leads)
+    data["records"] = leads
+    save_leads(data)
     print(f"✅ Done: {updated} emails written to email 1")
 
 if __name__ == "__main__":
