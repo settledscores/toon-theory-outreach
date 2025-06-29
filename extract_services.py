@@ -1,0 +1,32 @@
+name: Extract Services with Groq
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'leads/scraped_leads.json'
+      - 'extract_services.py'
+      - '.github/workflows/extract-services.yml'
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt || pip install groq python-dotenv
+
+      - name: Run service extractor
+        run: python extract_services.py
