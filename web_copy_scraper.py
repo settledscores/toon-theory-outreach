@@ -6,9 +6,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
 
-# Paths
+# Path
 SCRAPED_LEADS_PATH = "leads/scraped_leads.json"
-WEB_COPY_PATH = "leads/web_copy.json"
 
 # Settings
 MAX_PAGES = 15
@@ -64,26 +63,21 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
 def main():
     if not os.path.exists(SCRAPED_LEADS_PATH):
-        print(f"❌ Missing input file: {SCRAPED_LEADS_PATH}")
+        print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
         return
 
-    os.makedirs(os.path.dirname(WEB_COPY_PATH), exist_ok=True)
-
     with open(SCRAPED_LEADS_PATH, "r", encoding="utf-8") as f:
-        leads_data = json.load(f)
+        leads = json.load(f)
 
-    try:
-        with open(WEB_COPY_PATH, "r", encoding="utf-8") as f:
-            existing_records = json.load(f).get("records", [])
-    except:
-        existing_records = []
+    updated = []
+    changed = False
 
-    existing_urls = set(r["website url"].strip().lower() for r in existing_records)
-    updated_records = existing_records[:]
+    for lead in leads.get("records", []):
+        website = lead.get("website url", "").strip()
+        web_copy = lead.get("web copy", "").strip()
 
-    for lead in leads_data.get("records", []):
-        website = lead.get("website url", "").strip().lower()
-        if not website or website in existing_urls:
+        if not website or web_copy:
+            updated.append(lead)
             continue
 
         norm_url = normalize_url(website)
@@ -92,25 +86,28 @@ def main():
         content = crawl_site(norm_url)
         if len(content.split()) < MIN_WORDS_THRESHOLD:
             print("⚠️ Skipping — not enough content.")
+            updated.append(lead)
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
-
-        updated = {**lead, "web copy": trimmed}
-        updated_records.append(updated)
-        existing_urls.add(website)
+        lead["web copy"] = trimmed
+        updated.append(lead)
+        changed = True
         print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
-    output = {
-        "scraped_at": datetime.utcnow().isoformat(),
-        "total": len(updated_records),
-        "records": updated_records
-    }
+    if changed:
+        output = {
+            "scraped_at": datetime.utcnow().isoformat(),
+            "total": len(updated),
+            "records": updated
+        }
 
-    with open(WEB_COPY_PATH, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2)
+        with open(SCRAPED_LEADS_PATH, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2)
 
-    print(f"\n📝 Saved web copy for {len(updated_records)} businesses → {WEB_COPY_PATH}")
+        print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
+    else:
+        print("⚠️ No new web copy to update.")
 
 if __name__ == "__main__":
     main()
