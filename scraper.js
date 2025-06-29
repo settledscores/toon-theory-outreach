@@ -100,7 +100,7 @@ async function scrapeProfile(page, url) {
       "Decision Maker Title": split.title
     };
 
-    console.table(record);
+    console.log(`✅ Scraped ${split.firstName} ${split.middleName} ${split.lastName} of ${data.businessName}`);
     return record;
 
   } catch (err) {
