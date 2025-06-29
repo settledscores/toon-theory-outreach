@@ -7,8 +7,8 @@ from urllib.parse import urljoin, urlparse
 from datetime import datetime
 
 # Paths
-SCRAPED_LEADS_PATH = "toon-theory-outreach/leads/scraped_leads.json"
-WEB_COPY_PATH = "toon-theory-outreach/leads/web_copy.json"
+SCRAPED_LEADS_PATH = "leads/scraped_leads.json"
+WEB_COPY_PATH = "leads/web_copy.json"
 
 # Settings
 MAX_PAGES = 15
