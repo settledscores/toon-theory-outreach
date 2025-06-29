@@ -1,38 +1,28 @@
 import os
 import re
+import json
 import time
-import requests
 from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
 
-# NocoDB setup
-API_KEY = os.getenv("NOCODB_API_KEY")
-BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
-PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
-TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
-
-HEADERS = {
-    "xc-token": API_KEY,
-    "Content-Type": "application/json"
-}
+INPUT_PATH = "leads/scraped_leads.json"
+MAX_SERVICES_LENGTH = 1000
 
 # Groq setup
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-
 def postprocess_output(text):
     lines = text.splitlines()
-    return "\n".join([
-        line for line in lines
-        if not re.match(r"(?i)^here\s+(is|are)\b", line.strip())
-    ]).strip()
+    return " | ".join([
+        line.strip() for line in lines
+        if line.strip() and not re.match(r"(?i)^here\s+(is|are)\b", line.strip())
+    ])
 
-
-def generate_use_cases(mini_scrape, services):
+def generate_use_cases(services):
     prompt = f"""
-Based on the company's services and the summary of their website below, list 4 to 6 practical use cases for explainer videos that could help the business communicate more clearly.
+Based on the company's services below, list 4 to 6 practical use cases for explainer videos that could help the business communicate more clearly.
 
 Each bullet must:
 - Start with a gerund (e.g., Showing, Explaining, Clarifying, Walking through)
@@ -45,9 +35,6 @@ Do not include any labels, intros, or explanations — just return the raw list,
 
 Services:
 {services}
-
-Mini Scrape:
-{mini_scrape}
 """
     try:
         response = client.chat.completions.create(
@@ -61,59 +48,41 @@ Mini Scrape:
         print(f"❌ Error generating use cases: {e}")
         return None
 
-
-def fetch_records():
-    all_records = []
-    offset = 0
-    limit = 100
-
-    while True:
-        url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}?limit={limit}&offset={offset}"
-        res = requests.get(url, headers=HEADERS)
-        res.raise_for_status()
-        data = res.json()
-        batch = data.get("list", [])
-        if not batch:
-            break
-        all_records.extend(batch)
-        offset += limit
-
-    return all_records
-
-
-def update_use_case(record_id, text):
-    url = f"{BASE_URL}/api/v1/db/data/{PROJECT_ID}/{TABLE_ID}/{record_id}"
-    response = requests.patch(url, headers=HEADERS, json={"use_case": text})
-    response.raise_for_status()
-
-
 def main():
-    print("🚀 Generating use cases (10 req/min throttle)...")
-    records = fetch_records()
+    print("🚀 Generating use cases from scraped_leads.json...")
+    try:
+        with open(INPUT_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"❌ Failed to load JSON: {e}")
+        return
+
     updated = 0
-
-    for record in records:
-        mini_scrape = record.get("mini_scrape", "").strip()
+    for record in data.get("records", []):
         services = record.get("services", "").strip()
-        existing_use_case = record.get("use_case", "").strip()
+        existing = record.get("use cases", "").strip()
 
-        if not mini_scrape or not services or existing_use_case:
+        if not services or existing:
             continue
 
-        print(f"🔍 Processing: {record.get('company_name', '[no name]')}")
-        result = generate_use_cases(mini_scrape, services)
+        print(f"🔍 Processing: {record.get('business name', '[no name]')}")
+        use_cases = generate_use_cases(services[:MAX_SERVICES_LENGTH])
 
-        if result:
-            update_use_case(record["id"], result)
+        if use_cases:
+            record["use cases"] = use_cases
             updated += 1
-            print("✅ Use case field updated")
+            print("✅ Use cases added")
         else:
             print("⚠️ Skipped due to generation issue")
 
-        time.sleep(6)  # Respect 10 requests/min
+        time.sleep(6)  # Throttle to 10 req/min
 
-    print(f"\n🎯 Done. {updated} records updated.")
-
+    try:
+        with open(INPUT_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"\n🎯 Done. {updated} records updated in scraped_leads.json.")
+    except Exception as e:
+        print(f"❌ Failed to save updates: {e}")
 
 if __name__ == "__main__":
     main()
