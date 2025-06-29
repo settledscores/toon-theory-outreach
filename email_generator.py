@@ -1,30 +1,20 @@
 import os
+import json
 import random
-import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+INPUT_FILE = "leads/scraped_leads.json"
 
-# NocoDB setup
-NOCODB_API_KEY = os.getenv("NOCODB_API_KEY")
-NOCODB_BASE_URL = os.getenv("NOCODB_BASE_URL").rstrip("/")
-NOCODB_PROJECT_ID = os.getenv("NOCODB_PROJECT_ID")
-NOCODB_OUTREACH_TABLE_ID = os.getenv("NOCODB_OUTREACH_TABLE_ID")
-
-API_BASE = f"{NOCODB_BASE_URL}/api/v1/db/data/{NOCODB_PROJECT_ID}/{NOCODB_OUTREACH_TABLE_ID}"
-HEADERS = {
-    "xc-token": NOCODB_API_KEY,
-    "Content-Type": "application/json"
-}
+with open(INPUT_FILE, "r", encoding="utf-8") as f:
+    leads = json.load(f)
 
 class VariantRotator:
     def __init__(self, items):
-        self.original_items = items[:]
+        self.original = items[:]
         self.pool = []
         self._reshuffle()
 
     def _reshuffle(self):
-        self.pool = self.original_items[:]
+        self.pool = self.original[:]
         random.shuffle(self.pool)
 
     def next(self):
@@ -32,7 +22,7 @@ class VariantRotator:
             self._reshuffle()
         return self.pool.pop()
 
-# --- All Variants Included (No Omissions) ---
+# === EMAIL 1 VARIANTS ===
 
 paragraph1_templates = [
     "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
@@ -100,12 +90,30 @@ paragraph7_cta_variants = [
 ]
 
 signature_variants = [
-    "Warm regards,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "All the best,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Cheers,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Take care,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent ;  Founder, Toon Theory\nwww.toontheory.com"
+    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
+
+followup2_templates = [
+    "{salutation} {name},\n\nJust circling back in case my note got buried.\n\nStill happy to mock something up if a sketch or script sample sounds helpful.\n\n{signature}",
+    "{salutation} {name},\n\nWanted to follow up briefly — no pressure at all.\n\nIf a 10-second sample would be useful for {company}, I’d be happy to mock something up.\n\n{signature}",
+    "{salutation} {name},\n\nLet me know if it’s worth drafting a short demo around what {company} offers. Always happy to show, not just tell.\n\n{signature}",
+    "{salutation} {name},\n\nAppreciate you taking a moment if you’ve had a chance to read the earlier note.\n\nStill open to sketching something up if you’d like to explore further.\n\n{signature}",
+    "{salutation} {name},\n\nJust nudging this up in your inbox.\n\nIf there’s even a sliver of curiosity, I can draft something short and sharp for {company}.\n\n{signature}"
+]
+
+followup3_templates = [
+    "{salutation} {name},\n\nHope this isn’t intrusive — just giving this one last try.\n\nStill happy to put together a short visual idea or script if that’s useful for {company}.\n\nIf not now, maybe down the line!\n\n{signature}",
+    "{salutation} {name},\n\nNo worries if the timing's off. Just wanted to close the loop here.\n\nOffer’s still open for a short sample if you’re ever curious.\n\nAll the best in the meantime.\n\n{signature}",
+    "{salutation} {name},\n\nFinal ping on this — appreciate your time either way.\n\nStill happy to draft a quick visual or script idea around something core to {company}.\n\nThanks again for doing great work.\n\n{signature}",
+    "{salutation} {name},\n\nThis’ll be my last note — just offering one last shot at a sample sketch if that could help.\n\nReally admire what {company} is building.\n\n{signature}",
+    "{salutation} {name},\n\nJust wrapping up the thread here. If you're curious later on, I'm always happy to mock something up.\n\nKeep building great things at {company}.\n\n{signature}"
+]
+
+salutation_choices = ["Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there"]
 
 rotators = {
     "p1": VariantRotator(paragraph1_templates),
@@ -115,27 +123,21 @@ rotators = {
     "p5": VariantRotator(paragraph5_variants),
     "p6": VariantRotator(paragraph6_variants),
     "p7": VariantRotator(paragraph7_cta_variants),
-    "sig": VariantRotator(signature_variants),
+    "sig": VariantRotator(signature_variants)
 }
 
-def parse_use_cases(use_case_field):
-    raw = str(use_case_field or "")
-    items = [u.strip() for u in raw.split("|") if u.strip()]
-    return items[:3]
+def parse_use_cases(raw):
+    return [x.strip() for x in (raw or "").split("|") if x.strip()][:3]
 
-def build_email(fields):
-    name = fields.get("name", "there")
-    company = fields.get("company name", "your company")
-    use_cases = parse_use_cases(fields.get("use case"))
-    bullet_block = "\n".join([f"• {uc}" for uc in use_cases])
-
-    email = f"""
-{rotators["p1"].next().format(name=name, company=company)}
+def build_email1(lead):
+    name = lead.get("first name", "there")
+    company = lead.get("business name", "your company")
+    bullets = "\n".join([f"• {uc}" for uc in parse_use_cases(lead.get("use case", ""))])
+    return f"""{rotators["p1"].next().format(name=name, company=company)}
 
 {rotators["p2"].next()}
 
-{rotators["p3"].next().format(company=company)}
-{bullet_block}
+{rotators["p3"].next().format(company=company)}{bullets}
 
 {rotators["p4b"].next()}
 
@@ -145,31 +147,29 @@ def build_email(fields):
 
 {rotators["p6"].next()}
 
-{rotators["sig"].next()}
-""".strip()
+{rotators["sig"].next()}"""
 
-    return email
+def build_followup(template_pool, lead):
+    name = lead.get("first name", "there")
+    company = lead.get("business name", "your company")
+    template = random.choice(template_pool)
+    salutation = random.choice(salutation_choices)
+    signature = random.choice(signature_variants)
+    return template.format(name=name, company=company, salutation=salutation, signature=signature)
 
-def update_email_field(row_id, email_body):
-    url = f"{API_BASE}/{row_id}"
-    response = requests.patch(url, headers=HEADERS, json={"email 1": email_body})
-    response.raise_for_status()
+updated = 0
+for lead in leads:
+    if lead.get("email 1", "").strip() == "":
+        lead["email 1"] = build_email1(lead)
+        updated += 1
+    if lead.get("email 2", "").strip() == "":
+        lead["email 2"] = build_followup(followup2_templates, lead)
+        updated += 1
+    if lead.get("email 3", "").strip() == "":
+        lead["email 3"] = build_followup(followup3_templates, lead)
+        updated += 1
 
-def main():
-    url = f"{API_BASE}?limit=200"
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    records = response.json().get("list", [])
+with open(INPUT_FILE, "w", encoding="utf-8") as f:
+    json.dump(leads, f, indent=2, ensure_ascii=False)
 
-    updated = 0
-    for row in records:
-        if not row.get("email 1"):
-            email = build_email(row)
-            update_email_field(row["id"], email)
-            print(f"✅ Email written for: {row.get('company name', 'Unknown')}")
-            updated += 1
-
-    print(f"\n🎯 Done. {updated} records updated.")
-
-if __name__ == "__main__":
-    main()
+print(f"✅ Done. {updated} emails populated.")
