@@ -1,0 +1,38 @@
+name: Generate Emails
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-emails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies (optional)
+        run: pip install -r requirements.txt || true
+
+      - name: Run email_generator.py
+        run: python email_generator.py
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes
+        run: |
+          git add leads/scraped_leads.json
+          git diff --cached --quiet || git commit -m "chore: update emails from update_emails.py"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
