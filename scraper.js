@@ -52,10 +52,10 @@ function cleanAndSplitName(raw, businessName = '') {
   }
   if (tokens.length < 2 || tokens.length > 4) return null;
   return {
-    firstname: tokens[0],
-    middlename: tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
-    lastname: tokens[tokens.length - 1],
-    title: titlePart
+    'first name': tokens[0],
+    'middle name': tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
+    'last name': tokens[tokens.length - 1],
+    'title': titlePart
   };
 }
 
@@ -90,31 +90,31 @@ async function scrapeProfile(page, url) {
     }
 
     const record = {
-      "business name": data.businessName,
-      "website url": data.website,
-      "location": data.location,
-      "industry": data.industry,
-      "firstname": split.firstname,
-      "middlename": split.middlename,
-      "lastname": split.lastname,
-      "title": split.title,
-      "email": "",
-      "webcopy": "",
-      "usecases": "",
-      "services": "",
-      "email1": "",
-      "email2": "",
-      "email3": "",
-      "messageid": "",
-      "messageid2": "",
-      "messageid3": "",
-      "initialdate": "",
-      "followup1date": "",
-      "followup2date": "",
-      "reply": ""
+      'business name': data.businessName,
+      'website url': data.website,
+      'location': data.location,
+      'industry': data.industry,
+      'first name': split['first name'],
+      'middle name': split['middle name'],
+      'last name': split['last name'],
+      'title': split['title'],
+      'email': '',
+      'web copy': '',
+      'use cases': '',
+      'services': '',
+      'email 1': '',
+      'email 2': '',
+      'email 3': '',
+      'message id': '',
+      'message id 2': '',
+      'message id 3': '',
+      'initial date': '',
+      'follow-up 1 date': '',
+      'follow-up 2 date': '',
+      'reply': ''
     };
 
-    console.log(`✅ Scraped ${split.firstname} ${split.middlename} ${split.lastname} of ${data.businessName}`);
+    console.log(`✅ Scraped ${split['first name']} ${split['middle name']} ${split['last name']} of ${data.businessName}`);
     return record;
 
   } catch (err) {
@@ -139,9 +139,9 @@ async function updateLeadsJson(newData) {
     }
   }
 
-  const dedupeKey = `${newData["business name"]}|${newData["website url"]}`;
+  const dedupeKey = `${newData['business name']}|${newData['website url']}`;
   const map = new Map(
-    existing.records.map(r => [`${r["business name"]}|${r["website url"]}`, r])
+    existing.records.map(r => [`${r['business name']}|${r['website url']}`, r])
   );
 
   map.set(dedupeKey, newData);
