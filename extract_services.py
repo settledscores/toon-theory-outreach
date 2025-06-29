@@ -33,8 +33,9 @@ def postprocess_output(text):
         line = line.strip()
         if re.match(r"(?i)^(here\s+(is|are)|the\s+company|this\s+company|core\s+services|services\s+include|they\s+offer)", line):
             continue
-        clean_lines.append(line)
-    return "\n".join(clean_lines).strip()
+        if line:
+            clean_lines.append(line)
+    return " | ".join(clean_lines)
 
 def main():
     print("🚀 Extracting services from scraped_leads.json...")
