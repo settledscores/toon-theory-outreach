@@ -22,10 +22,10 @@ def postprocess_output(text):
 
 def generate_use_cases(services):
     prompt = f"""
-Based on the company's services below, list 4 to 6 practical use cases for explainer videos that could help the business communicate more clearly.
+Based on the company's services below, list 3 practical use cases for explainer videos that could help the business communicate more clearly.
 
 Each bullet must:
-- Start with a gerund (e.g., Showing, Explaining, Clarifying, Walking through)
+- Start with a gerund (e.g., Showing, Explaining, Clarifying, Demonstrating, Describing, Walking through)
 - Be short (under 20 words)
 - Be clear, natural, and human — avoid jargon or corporate language
 - Directly relate to the company's actual services
