@@ -110,7 +110,7 @@ def send_email(recipient, subject, content, in_reply_to=None):
 def check_replies(message_ids):
     seen = set()
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
-        imap.login(EMAIL_ADDRESS, os.environ["EMAIL_PASSWORD"])  # Only for IMAP
+        imap.login(EMAIL_ADDRESS, os.environ["EMAIL_PASSWORD"])
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
         for num in data[0].split():
@@ -123,47 +123,53 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-def is_weekday(d): return d.weekday() in WEEKDAYS
-def next_weekday(d): return d + timedelta(days=1) if d.weekday() == 5 else d + timedelta(days=2) if d.weekday() == 6 else d
-
-# === Load Leads from Nested JSON ===
+# === Load Leads ===
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
-    leads = data["records"]
+    leads = data.get("records", [])
+
+# === Fill missing keys ===
+for lead in leads:
+    for key in [
+        "email", "email 1", "email 2", "email 3",
+        "message id", "message id 2", "message id 3",
+        "initial date", "follow-up 1 date", "follow-up 2 date",
+        "reply", "business name", "first name"
+    ]:
+        lead.setdefault(key, "")
 
 # === Detect Replies ===
-all_ids = [(lead.get("message id"), "after initial") for lead in leads if lead.get("message id")] + \
-          [(lead.get("message id 2"), "after FU1") for lead in leads if lead.get("message id 2")] + \
-          [(lead.get("message id 3"), "after FU2") for lead in leads if lead.get("message id 3")]
+all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
+          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
+          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
 
-id_to_reply = {mid: label for mid, label in all_ids}
 replied = check_replies([mid for mid, _ in all_ids])
 
 for lead in leads:
-    for k, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
-        if lead.get(k) and lead.get("reply", "") == "" and lead[k] in replied:
-            lead["reply"] = label
-    if lead.get("reply", "") == "":
+    if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
+        for key, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
+            if lead[key] and lead[key] in replied:
+                lead["reply"] = label
+    if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Schedule Send Queue ===
+# === Send Queue Logic ===
 queue = []
 
 def can_send_initial(lead):
-    return lead["initial date"] == "" and lead["email 1"] and TODAY.weekday() in INITIAL_DAYS
+    return not lead["initial date"] and lead["email 1"] and TODAY.weekday() in INITIAL_DAYS
 
 def can_send_followup(lead, step):
     if not lead["email"]: return False
     if lead["reply"] != "no reply": return False
     prev_key = "initial date" if step == 2 else "follow-up 1 date"
     msg_id_key = "message id" if step == 2 else "message id 2"
-    date_key = f"follow-up {step - 1} date"
     next_key = f"follow-up {step} date"
-    if not lead.get(prev_key) or not lead.get(msg_id_key): return False
-    if lead.get(next_key): return False
-    d = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
-    while d.weekday() > 4: d += timedelta(days=1)
-    return TODAY == d
+    if not lead[prev_key] or not lead[msg_id_key]: return False
+    if lead[next_key]: return False
+    send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
+    while send_day.weekday() > 4: send_day += timedelta(days=1)
+    return TODAY == send_day
 
 # Priority: FU2 > FU1 > Initial
 for lead in leads:
@@ -180,30 +186,28 @@ queue = queue[:random.randint(MIN_DAILY_SEND, MAX_DAILY_SEND)]
 
 # === Process Queue ===
 for kind, lead in queue:
-    time.sleep(random.uniform(2, 5))  # prevent bursts
+    time.sleep(random.uniform(2, 5))
     dt = datetime.now(TIMEZONE).replace(hour=random.randint(14, 18), minute=random.randint(0, 59), second=random.randint(1, 59))
-    time_to_wait = (dt - datetime.now(TIMEZONE)).total_seconds()
-    if time_to_wait > 0: time.sleep(time_to_wait)
+    wait = (dt - datetime.now(TIMEZONE)).total_seconds()
+    if wait > 0: time.sleep(wait)
 
     if kind == "initial":
         subj = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
         msgid = send_email(lead["email"], subj, lead["email 1"])
         lead["message id"] = msgid
         lead["initial date"] = TODAY.isoformat()
-
     elif kind == "fu1":
         subj = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
         msgid = send_email(lead["email"], subj, lead["email 2"], f"<{lead['message id']}>")
         lead["message id 2"] = msgid
         lead["follow-up 1 date"] = TODAY.isoformat()
-
     elif kind == "fu2":
         subj = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
         msgid = send_email(lead["email"], subj, lead["email 3"], f"<{lead['message id 2']}>")
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Updated Leads ===
+# === Save Updated JSON ===
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
