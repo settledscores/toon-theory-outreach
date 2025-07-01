@@ -126,9 +126,10 @@ def check_replies(message_ids):
 def is_weekday(d): return d.weekday() in WEEKDAYS
 def next_weekday(d): return d + timedelta(days=1) if d.weekday() == 5 else d + timedelta(days=2) if d.weekday() == 6 else d
 
-# === Load Leads ===
+# === Load Leads from Nested JSON ===
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
-    leads = json.load(f)
+    data = json.load(f)
+    leads = data["records"]
 
 # === Detect Replies ===
 all_ids = [(lead.get("message id"), "after initial") for lead in leads if lead.get("message id")] + \
@@ -202,6 +203,10 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Back ===
+# === Save Updated Leads ===
+data["records"] = leads
+data["total"] = len(leads)
+data["scraped_at"] = datetime.now().isoformat()
+
 with open(LEADS_FILE, "w", encoding="utf-8") as f:
-    json.dump(leads, f, indent=2, ensure_ascii=False)
+    json.dump(data, f, indent=2, ensure_ascii=False)
