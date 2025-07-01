@@ -11,7 +11,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Load Secrets ===
+# === Load Secrets and Print for Debug ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
@@ -21,7 +21,14 @@ SMTP_SERVER = os.environ["SMTP_SERVER"]
 ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
 ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
 ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
-EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
+
+print(f"[DEBUG] EMAIL_ADDRESS: {EMAIL_ADDRESS}")
+print(f"[DEBUG] FROM_EMAIL: {FROM_EMAIL}")
+print(f"[DEBUG] IMAP_SERVER: {IMAP_SERVER}:{IMAP_PORT}")
+print(f"[DEBUG] SMTP_SERVER: {SMTP_SERVER}:{SMTP_PORT}")
+print(f"[DEBUG] ZOHO_CLIENT_ID: {ZOHO_CLIENT_ID[:6]}***")
+print(f"[DEBUG] ZOHO_CLIENT_SECRET: {ZOHO_CLIENT_SECRET[:6]}***")
+print(f"[DEBUG] ZOHO_REFRESH_TOKEN: {ZOHO_REFRESH_TOKEN[:6]}***")
 
 # === Constants ===
 LEADS_FILE = "leads/scraped_leads.json"
@@ -29,7 +36,6 @@ TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 WEEKDAY = TODAY.weekday()
 
-# === Daily Quotas ===
 DAILY_PLAN = {
     0: {"initial": 30, "fu1": 0, "fu2": 0},
     1: {"initial": 30, "fu1": 0, "fu2": 0},
@@ -39,7 +45,6 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-# === Subject Pools ===
 INITIAL_SUBJECTS = [
     "Let’s make your message stick", "Helping your ideas stick visually", "Turn complex into simple (in 90 seconds)",
     "Your story deserves to be told differently", "How about a different approach to your messaging?",
@@ -84,7 +89,19 @@ def get_zoho_access_token():
         "grant_type": "refresh_token"
     })
     res.raise_for_status()
-    return res.json()["access_token"]
+    token = res.json()["access_token"]
+    print("[Auth] Access token acquired.")
+    return token
+
+def verify_token_identity(token):
+    print("[Auth] Verifying token owner...")
+    res = requests.get("https://accounts.zoho.com/oauth/user/info", headers={
+        "Authorization": f"Zoho-oauthtoken {token}"
+    })
+    res.raise_for_status()
+    owner = res.json()["Email"]
+    print(f"[Auth] Token belongs to: {owner}")
+    return owner
 
 def get_auth_string(email, token):
     return base64.b64encode(f"user={email}\1auth=Bearer {token}\1\1".encode()).decode()
@@ -103,6 +120,7 @@ def send_email(recipient, subject, content, in_reply_to=None):
         msg["References"] = in_reply_to
 
     token = get_zoho_access_token()
+    verify_token_identity(token)
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
     print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT} using SSL...")
@@ -112,15 +130,14 @@ def send_email(recipient, subject, content, in_reply_to=None):
         print("[SMTP] Auth successful")
         smtp.send_message(msg)
         print(f"[SMTP] Email sent to {recipient}")
-
     return msg_id
 
-# === Replies ===
+# === IMAP Reply Check ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
-        imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        imap.login(EMAIL_ADDRESS, os.environ["EMAIL_PASSWORD"])
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
         for num in data[0].split():
@@ -134,7 +151,7 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load & Normalize Leads ===
+# === Load Leads ===
 print("[Load] Loading leads file...")
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -148,7 +165,7 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Mark Replies ===
+# === Check for Replies ===
 print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -162,7 +179,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Send Queue Logic ===
+# === Send Logic ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -192,7 +209,7 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Process Emails ===
+# === Send Emails ===
 print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
     if kind == "initial":
