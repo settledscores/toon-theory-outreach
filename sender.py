@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Config & Env ===
+# === Configuration ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
@@ -19,7 +19,6 @@ IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = os.environ["SMTP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
 
-# === Constants ===
 LEADS_FILE = "leads/scraped_leads.json"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
@@ -34,7 +33,6 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-# === Email Subjects ===
 INITIAL_SUBJECTS = [
     "Let’s make your message stick", "Helping your ideas stick visually",
     "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
@@ -70,7 +68,7 @@ FU2_SUBJECTS = [
     "Open to creative pitches?", "Just in case it got buried"
 ]
 
-# === Send Email ===
+# === Email Sender ===
 def send_email(to_email, subject, content, in_reply_to=None):
     print(f"[Send] Preparing to send to {to_email} | Subject: {subject}")
     msg = EmailMessage()
@@ -85,14 +83,13 @@ def send_email(to_email, subject, content, in_reply_to=None):
         msg["References"] = in_reply_to
 
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.ehlo()
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
 
     print(f"[Send] Email sent to {to_email}")
     return msg_id
 
-# === Check replies via IMAP ===
+# === IMAP Reply Checker ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
@@ -101,7 +98,6 @@ def check_replies(message_ids):
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
         if typ != "OK":
-            print("[IMAP] Failed to search mailbox")
             return seen
         for num in data[0].split():
             typ, msg_data = imap.fetch(num, "(RFC822)")
@@ -122,14 +118,13 @@ with open(LEADS_FILE, "r", encoding="utf-8") as f:
 leads = data.get("records", [])
 for lead in leads:
     for k in [
-        "email", "email 1", "email 2", "email 3",
+        "email", "email 1", "email 2", "email 3", "business name", "first name",
         "message id", "message id 2", "message id 3",
-        "initial date", "follow-up 1 date", "follow-up 2 date",
-        "reply", "business name", "first name"
+        "initial date", "follow-up 1 date", "follow-up 2 date", "reply"
     ]:
         lead.setdefault(k, "")
 
-# === Reply detection update ===
+# === Reply Detection ===
 print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -143,24 +138,24 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Sending rules ===
+# === Rules ===
 def can_send_initial(lead):
-    return not lead["initial date"] and lead["email 1"]
+    return not lead["initial date"] and lead.get("email 1")
 
 def can_send_followup(lead, step):
-    if not lead["email"] or lead["reply"] != "no reply":
+    if not lead.get("email") or lead["reply"] != "no reply":
         return False
     prev_key = "initial date" if step == 2 else "follow-up 1 date"
     msg_id_key = "message id" if step == 2 else "message id 2"
     next_key = f"follow-up {step} date"
-    if not lead[prev_key] or not lead[msg_id_key] or lead[next_key]:
+    if not lead[prev_key] or not lead[msg_id_key] or lead[next_key] or not lead.get(f"email {step}"):
         return False
     send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
     while send_day.weekday() > 4:
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Build send queue ===
+# === Build Queue ===
 print("[Queue] Building send queue...")
 queue = []
 for lead in leads:
@@ -173,26 +168,45 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Send emails ===
+# === Send Emails ===
 print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
-    if kind == "initial":
-        subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
-        msgid = send_email(lead["email"], subject, lead["email 1"])
-        lead["message id"] = msgid
-        lead["initial date"] = TODAY.isoformat()
-    elif kind == "fu1":
-        subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
-        msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
-        lead["message id 2"] = msgid
-        lead["follow-up 1 date"] = TODAY.isoformat()
-    elif kind == "fu2":
-        subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
-        msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
-        lead["message id 3"] = msgid
-        lead["follow-up 2 date"] = TODAY.isoformat()
+    try:
+        if not lead.get("email"):
+            print(f"[Skip] Missing email address, skipping.")
+            continue
 
-# === Save updated leads file ===
+        if kind == "initial":
+            if not lead.get("email 1"):
+                print(f"[Skip] Missing initial content for {lead['email']}")
+                continue
+            subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
+            msgid = send_email(lead["email"], subject, lead["email 1"])
+            lead["message id"] = msgid
+            lead["initial date"] = TODAY.isoformat()
+
+        elif kind == "fu1":
+            if not lead.get("email 2") or not lead.get("message id"):
+                print(f"[Skip] Missing FU1 content or reference for {lead['email']}")
+                continue
+            subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+            msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
+            lead["message id 2"] = msgid
+            lead["follow-up 1 date"] = TODAY.isoformat()
+
+        elif kind == "fu2":
+            if not lead.get("email 3") or not lead.get("message id 2"):
+                print(f"[Skip] Missing FU2 content or reference for {lead['email']}")
+                continue
+            subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+            msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
+            lead["message id 3"] = msgid
+            lead["follow-up 2 date"] = TODAY.isoformat()
+
+    except Exception as e:
+        print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
+
+# === Save Leads ===
 print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
