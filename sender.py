@@ -49,9 +49,74 @@ DAILY_PLAN = {
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
 # === Subject Pools ===
-INITIAL_SUBJECTS = [ ... ]  # Omitted here for brevity, same as yours
-FU1_SUBJECTS = [ ... ]
-FU2_SUBJECTS = [ ... ]
+INITIAL_SUBJECTS = [
+    "Let’s make your message stick",
+    "Helping your ideas stick visually",
+    "Turn complex into simple (in 90 seconds)",
+    "Your story deserves to be told differently",
+    "How about a different approach to your messaging?",
+    "Making your message unforgettable",
+    "Bring your message to life — visually",
+    "Your pitch deserves more than plain text",
+    "Visual stories make better first impressions",
+    "Helping businesses explain what makes them different",
+    "Cut through noise with visual storytelling",
+    "Explainers that make people pay attention",
+    "What if you could show it instead of tell it?",
+    "Here’s an idea worth testing",
+    "Explaining complex stuff with simple visuals",
+    "Is your message reaching it's full potential?",
+    "A story-first idea for {company}",
+    "Cut through mess and set your message free",
+    "Idea: use animation to make your message hit harder",
+    "This might help supercharge your next big project at {company}",
+    "How do you explain what {company} does?"
+]
+
+FU1_SUBJECTS = [
+    "Just Checking In, {name}",
+    "Thought I’d Follow Up, {name}",
+    "Any Thoughts On This, {name}?",
+    "Circling Back, {name}",
+    "Sketching Some Ideas For {company}",
+    "A Quick Follow-Up, {name}",
+    "Any Interest In This, {name}?",
+    "Here’s That Idea Again, {name}",
+    "Are You Still Open To This, {name}?",
+    "Quick Check-In, {name}",
+    "Following Up On That Idea For {company}",
+    "Nudging This Up Your Inbox, {name}",
+    "Revisiting, Just In Case You Missed This The Last Time, {name}",
+    "{name}, Got A Sec?",
+    "Circling Back To That Idea For {company}",
+    "A Follow-Up From Toon Theory, {name}"
+]
+
+FU2_SUBJECTS = [
+    "Any thoughts on this, {name}?",
+    "Checking back in, {name}",
+    "Quick follow-up, {name}",
+    "Still curious if this helps",
+    "Wondering if this sparked anything",
+    "Visual storytelling, still on the table?",
+    "A quick nudge your way",
+    "Happy to mock something up",
+    "Short reminder, {name}",
+    "Just revisiting this idea",
+    "Whiteboard sketch still an option?",
+    "No pressure, just following up",
+    "Back with another nudge",
+    "A final nudge, {name}",
+    "Hoping this reached you",
+    "Revisiting that animation idea",
+    "Let me know if now's better",
+    "Still worth exploring?",
+    "Quick question on our last email",
+    "Still around if helpful",
+    "Do you want me to close this out?",
+    "Open to creative pitches?",
+    "Just in case it got buried"
+]
 
 # === Zoho Auth ===
 def get_zoho_access_token():
@@ -192,7 +257,7 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save ===
+# === Save Leads ===
 print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
