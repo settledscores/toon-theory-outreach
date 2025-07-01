@@ -1,36 +1,43 @@
-import os
 import json
 import smtplib
 import imaplib
 import email
-import base64
+import os
 import time
-import random
+import base64
 import requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Secrets ===
+# === Load Secrets ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
-EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-SMTP_PORT = int(os.environ["SMTP_PORT"])
-IMAP_SERVER = os.environ["IMAP_SERVER"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
+IMAP_SERVER = os.environ["IMAP_SERVER"]
+SMTP_PORT = int(os.environ["SMTP_PORT"])
+SMTP_SERVER = os.environ["SMTP_SERVER"]
 ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
 ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
 ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
+EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 
 # === Constants ===
 LEADS_FILE = "leads/scraped_leads.json"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
-INITIAL_DAYS = [0, 1, 2, 3]
-MAX_DAILY_SEND = 30
-MIN_DAILY_SEND = 20
+WEEKDAY = TODAY.weekday()  # 0 = Monday, 6 = Sunday
+
+# === Daily Quotas ===
+DAILY_PLAN = {
+    0: {"initial": 30, "fu1": 0, "fu2": 0},   # Monday
+    1: {"initial": 30, "fu1": 0, "fu2": 0},   # Tuesday
+    2: {"initial": 15, "fu1": 15, "fu2": 0},  # Wednesday
+    3: {"initial": 15, "fu1": 15, "fu2": 0},  # Thursday
+    4: {"initial": 0, "fu1": 15, "fu2": 15},  # Friday
+}
+TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
 # === Subject Pools ===
 INITIAL_SUBJECTS = [
@@ -48,7 +55,6 @@ INITIAL_SUBJECTS = [
     "This might help supercharge your next big project at {company}",
     "How do you explain what {company} does?", "Let’s make it click visually"
 ]
-
 FU1_SUBJECTS = [
     "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
     "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
@@ -58,7 +64,6 @@ FU1_SUBJECTS = [
     "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
     "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
 ]
-
 FU2_SUBJECTS = [
     "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
     "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
@@ -70,7 +75,7 @@ FU2_SUBJECTS = [
     "Open to creative pitches?", "Just in case it got buried"
 ]
 
-# === Zoho Auth ===
+# === Token Logic ===
 def get_zoho_access_token():
     res = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
         "refresh_token": ZOHO_REFRESH_TOKEN,
@@ -84,11 +89,11 @@ def get_zoho_access_token():
 def get_auth_string(email, token):
     return base64.b64encode(f"user={email}\1auth=Bearer {token}\1\1".encode()).decode()
 
-def send_email(to, subject, content, in_reply_to=None):
+def send_email(recipient, subject, content, in_reply_to=None):
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
-    msg["To"] = to
+    msg["To"] = recipient
     msg.set_content(content)
     msg_id = make_msgid(domain="toontheory.com")[1:-1]
     msg["Message-ID"] = f"<{msg_id}>"
@@ -99,22 +104,22 @@ def send_email(to, subject, content, in_reply_to=None):
     token = get_zoho_access_token()
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.docmd("AUTH", "XOAUTH2 " + auth_string)
-        server.send_message(msg)
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
+        smtp.send_message(msg)
 
     return msg_id
 
-# === Check Replies ===
 def check_replies(message_ids):
     seen = set()
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         imap.select("INBOX")
-        _, data = imap.search(None, "ALL")
+        typ, data = imap.search(None, "ALL")
         for num in data[0].split():
-            _, msg_data = imap.fetch(num, "(RFC822)")
+            typ, msg_data = imap.fetch(num, "(RFC822)")
+            if typ != "OK": continue
             msg = email.message_from_bytes(msg_data[0][1])
             headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
             for mid in message_ids:
@@ -122,85 +127,87 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load and Prepare Leads ===
+# === Load and Normalize ===
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
-    leads = data.get("records", [])
-
+leads = data.get("records", [])
 for lead in leads:
-    for key in [
-        "email", "email 1", "email 2", "email 3", "first name", "business name",
+    for k in [
+        "email", "email 1", "email 2", "email 3",
         "message id", "message id 2", "message id 3",
-        "initial date", "follow-up 1 date", "follow-up 2 date", "reply"
+        "initial date", "follow-up 1 date", "follow-up 2 date",
+        "reply", "business name", "first name"
     ]:
-        lead.setdefault(key, "")
+        lead.setdefault(k, "")
 
-# === Mark Replies ===
-all_ids = [(l["message id"], "after initial") for l in leads if l["message id"]] + \
-          [(l["message id 2"], "after FU1") for l in leads if l["message id 2"]] + \
-          [(l["message id 3"], "after FU2") for l in leads if l["message id 3"]]
-
-replied_ids = check_replies([mid for mid, _ in all_ids])
+# === Check for Replies ===
+all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
+          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
+          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
+replied = check_replies([mid for mid, _ in all_ids])
 for lead in leads:
-    for key, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
-        if lead[key] and lead[key] in replied_ids:
-            lead["reply"] = label
+    if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
+        for key, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
+            if lead[key] and lead[key] in replied:
+                lead["reply"] = label
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Send Logic ===
-queue = []
+# === Filter Logic ===
+def can_send_initial(lead):
+    return not lead["initial date"] and lead["email 1"]
 
-def can_send_initial(l):
-    return not l["initial date"] and l["email 1"] and TODAY.weekday() in INITIAL_DAYS
-
-def can_send_followup(l, step):
-    if not l["email"] or l["reply"] != "no reply": return False
-    prev = "initial date" if step == 2 else "follow-up 1 date"
-    msgk = "message id" if step == 2 else "message id 2"
-    nextk = f"follow-up {step - 1} date"
-    sendk = f"follow-up {step} date"
-    if not l[prev] or not l[msgk] or l.get(sendk): return False
-    send_day = datetime.strptime(l[prev], "%Y-%m-%d").date() + timedelta(days=3)
-    while send_day.weekday() > 4: send_day += timedelta(days=1)
+def can_send_followup(lead, step):
+    if not lead["email"] or lead["reply"] != "no reply":
+        return False
+    prev_key = "initial date" if step == 2 else "follow-up 1 date"
+    msg_id_key = "message id" if step == 2 else "message id 2"
+    next_key = f"follow-up {step} date"
+    if not lead[prev_key] or not lead[msg_id_key] or lead[next_key]:
+        return False
+    send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
+    while send_day.weekday() > 4:
+        send_day += timedelta(days=1)
     return TODAY == send_day
 
-for l in leads:
-    if len(queue) >= MAX_DAILY_SEND: break
-    if can_send_followup(l, 3): queue.append(("fu2", l))
-for l in leads:
-    if len(queue) >= MAX_DAILY_SEND: break
-    if can_send_followup(l, 2): queue.append(("fu1", l))
-for l in leads:
-    if len(queue) >= MAX_DAILY_SEND: break
-    if can_send_initial(l): queue.append(("initial", l))
+# === Select Leads ===
+queue = []
 
-queue = queue[:random.randint(MIN_DAILY_SEND, MAX_DAILY_SEND)]
+for lead in leads:
+    if len([q for q in queue if q[0] == "fu2"]) < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
+        queue.append(("fu2", lead))
+for lead in leads:
+    if len([q for q in queue if q[0] == "fu1"]) < TODAY_PLAN["fu1"] and can_send_followup(lead, 2):
+        queue.append(("fu1", lead))
+for lead in leads:
+    if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
+        queue.append(("initial", lead))
 
-# === Send Emails ===
+# === Process ===
 for kind, lead in queue:
     time.sleep(random.uniform(2, 5))
-    dt = datetime.now(TIMEZONE).replace(hour=random.randint(14, 18), minute=random.randint(0, 59))
+    dt = datetime.now(TIMEZONE).replace(hour=random.randint(14, 18), minute=random.randint(0, 59), second=random.randint(1, 59))
     wait = (dt - datetime.now(TIMEZONE)).total_seconds()
-    if wait > 0: time.sleep(wait)
+    if wait > 0:
+        time.sleep(wait)
 
     if kind == "initial":
-        subj = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
-        msgid = send_email(lead["email"], subj, lead["email 1"])
+        subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
+        msgid = send_email(lead["email"], subject, lead["email 1"])
         lead["message id"] = msgid
         lead["initial date"] = TODAY.isoformat()
     elif kind == "fu1":
-        subj = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
-        msgid = send_email(lead["email"], subj, lead["email 2"], f"<{lead['message id']}>")
+        subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+        msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
         lead["message id 2"] = msgid
         lead["follow-up 1 date"] = TODAY.isoformat()
     elif kind == "fu2":
-        subj = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
-        msgid = send_email(lead["email"], subj, lead["email 3"], f"<{lead['message id 2']}>")
+        subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+        msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Back ===
+# === Save Updated JSON ===
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
