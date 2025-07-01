@@ -126,7 +126,7 @@ def send_email(recipient, subject, content, in_reply_to=None):
         smtp.ehlo()
         smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
         print("[SMTP] Auth successful")
-        smtp.send_message(msg)
+        smtp.send_message(msg, from_addr=EMAIL_ADDRESS)
         print(f"[SMTP] Email sent to {recipient}")
     return msg_id
 
