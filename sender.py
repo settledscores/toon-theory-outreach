@@ -105,13 +105,9 @@ def send_email(recipient, subject, content, in_reply_to=None):
     token = get_zoho_access_token()
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
-    print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT}...")
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+    print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT} using SSL...")
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.ehlo()
-        print("[SMTP] EHLO sent before TLS")
-        smtp.starttls()
-        smtp.ehlo()
-        print("[SMTP] TLS started and EHLO sent again after TLS")
         smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
         print("[SMTP] Auth successful")
         smtp.send_message(msg)
