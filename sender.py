@@ -3,35 +3,21 @@ import smtplib
 import imaplib
 import email
 import os
-import base64
 import random
-import requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Hardcoded Zoho Sending Email ===
-EMAIL_ADDRESS = "hello@toontheory.com"
-FROM_EMAIL = "hello@toontheory.com"
-
-# === Load Secrets and Print for Debug ===
-IMAP_PORT = int(os.environ["IMAP_PORT"])
-IMAP_SERVER = os.environ["IMAP_SERVER"]
-SMTP_PORT = int(os.environ["SMTP_PORT"])
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
-ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
-ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
+# === Config & Env ===
+EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
+FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
 
-print(f"[DEBUG] EMAIL_ADDRESS: {EMAIL_ADDRESS}")
-print(f"[DEBUG] FROM_EMAIL: {FROM_EMAIL}")
-print(f"[DEBUG] IMAP_SERVER: {IMAP_SERVER}:{IMAP_PORT}")
-print(f"[DEBUG] SMTP_SERVER: {SMTP_SERVER}:{SMTP_PORT}")
-print(f"[DEBUG] ZOHO_CLIENT_ID: {ZOHO_CLIENT_ID[:6]}***")
-print(f"[DEBUG] ZOHO_CLIENT_SECRET: {ZOHO_CLIENT_SECRET[:6]}***")
-print(f"[DEBUG] ZOHO_REFRESH_TOKEN: {ZOHO_REFRESH_TOKEN[:6]}***")
+IMAP_SERVER = os.environ["IMAP_SERVER"]
+IMAP_PORT = int(os.environ["IMAP_PORT"])
+SMTP_SERVER = os.environ["SMTP_SERVER"]
+SMTP_PORT = int(os.environ["SMTP_PORT"])
 
 # === Constants ===
 LEADS_FILE = "leads/scraped_leads.json"
@@ -48,7 +34,7 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-# === Subjects ===
+# === Email Subjects ===
 INITIAL_SUBJECTS = [
     "Let’s make your message stick", "Helping your ideas stick visually",
     "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
@@ -84,50 +70,29 @@ FU2_SUBJECTS = [
     "Open to creative pitches?", "Just in case it got buried"
 ]
 
-# === Zoho Auth ===
-def get_zoho_access_token():
-    print("[Auth] Getting Zoho access token...")
-    res = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
-        "refresh_token": ZOHO_REFRESH_TOKEN,
-        "client_id": ZOHO_CLIENT_ID,
-        "client_secret": ZOHO_CLIENT_SECRET,
-        "grant_type": "refresh_token"
-    })
-    res.raise_for_status()
-    token = res.json()["access_token"]
-    print("[Auth] Access token acquired.")
-    return token
-
-def get_auth_string(email, token):
-    return base64.b64encode(f"user={email}\1auth=Bearer {token}\1\1".encode()).decode()
-
 # === Send Email ===
-def send_email(recipient, subject, content, in_reply_to=None):
-    print(f"[Send] Preparing to send to {recipient} | Subject: {subject}")
+def send_email(to_email, subject, content, in_reply_to=None):
+    print(f"[Send] Preparing to send to {to_email} | Subject: {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
-    msg["To"] = recipient
+    msg["To"] = to_email
     msg.set_content(content)
-    msg_id = make_msgid(domain="toontheory.com")[1:-1]
+    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
     msg["Message-ID"] = f"<{msg_id}>"
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
 
-    token = get_zoho_access_token()
-    auth_string = get_auth_string(EMAIL_ADDRESS, token)
-
-    print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT} using SSL...")
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.ehlo()
-        smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
-        print("[SMTP] Auth successful")
-        smtp.send_message(msg, from_addr=EMAIL_ADDRESS)
-        print(f"[SMTP] Email sent to {recipient}")
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg, from_addr=FROM_EMAIL)
+
+    print(f"[Send] Email sent to {to_email}")
     return msg_id
 
-# === IMAP Check ===
+# === Check replies via IMAP ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
@@ -135,6 +100,9 @@ def check_replies(message_ids):
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
+        if typ != "OK":
+            print("[IMAP] Failed to search mailbox")
+            return seen
         for num in data[0].split():
             typ, msg_data = imap.fetch(num, "(RFC822)")
             if typ != "OK":
@@ -148,7 +116,7 @@ def check_replies(message_ids):
 
 # === Load Leads ===
 print("[Load] Loading leads file...")
-with open("leads/scraped_leads.json", "r", encoding="utf-8") as f:
+with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 leads = data.get("records", [])
@@ -161,7 +129,7 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Reply Detection ===
+# === Reply detection update ===
 print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -175,7 +143,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Send Rules ===
+# === Sending rules ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -192,7 +160,7 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Build Queue ===
+# === Build send queue ===
 print("[Queue] Building send queue...")
 queue = []
 for lead in leads:
@@ -205,7 +173,7 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Send ===
+# === Send emails ===
 print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
     if kind == "initial":
@@ -224,11 +192,12 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Leads ===
+# === Save updated leads file ===
 print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
 with open(LEADS_FILE, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
+
 print("[Done] Script completed.")
