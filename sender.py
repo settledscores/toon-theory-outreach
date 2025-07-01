@@ -119,7 +119,6 @@ def send_email(recipient, subject, content, in_reply_to=None):
         msg["References"] = in_reply_to
 
     token = get_zoho_access_token()
-    verify_token_identity(token)
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
     print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT} using SSL...")
