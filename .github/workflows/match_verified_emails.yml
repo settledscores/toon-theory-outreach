@@ -1,4 +1,4 @@
-name: Sync Verified Emails to Leads
+name: Match Verified Emails to Leads
 
 on:
   workflow_dispatch:
