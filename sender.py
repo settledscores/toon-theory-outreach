@@ -27,15 +27,15 @@ EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 LEADS_FILE = "leads/scraped_leads.json"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
-WEEKDAY = TODAY.weekday()  # 0 = Monday, 6 = Sunday
+WEEKDAY = TODAY.weekday()
 
 # === Daily Quotas ===
 DAILY_PLAN = {
-    0: {"initial": 30, "fu1": 0, "fu2": 0},   # Monday
-    1: {"initial": 30, "fu1": 0, "fu2": 0},   # Tuesday
-    2: {"initial": 15, "fu1": 15, "fu2": 0},  # Wednesday
-    3: {"initial": 15, "fu1": 15, "fu2": 0},  # Thursday
-    4: {"initial": 0, "fu1": 15, "fu2": 15},  # Friday
+    0: {"initial": 30, "fu1": 0, "fu2": 0},
+    1: {"initial": 30, "fu1": 0, "fu2": 0},
+    2: {"initial": 15, "fu1": 15, "fu2": 0},
+    3: {"initial": 15, "fu1": 15, "fu2": 0},
+    4: {"initial": 0, "fu1": 15, "fu2": 15},
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
@@ -77,6 +77,7 @@ FU2_SUBJECTS = [
 
 # === Zoho Auth ===
 def get_zoho_access_token():
+    print("[Auth] Getting Zoho access token...")
     res = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
         "refresh_token": ZOHO_REFRESH_TOKEN,
         "client_id": ZOHO_CLIENT_ID,
@@ -90,6 +91,7 @@ def get_auth_string(email, token):
     return base64.b64encode(f"user={email}\1auth=Bearer {token}\1\1".encode()).decode()
 
 def send_email(recipient, subject, content, in_reply_to=None):
+    print(f"[Send] Preparing to send to {recipient} | Subject: {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
@@ -104,23 +106,29 @@ def send_email(recipient, subject, content, in_reply_to=None):
     token = get_zoho_access_token()
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
+    print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT}...")
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.starttls()
+        print("[SMTP] TLS started")
         smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
+        print("[SMTP] Auth successful")
         smtp.send_message(msg)
+        print(f"[SMTP] Email sent to {recipient}")
 
     return msg_id
 
-# === Reply Tracking ===
+# === Replies ===
 def check_replies(message_ids):
     seen = set()
+    print("[IMAP] Checking replies...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
         for num in data[0].split():
             typ, msg_data = imap.fetch(num, "(RFC822)")
-            if typ != "OK": continue
+            if typ != "OK":
+                continue
             msg = email.message_from_bytes(msg_data[0][1])
             headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
             for mid in message_ids:
@@ -128,7 +136,8 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load Leads ===
+# === Load & Normalize Leads ===
+print("[Load] Loading leads file...")
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 leads = data.get("records", [])
@@ -141,7 +150,8 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Detect Replies ===
+# === Mark Replies ===
+print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
           [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
@@ -154,7 +164,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Filters ===
+# === Send Queue Logic ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -171,7 +181,8 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Select Queue ===
+# === Build Send Queue ===
+print("[Queue] Building send queue...")
 queue = []
 for lead in leads:
     if len([q for q in queue if q[0] == "fu2"]) < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
@@ -183,7 +194,8 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Process Queue (No sleep) ===
+# === Process Emails ===
+print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
     if kind == "initial":
         subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
@@ -201,9 +213,11 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save File ===
+# === Save Leads ===
+print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
 with open(LEADS_FILE, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
+print("[Done] Script completed.")
