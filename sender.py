@@ -11,7 +11,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Hardcoded Email Address ===
+# === Hardcoded Zoho Sending Email ===
 EMAIL_ADDRESS = "hello@toontheory.com"
 FROM_EMAIL = "hello@toontheory.com"
 
@@ -48,74 +48,40 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-# === Subject Pools ===
+# === Subjects ===
 INITIAL_SUBJECTS = [
-    "Let’s make your message stick",
-    "Helping your ideas stick visually",
-    "Turn complex into simple (in 90 seconds)",
-    "Your story deserves to be told differently",
-    "How about a different approach to your messaging?",
-    "Making your message unforgettable",
-    "Bring your message to life — visually",
-    "Your pitch deserves more than plain text",
-    "Visual stories make better first impressions",
-    "Helping businesses explain what makes them different",
-    "Cut through noise with visual storytelling",
-    "Explainers that make people pay attention",
-    "What if you could show it instead of tell it?",
-    "Here’s an idea worth testing",
-    "Explaining complex stuff with simple visuals",
-    "Is your message reaching it's full potential?",
-    "A story-first idea for {company}",
-    "Cut through mess and set your message free",
+    "Let’s make your message stick", "Helping your ideas stick visually",
+    "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
+    "How about a different approach to your messaging?", "Making your message unforgettable",
+    "Bring your message to life — visually", "Your pitch deserves more than plain text",
+    "Visual stories make better first impressions", "Helping businesses explain what makes them different",
+    "Cut through noise with visual storytelling", "Explainers that make people pay attention",
+    "What if you could show it instead of tell it?", "Here’s an idea worth testing",
+    "Explaining complex stuff with simple visuals", "Is your message reaching it's full potential?",
+    "A story-first idea for {company}", "Cut through mess and set your message free",
     "Idea: use animation to make your message hit harder",
     "This might help supercharge your next big project at {company}",
     "How do you explain what {company} does?"
 ]
 
 FU1_SUBJECTS = [
-    "Just Checking In, {name}",
-    "Thought I’d Follow Up, {name}",
-    "Any Thoughts On This, {name}?",
-    "Circling Back, {name}",
-    "Sketching Some Ideas For {company}",
-    "A Quick Follow-Up, {name}",
-    "Any Interest In This, {name}?",
-    "Here’s That Idea Again, {name}",
-    "Are You Still Open To This, {name}?",
-    "Quick Check-In, {name}",
-    "Following Up On That Idea For {company}",
-    "Nudging This Up Your Inbox, {name}",
-    "Revisiting, Just In Case You Missed This The Last Time, {name}",
-    "{name}, Got A Sec?",
-    "Circling Back To That Idea For {company}",
-    "A Follow-Up From Toon Theory, {name}"
+    "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
+    "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
+    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
+    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
+    "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
+    "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
 ]
 
 FU2_SUBJECTS = [
-    "Any thoughts on this, {name}?",
-    "Checking back in, {name}",
-    "Quick follow-up, {name}",
-    "Still curious if this helps",
-    "Wondering if this sparked anything",
-    "Visual storytelling, still on the table?",
-    "A quick nudge your way",
-    "Happy to mock something up",
-    "Short reminder, {name}",
-    "Just revisiting this idea",
-    "Whiteboard sketch still an option?",
-    "No pressure, just following up",
-    "Back with another nudge",
-    "A final nudge, {name}",
-    "Hoping this reached you",
-    "Revisiting that animation idea",
-    "Let me know if now's better",
-    "Still worth exploring?",
-    "Quick question on our last email",
-    "Still around if helpful",
-    "Do you want me to close this out?",
-    "Open to creative pitches?",
-    "Just in case it got buried"
+    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
+    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
+    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
+    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
+    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
+    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
+    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
+    "Open to creative pitches?", "Just in case it got buried"
 ]
 
 # === Zoho Auth ===
@@ -157,11 +123,11 @@ def send_email(recipient, subject, content, in_reply_to=None):
         smtp.ehlo()
         smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
         print("[SMTP] Auth successful")
-        smtp.send_message(msg, from_addr=EMAIL_ADDRESS)
+        smtp.send_message(msg)
         print(f"[SMTP] Email sent to {recipient}")
     return msg_id
 
-# === Check IMAP Replies ===
+# === IMAP Check ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
@@ -182,8 +148,9 @@ def check_replies(message_ids):
 
 # === Load Leads ===
 print("[Load] Loading leads file...")
-with open(LEADS_FILE, "r", encoding="utf-8") as f:
+with open("leads/scraped_leads.json", "r", encoding="utf-8") as f:
     data = json.load(f)
+
 leads = data.get("records", [])
 for lead in leads:
     for k in [
@@ -194,7 +161,7 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Mark Replies ===
+# === Reply Detection ===
 print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -208,7 +175,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Send Queue Logic ===
+# === Send Rules ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -225,7 +192,7 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Build Send Queue ===
+# === Build Queue ===
 print("[Queue] Building send queue...")
 queue = []
 for lead in leads:
@@ -238,7 +205,7 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Send Emails ===
+# === Send ===
 print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
     if kind == "initial":
