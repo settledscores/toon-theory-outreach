@@ -3,7 +3,6 @@ import smtplib
 import imaplib
 import email
 import os
-import time
 import base64
 import random
 import requests
@@ -51,7 +50,7 @@ INITIAL_SUBJECTS = [
     "Cut through noise with visual storytelling", "A visual idea for {company}",
     "Explainers that make people pay attention", "What if you could show it instead of tell it?",
     "Here’s an idea worth testing", "Explaining complex stuff with simple visuals",
-    "Is your message reaching its full potential?", "A story-first idea for {company}",
+    "Is your message reaching it's full potential?", "A story-first idea for {company}",
     "Cut through mess and set your message free", "Idea: use animation to make your message hit harder",
     "This might help supercharge your next big project at {company}",
     "How do you explain what {company} does?", "Let’s make it click visually"
@@ -76,7 +75,7 @@ FU2_SUBJECTS = [
     "Open to creative pitches?", "Just in case it got buried"
 ]
 
-# === Token Logic ===
+# === Zoho Auth ===
 def get_zoho_access_token():
     res = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
         "refresh_token": ZOHO_REFRESH_TOKEN,
@@ -112,6 +111,7 @@ def send_email(recipient, subject, content, in_reply_to=None):
 
     return msg_id
 
+# === Reply Tracking ===
 def check_replies(message_ids):
     seen = set()
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
@@ -154,7 +154,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Eligibility Check ===
+# === Filters ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -171,9 +171,8 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Send Queue ===
+# === Select Queue ===
 queue = []
-
 for lead in leads:
     if len([q for q in queue if q[0] == "fu2"]) < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
         queue.append(("fu2", lead))
@@ -184,18 +183,8 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Send Emails ===
+# === Process Queue (No sleep) ===
 for kind, lead in queue:
-    time.sleep(random.uniform(2, 5))
-    dt = datetime.now(TIMEZONE).replace(
-        hour=random.randint(14, 18),
-        minute=random.randint(0, 59),
-        second=random.randint(1, 59)
-    )
-    wait = (dt - datetime.now(TIMEZONE)).total_seconds()
-    if not os.environ.get("GITHUB_ACTIONS") and wait > 0:
-        time.sleep(wait)
-
     if kind == "initial":
         subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
         msgid = send_email(lead["email"], subject, lead["email 1"])
@@ -212,10 +201,9 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save JSON ===
+# === Save File ===
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
-
 with open(LEADS_FILE, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
