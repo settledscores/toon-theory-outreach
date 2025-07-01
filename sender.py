@@ -93,7 +93,6 @@ def get_zoho_access_token():
     print("[Auth] Access token acquired.")
     return token
 
-def verify_token_identity(token):
     print("[Auth] Verifying token owner...")
     res = requests.get("https://accounts.zoho.com/oauth/user/info", headers={
         "Authorization": f"Zoho-oauthtoken {token}"
