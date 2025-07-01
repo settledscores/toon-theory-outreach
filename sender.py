@@ -41,13 +41,11 @@ TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
 # === Subject Pools ===
 INITIAL_SUBJECTS = [
-    "Let’s make your message stick",
-    "Helping your ideas stick visually", "Turn complex into simple (in 90 seconds)",
+    "Let’s make your message stick", "Helping your ideas stick visually", "Turn complex into simple (in 90 seconds)",
     "Your story deserves to be told differently", "How about a different approach to your messaging?",
     "Making your message unforgettable", "Bring your message to life — visually",
-    "Your pitch deserves more than plain text",
-    "Visual stories make better first impressions", "Helping businesses explain what makes them different",
-    "Cut through noise with visual storytelling",
+    "Your pitch deserves more than plain text", "Visual stories make better first impressions",
+    "Helping businesses explain what makes them different", "Cut through noise with visual storytelling",
     "Explainers that make people pay attention", "What if you could show it instead of tell it?",
     "Here’s an idea worth testing", "Explaining complex stuff with simple visuals",
     "Is your message reaching it's full potential?", "A story-first idea for {company}",
@@ -55,15 +53,16 @@ INITIAL_SUBJECTS = [
     "This might help supercharge your next big project at {company}",
     "How do you explain what {company} does?"
 ]
+
 FU1_SUBJECTS = [
     "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
     "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
-    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}",
-    "Are You Still Open To This, {name}?", "Quick Check-In, {name}",
-    "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
+    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
+    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
     "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
     "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
 ]
+
 FU2_SUBJECTS = [
     "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
     "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
@@ -107,13 +106,13 @@ def send_email(recipient, subject, content, in_reply_to=None):
     auth_string = get_auth_string(EMAIL_ADDRESS, token)
 
     print(f"[SMTP] Connecting to {SMTP_SERVER}:{SMTP_PORT}...")
-with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-    smtp.ehlo()
-    print("[SMTP] EHLO sent before TLS")
-    smtp.starttls()
-    smtp.ehlo()
-    print("[SMTP] TLS started and EHLO sent again after TLS")
-    smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.ehlo()
+        print("[SMTP] EHLO sent before TLS")
+        smtp.starttls()
+        smtp.ehlo()
+        print("[SMTP] TLS started and EHLO sent again after TLS")
+        smtp.docmd("AUTH", "XOAUTH2 " + auth_string)
         print("[SMTP] Auth successful")
         smtp.send_message(msg)
         print(f"[SMTP] Email sent to {recipient}")
