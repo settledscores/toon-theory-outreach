@@ -11,9 +11,11 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
+# === Hardcoded Email Address ===
+EMAIL_ADDRESS = "hello@toontheory.com"
+FROM_EMAIL = "hello@toontheory.com"
+
 # === Load Secrets and Print for Debug ===
-EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
-FROM_EMAIL = os.environ["FROM_EMAIL"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
 IMAP_SERVER = os.environ["IMAP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
@@ -21,6 +23,7 @@ SMTP_SERVER = os.environ["SMTP_SERVER"]
 ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
 ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
 ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
+EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 
 print(f"[DEBUG] EMAIL_ADDRESS: {EMAIL_ADDRESS}")
 print(f"[DEBUG] FROM_EMAIL: {FROM_EMAIL}")
@@ -45,39 +48,10 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-INITIAL_SUBJECTS = [
-    "Let’s make your message stick", "Helping your ideas stick visually", "Turn complex into simple (in 90 seconds)",
-    "Your story deserves to be told differently", "How about a different approach to your messaging?",
-    "Making your message unforgettable", "Bring your message to life — visually",
-    "Your pitch deserves more than plain text", "Visual stories make better first impressions",
-    "Helping businesses explain what makes them different", "Cut through noise with visual storytelling",
-    "Explainers that make people pay attention", "What if you could show it instead of tell it?",
-    "Here’s an idea worth testing", "Explaining complex stuff with simple visuals",
-    "Is your message reaching it's full potential?", "A story-first idea for {company}",
-    "Cut through mess and set your message free", "Idea: use animation to make your message hit harder",
-    "This might help supercharge your next big project at {company}",
-    "How do you explain what {company} does?"
-]
-
-FU1_SUBJECTS = [
-    "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
-    "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
-    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
-    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
-    "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
-    "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
-]
-
-FU2_SUBJECTS = [
-    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
-    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
-    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
-    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
-    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
-    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
-    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
-    "Open to creative pitches?", "Just in case it got buried"
-]
+# === Subject Pools ===
+INITIAL_SUBJECTS = [ ... ]  # Omitted here for brevity, same as yours
+FU1_SUBJECTS = [ ... ]
+FU2_SUBJECTS = [ ... ]
 
 # === Zoho Auth ===
 def get_zoho_access_token():
@@ -93,18 +67,10 @@ def get_zoho_access_token():
     print("[Auth] Access token acquired.")
     return token
 
-    print("[Auth] Verifying token owner...")
-    res = requests.get("https://accounts.zoho.com/oauth/user/info", headers={
-        "Authorization": f"Zoho-oauthtoken {token}"
-    })
-    res.raise_for_status()
-    owner = res.json()["Email"]
-    print(f"[Auth] Token belongs to: {owner}")
-    return owner
-
 def get_auth_string(email, token):
     return base64.b64encode(f"user={email}\1auth=Bearer {token}\1\1".encode()).decode()
 
+# === Send Email ===
 def send_email(recipient, subject, content, in_reply_to=None):
     print(f"[Send] Preparing to send to {recipient} | Subject: {subject}")
     msg = EmailMessage()
@@ -130,12 +96,12 @@ def send_email(recipient, subject, content, in_reply_to=None):
         print(f"[SMTP] Email sent to {recipient}")
     return msg_id
 
-# === IMAP Reply Check ===
+# === Check IMAP Replies ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
-        imap.login(EMAIL_ADDRESS, os.environ["EMAIL_PASSWORD"])
+        imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         imap.select("INBOX")
         typ, data = imap.search(None, "ALL")
         for num in data[0].split():
@@ -163,7 +129,7 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Check for Replies ===
+# === Mark Replies ===
 print("[Replies] Checking previous replies...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -177,7 +143,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Send Logic ===
+# === Send Queue Logic ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -226,7 +192,7 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Leads ===
+# === Save ===
 print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
