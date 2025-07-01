@@ -51,7 +51,7 @@ INITIAL_SUBJECTS = [
     "Cut through noise with visual storytelling", "A visual idea for {company}",
     "Explainers that make people pay attention", "What if you could show it instead of tell it?",
     "Here’s an idea worth testing", "Explaining complex stuff with simple visuals",
-    "Is your message reaching it's full potential?", "A story-first idea for {company}",
+    "Is your message reaching its full potential?", "A story-first idea for {company}",
     "Cut through mess and set your message free", "Idea: use animation to make your message hit harder",
     "This might help supercharge your next big project at {company}",
     "How do you explain what {company} does?", "Let’s make it click visually"
@@ -128,7 +128,7 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load and Normalize ===
+# === Load Leads ===
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 leads = data.get("records", [])
@@ -141,7 +141,7 @@ for lead in leads:
     ]:
         lead.setdefault(k, "")
 
-# === Check for Replies ===
+# === Detect Replies ===
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
           [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
@@ -154,7 +154,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Filter Logic ===
+# === Eligibility Check ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead["email 1"]
 
@@ -171,7 +171,7 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Select Leads ===
+# === Send Queue ===
 queue = []
 
 for lead in leads:
@@ -184,12 +184,16 @@ for lead in leads:
     if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
 
-# === Process ===
+# === Send Emails ===
 for kind, lead in queue:
     time.sleep(random.uniform(2, 5))
-    dt = datetime.now(TIMEZONE).replace(hour=random.randint(14, 18), minute=random.randint(0, 59), second=random.randint(1, 59))
+    dt = datetime.now(TIMEZONE).replace(
+        hour=random.randint(14, 18),
+        minute=random.randint(0, 59),
+        second=random.randint(1, 59)
+    )
     wait = (dt - datetime.now(TIMEZONE)).total_seconds()
-    if wait > 0:
+    if not os.environ.get("GITHUB_ACTIONS") and wait > 0:
         time.sleep(wait)
 
     if kind == "initial":
@@ -208,7 +212,7 @@ for kind, lead in queue:
         lead["message id 3"] = msgid
         lead["follow-up 2 date"] = TODAY.isoformat()
 
-# === Save Updated JSON ===
+# === Save JSON ===
 data["records"] = leads
 data["total"] = len(leads)
 data["scraped_at"] = datetime.now().isoformat()
