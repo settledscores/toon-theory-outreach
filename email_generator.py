@@ -50,44 +50,40 @@ paragraph1_templates = [
     "Hey {name},\n\nI came across {company} recently and thought I’d drop you a quick note.",
     "Hi {name},\n\nI stumbled on {company} the other day and wanted to get in touch.",
     "Hi {name},\n\nI stumbled across {company} and thought I’d reach out.",
-    "Hi {name},\n\nI just spotted {company} and thought there could be an opportunity to collaborate.",
-    "Hi {name},\n\nHope you don't mind me reaching out; I came across {company} recently and thought we could collaborate."
+    "Hi {name},\n\nHope you don't mind me reaching out; I came across {company} recently and thought there could be an opportunity to collaborate."
 ]
 
 paragraph2_variants = [
     "I'm Trent. I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, founder of Toon Theory – a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed, especially for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, I lead a creative studio called Toon Theory. We work with businesses like yours to turn abstract ideas into short, powerful videos that actually stick, especially for B2B services, thought leadership, and data-driven education.",
+    "I'm Trent, founder of Toon Theory: a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed, especially for B2B services, thought leadership, and data-driven education.",
     "I'm Trent, I run Toon Theory, an animation studio based in the UK. We focus on helping businesses cut through the noise using clean, hand-drawn storytelling, especially for B2B services, thought leadership, and data-driven education."
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are often used for:\n",
-    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end; illustration, scripting, voice, and storyboarding; and they’re often used for:\n",
-    "Visual storytelling could be a strong lever for {company}, especially when clarity and connection are vital.\n\nWe take care of the entire process; from script to storyboard to final voiceover; and they’re typically applied in:\n",
-    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift; script, visuals, voice; and these are often created for:\n",
-    "For {company}, a short explainer could help communicate key ideas more clearly and quickly.\n\nWe take care of everything; writing, illustrating, voicing, and producing; so you can focus on results. These typically support:\n"
+    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are can be used for:\n",
+    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end; illustration, scripting, voice, and storyboarding; and they can be used for:\n",
+    "Visual storytelling could be a strong lever for {company}, especially when getting the message across is vital.\n\nWe take care of the entire process; illustrations, scripting and voiceover and they may be used for:\n",
+    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift; script, illustrations, voice; and they may be used for:\n"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
-    "These animations don’t just explain, they convert; Many clients see a big lift in engagement, trust, and sales.",
-    "Clients often tell us these pieces help cut through the noise, increase clarity, and lead to more meaningful conversions.",
-    "Whether it’s more signups, better retention, or faster understanding, these animations tend to move the needle where it counts.",
-    "People use these to clarify complex ideas, but they often notice the real impact in engagement and conversion metrics too."
+    "These animations don’t just explain, they convert; Many of our past clients see a big lift in engagement, trust, and sales.",
+    "Clients often tell us these pieces help cut through the mess, increase clarity, and lead to more meaningful conversions.",
+    "Whether it’s more signups, better retention, or faster understanding, these animations know how to hit hard and move the needle where it counts."
 ]
 
 paragraph5_variants = [
-    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. No strings attached; just curious to explore how it might sound with {company}'s voice.",
-    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings. No pressure at all; just interested in how this could come to life in {company}'s tone.",
+    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. No strings attached; just curious to explore how it might sound with {company}'s voice behind it.",
+    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings. No pressure at all; just interested in how this could come to life with {company}'s voice behind it.",
     "I'd be happy to draft a ten-second demo around something core to your brand. Totally low-lift, just keen to explore what this could look like with {company}'s voice behind it.",
     "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? No expectations; just interested in showing you what’s possible.",
-    "Open to a quick preview? I could whip up a ten-second mock or short script tailored to something core at {company}; purely exploratory.",
-    "Happy to create a no-commitment snippet; a short script or sketch; that speaks to what {company} does best. Just a chance to show you what I mean.",
-    "If you're curious, I can pull together a short sketch or script draft focused on something {company} offers. Just to give you a sense of what it might sound like.",
-    "I’d love to put together a quick concept; maybe a script or a short visual; around one of your offerings. No strings, just a glimpse of the potential in {company}'s tone.",
+    "If you're open to a quick preview, I could whip up a ten-second mock or short script tailored to something core at {company}; No pressure, no cost, purely exploratory.",
+    "I'd be more than happy to whip up a quick snippet; a short script or sketch; that speaks to what {company} does best. No commitments at all, just a chance to show you what's possible.",
+    "If you're curious, I can pull together a short sketch or draft a script focused on something {company} offers. Just to give you a sense of what it might sound like. No strings, no cost",
+    "I’d love to put together a quick concept; maybe a script or a short teaser; around one of your key offerings. No strings, just a glimpse of what's possible with {company}'s voice behind it.",
     "How about a quick sample built around {company}'s strengths? Ten seconds or so, just a feeler to see what resonates.",
-    "Could I sketch something out for you? A short demo or script idea based on what {company} does. No pitch; just something for you to react to."
+    "Could I sketch something out for you? A short demo or script idea based on what {company} offers. No pitch; just something for you to react to."
 ]
 
 paragraph6_variants = [
@@ -101,10 +97,10 @@ paragraph7_cta_variants = [
     "You’ll find a link to our site in the signature if you’d like to check out our past work. I’d love to hear your thoughts if anything stands out.",
     "If it feels like a fit, you can reply any time. There’s also a link in my signature in case you want to browse a few previous projects.",
     "If you're open to chatting more, just hit reply. And if you're curious, there’s a site link in the signature with a few past examples.",
-    "Curious what this might look like for you? I'm around if you want to explore. You’ll find some previous work in the signature link too.",
-    "Happy to dive deeper if you're interested. You can reply anytime, and there’s a portfolio link in my signature if you’d like to have a look.",
+    "If you're curious about what this might look like for you, just reach out to me. You’ll also find some previous work via the link in the signature too.",
+    "I'd be happy to dive deeper if you're interested. You can reply anytime, and there’s a portfolio link in my signature if you’d like to have a look.",
     "Let me know if you'd like to take this further. You can check out some of our work through the link in my signature as well.",
-    "Always open to a quick chat if this feels worth exploring. In the meantime, you can view a few past pieces via the link in my signature.",
+    "Always open to a quick chat if this feels worth exploring. In the meantime, you can view a few past projects via the link in my signature.",
     "Reply anytime if you'd like to talk more about this. There’s also a link below with some samples of what we’ve done before.",
     "Just reach out if you’d like to continue the conversation. You’ll find a few previous projects linked in the signature below."
 ]
@@ -126,11 +122,11 @@ Feel free to reply if you’d like to explore it. You’ll find examples of our 
 
     """{salutation} {name},
 
-Wanted to follow up in case this timing works better for you. Whiteboard animation can be a surprisingly simple way to make your message clearer and more memorable ;  especially for B2B communication.
+Wanted to follow up in case this timing works better for you. Whiteboard animation can be a surprisingly simple way to make your message clearer and more memorable ;  especially in B2B settings.
 
-For {company}, this could mean faster understanding and stronger engagement, both internally and externally.
+For {company}, this could mean increased understanding and stronger engagement, both internally and externally.
 
-If you're open to a quick sketch or demo, I’d be happy to create one based on something you’re working on.
+If you're still open to that quick sketch or demo, I’d be happy to create one based on something you’re working on.
 
 There’s a link to our past projects in my signature if you’d like to browse.
 
@@ -140,7 +136,7 @@ There’s a link to our past projects in my signature if you’d like to browse.
 
 Just circling back. I realize it can be tricky to see how something like whiteboard animation fits into a business like {company}, which is why I’d love to show rather than tell.
 
-If you’d be open to a 10-second visual sample or a short script tailored to your brand, I’d be glad to share one.
+If you’d be open to a 10-second visual sample or a short script tailored to one of your core offerings, I’d be glad to share.
 
 It’s no obligation, just a way to explore what this could look like in your context.
 
@@ -156,17 +152,17 @@ It’s something that’s worked well for businesses trying to explain detailed 
 
 Happy to create a short, customized sample if you’d like a clearer sense of how this could look.
 
-Reply anytime ;  there’s also a link to our previous work below.
+Reply anytime;  there’s also a link to our previous work below.
 
 {signature}""",
 
     """{salutation} {name},
 
-I didn’t want to leave things hanging without checking in. I mentioned how whiteboard animation can be a strong complement to what {company} is already doing, especially when you’re communicating ideas that needs a touch of clarity or personality.
+I didn’t want to leave things hanging without checking in. I mentioned how whiteboard animation can be a strong complement to what {company} is already doing, especially when you’re communicating ideas that needs a touch of personalisation.
 
 If it’s helpful, I can pull together a short visual sketch or sample script based on one of your key offerings.
 
-No pressure ;  just a creative starting point for you to consider.
+No pressure;  just a creative starting point for you to consider.
 
 You’ll find some of our work linked in my signature.
 
@@ -176,7 +172,7 @@ You’ll find some of our work linked in my signature.
 
 Reaching out again in case the idea of using whiteboard animation is still on your radar.
 
-It’s often a great fit for simplifying dense content, making internal updates more engaging, or creating educational pieces that feel more human.
+It’s often a great fit for simplifying dense content, making internal updates more engaging, or curating educational content that feel less overwhelming and more human.
 
 For {company}, I’d be glad to sketch a quick visual or draft a short script so you can see what this might look like in practice.
 
@@ -186,7 +182,7 @@ Reply when you can, or check out some examples in the signature below.
 
     """{salutation} {name},
 
-Quick follow-up in case now’s a better time. Our last email was about how visual storytelling could help {company} make certain messages feel more clear and engaging.
+Quick follow-up in case now’s a better time. My last email was about how visual storytelling could help {company} make certain messages clearer and more engaging.
 
 If you're curious, I could create a ten-second teaser or a rough script so you can get a sense of what’s possible.
 
@@ -212,7 +208,7 @@ I know inboxes get full fast, so here's a quick follow up.
 
 Whiteboard storytelling might be a surprisingly effective way for {company} to simplify something your audience or team needs to grasp quickly.
 
-If you’re still open to it, I can send a short demo ;  a sample script or 10-second sketch ;  to give you a feel.
+If you’re still open to it, I can send a short demo ;  a sample script or 10-second sketch; to give you a feel.
 
 Let me know, or feel free to check out some of our past work in the signature.
 
@@ -224,9 +220,9 @@ Just checking in one more time.
 
 I understand if now’s not ideal, but I still think there’s value in exploring how a short whiteboard video could help {company} communicate more clearly.
 
-It could be a great fit for onboarding, product overviews, or thought leadership ;  and I’d be happy to show you a sample.
+It could be a great fit for onboarding, product overviews, or thought leadership; and I’d be happy to show you a no-cost sample.
 
-You can reply any time, or check out some of our past wor linked in my signature.
+You can reply any time, or check out some of our past work linked in my signature.
 
 {signature}""",
 
@@ -234,7 +230,7 @@ You can reply any time, or check out some of our past wor linked in my signature
 
 I wanted to circle back following my last email about using whiteboard animation at {company}. These videos can really simplify complex ideas and help you connect with your audience in a memorable way.
 
-If you’re open to it, I’d love to put together that quick sketch or script I mentioned earlier — something tailored specifically to your key offerings or challenges.
+If you’re open to it, I’d love to put together that quick sketch or script I mentioned earlier; something tailored specifically to your key offerings or a new product launch, perhaps.
 
 Feel free to reply anytime. And just in case you missed it, some of our past projects are linked in my signature.
 
@@ -244,7 +240,7 @@ Feel free to reply anytime. And just in case you missed it, some of our past pro
 
 Just circling back as I didn’t want you to miss out on the chance to explore whiteboard animation for {company}.
 
-Our animations are designed to help businesses like yours increase engagement, boost clarity, and convert more customers — all with story-driven visuals.
+Our animations are designed to help businesses like yours increase engagement, boost clarity, and convert more customers; all with story-driven illustrations.
 
 If you'd like, I can create a short demo or script as a no-pressure way to see how this could work for your team.
 
@@ -266,7 +262,7 @@ You can reply anytime, and our portfolio is linked below if you want to get a fe
 
     """{salutation} {name},
 
-Hope you’re well. I wanted to check back in and remind you about the offer I shared — a quick, tailored script or visual teaser that could spark some ideas.
+Hope you’re well. I wanted to check back in and remind you about the offer I shared; a quick, tailored script or visual teaser that could spark some ideas.
 
 It’s a simple, no-strings way to explore how animation can support your {company}'s messaging and help your audience understand your value more clearly.
 
@@ -278,7 +274,7 @@ Feel free to reply if you want to see this, or browse some of our previous proje
 
 Just wanted to reconnect after my last email about how {company} could benefit from whiteboard animation.
 
-This type of video storytelling often boosts engagement and helps simplify complicated topics — making your message easier to remember.
+This type of video storytelling often boosts engagement and helps simplify complicated topics; making your message easier to remember.
 
 If you’re curious, I’d be glad to draft a short teaser or script for you to review.
 
@@ -290,23 +286,11 @@ Please reply anytime, and there’s a link to our work in my signature if you wa
 
 Reaching out again about the opportunity for {company} to stand out using whiteboard animation.
 
-Whether it’s for pitching, explaining products, or internal training, these videos make complex ideas clearer and more engaging.
+Whether it’s for pitching, explaining products, or internal training, these videos hit the nail on the head.
 
-If you’re open to it, I can prepare a quick demo or script sample tailored to your brand — no pressure at all.
+If you’re open to it, I can prepare a quick demo or script sample tailored to your brand; no pressure at all.
 
-You’ll find examples of our previous work linked below. Let me know if you’d like to take a peek.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Following up to see if you’d be interested in exploring how animation could support {company}’s storytelling and messaging.
-
-Our videos help businesses clarify key ideas quickly, often leading to better audience connection and increased conversions.
-
-If you want, I can create a brief sketch or script demo tailored to your offerings, just to show what’s possible.
-
-Please reply anytime, and you can also check out our portfolio linked in the signature.
+You’ll find examples of our previous work linked below. Let me know if you’d like to explore the fit.
 
 {signature}""",
 
@@ -384,13 +368,13 @@ Just reaching out again before I close this thread. If you think animated storyt
 
 Even a 10-second sketch can be a useful way to explore what is possible.
 
-Feel free to reply anytime.
+Feel free to reply at your convenience.
 
 {signature}""",
 
     """{salutation} {name},
 
-If you are still considering creative ways to showcase what {company} does, animated storytelling could be a great tool to accelerate conversions.
+If you are still considering creative ways to showcase {company}'s value offerings, animated storytelling could be the missing piece of the puzzle to accelerate those conversions.
 
 I would be happy to send over a short visual teaser to get the ideas flowing.
 
@@ -402,7 +386,7 @@ No pressure, just a creative option to keep in mind. Reply anytime or take a pee
 
 Circling back once more before I close the loop.
 
-If there is anything at {company} you have been meaning to simplify, such as those quarterly reports your team never reads, whiteboard animation could help bring that to life.
+If there is anything at {company} you have been meaning to simplify, such as those boring quarterly reports your team never reads, whiteboard animation could help bring that to life.
 
 I would be happy to draft something visual if you want to see what that might look like. You can reply anytime or check out some of our previous work on our website, linked in my signature.
 
@@ -412,7 +396,7 @@ I would be happy to draft something visual if you want to see what that might lo
 
 Reaching out one last time before I close the loop. If you are still exploring creative ways to showcase what {company} offers, this could be a great fit.
 
-I would be glad to put together a simple teaser or sketch if you are curious. Reply anytime or check out some of our past projects. The link is in my signature.
+I would be glad to put together a simple teaser or sketch if you are curious. Reply at your convenience or check out some of our past projects. The link is in my signature.
 
 {signature}""",
 
@@ -428,7 +412,7 @@ If you would still like to explore using whiteboard videos to support {company}'
 
 A quick follow-up before I close out my list. If now is not the right time, no worries at all.
 
-But if you are curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. The link is in the signature.
+But if you are curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. The link is in my signature.
 
 {signature}""",
 
@@ -476,7 +460,7 @@ Please reply anytime. Past examples are linked in my signature.
 
 Just wanted to reconnect in case my previous notes got buried. If you have any questions or thoughts about using whiteboard animation at {company}, I'd be more than happy to answer them..
 
-It’s a creative way to explain what you do, and it can really help with marketing, training, or internal communications.
+It’s a creative way to explain your value offerings, and it can really help with marketing, training, or internal communications.
 
 If you’d like, I can send over a quick teaser or script sample.
 
@@ -488,7 +472,7 @@ You’ll find some of our past work in my signature. I’m here if you want to c
 
 Checking in again to share how whiteboard animation could help {company} communicate clearly and creatively with your audience.
 
-Animation can make even the most complicated topics accessible and interesting, which often leads to better engagement.
+Animation can make even the most complicated topics accessible and engaging, which often leads to better engagement.
 
 If you’re open to it, I’d love to draft a short visual concept for you to review.
 
@@ -512,11 +496,11 @@ Please reply whenever you’re ready. Past projects are linked in my signature.
 
 Just following up again because I think animation could add real value to {company}’s messaging.
 
-It’s an engaging way to capture attention and explain what makes your business unique.
+It’s an engaging way to capture attention and explain what makes your business stand out.
 
 If it sounds useful, I’d be glad to prepare a quick visual sample or script to show you what’s possible.
 
-You can reply anytime, and links to our past work are in the signature.
+You can reply anytime, and a link to our portfolio is in my signature.
 
 {signature}""",
 
@@ -524,9 +508,9 @@ You can reply anytime, and links to our past work are in the signature.
 
 I’m checking in one last time about the opportunity to use whiteboard animation at {company}.
 
-Many teams find that even short animations help clarify their message and make their content more memorable.
+Many teams find that even short animations help simplify their message and make content more digestible.
 
-If you’d like, I can put together a brief draft to help you explore this option.
+If you’d like, I can put together a brief teaser or script to help you explore this option.
 
 Please feel free to reply at any time. Examples of our work are linked in my signature.
 
@@ -534,7 +518,7 @@ Please feel free to reply at any time. Examples of our work are linked in my sig
 
     """{salutation} {name},
 
-Just wanted to follow up to see if you’ve had a chance to consider adopting whiteboard animation to supercharge {company}'s messaging.
+Just wanted to follow up to see if you’ve had a chance to consider adopting whiteboard animation at {company}.
 
 It’s a creative way to bring your ideas to life and connect with your audience more effectively.
 
