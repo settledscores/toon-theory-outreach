@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Configuration ===
+# === Config ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
@@ -33,6 +33,7 @@ DAILY_PLAN = {
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
+# === Subject Lines ===
 INITIAL_SUBJECTS = [
     "Let’s make your message stick", "Helping your ideas stick visually",
     "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
@@ -117,87 +118,89 @@ with open(LEADS_FILE, "r", encoding="utf-8") as f:
 
 leads = data.get("records", [])
 for lead in leads:
-    for k in [
+    for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name",
         "message id", "message id 2", "message id 3",
         "initial date", "follow-up 1 date", "follow-up 2 date", "reply"
     ]:
-        lead.setdefault(k, "")
+        lead.setdefault(field, "")
 
-# === Reply Detection ===
+# === Update Replies ===
 print("[Replies] Checking previous replies...")
-all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
-          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
-          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
+all_ids = [
+    (lead["message id"], "after initial") for lead in leads if lead["message id"]
+] + [
+    (lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]
+] + [
+    (lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]
+]
+
 replied = check_replies([mid for mid, _ in all_ids])
 for lead in leads:
     if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
-        for key, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
-            if lead[key] and lead[key] in replied:
+        for k, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
+            if lead[k] and lead[k] in replied:
                 lead["reply"] = label
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Rules ===
+# === Eligibility Checks ===
 def can_send_initial(lead):
-    return not lead["initial date"] and lead.get("email 1")
+    return not lead["initial date"] and lead.get("email 1") and lead.get("email")
 
 def can_send_followup(lead, step):
-    if not lead.get("email") or lead["reply"] != "no reply":
+    if lead["reply"] != "no reply" or not lead.get("email"):
         return False
     prev_key = "initial date" if step == 2 else "follow-up 1 date"
     msg_id_key = "message id" if step == 2 else "message id 2"
     next_key = f"follow-up {step} date"
-    if not lead[prev_key] or not lead[msg_id_key] or lead[next_key] or not lead.get(f"email {step}"):
+    email_key = f"email {step}"
+
+    if not (lead[prev_key] and lead[msg_id_key] and not lead[next_key] and lead.get(email_key)):
         return False
+
     send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
     while send_day.weekday() > 4:
         send_day += timedelta(days=1)
+
     return TODAY == send_day
 
-# === Build Queue ===
-print("[Queue] Building send queue...")
+# === Build Queue in Round-Robin ===
+print("[Queue] Scanning leads for eligible sends...")
+counts = {"initial": 0, "fu1": 0, "fu2": 0}
 queue = []
+
 for lead in leads:
-    if len([q for q in queue if q[0] == "fu2"]) < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
+    if counts["fu2"] < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
         queue.append(("fu2", lead))
-for lead in leads:
-    if len([q for q in queue if q[0] == "fu1"]) < TODAY_PLAN["fu1"] and can_send_followup(lead, 2):
+        counts["fu2"] += 1
+    elif counts["fu1"] < TODAY_PLAN["fu1"] and can_send_followup(lead, 2):
         queue.append(("fu1", lead))
-for lead in leads:
-    if len([q for q in queue if q[0] == "initial"]) < TODAY_PLAN["initial"] and can_send_initial(lead):
+        counts["fu1"] += 1
+    elif counts["initial"] < TODAY_PLAN["initial"] and can_send_initial(lead):
         queue.append(("initial", lead))
+        counts["initial"] += 1
+
+    if all(counts[k] >= TODAY_PLAN[k] for k in ["initial", "fu1", "fu2"]):
+        break
 
 # === Send Emails ===
 print(f"[Process] {len(queue)} messages to send...")
 for kind, lead in queue:
     try:
-        if not lead.get("email"):
-            print(f"[Skip] Missing email address, skipping.")
-            continue
-
         if kind == "initial":
-            if not lead.get("email 1"):
-                print(f"[Skip] Missing initial content for {lead['email']}")
-                continue
             subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 1"])
             lead["message id"] = msgid
             lead["initial date"] = TODAY.isoformat()
 
         elif kind == "fu1":
-            if not lead.get("email 2") or not lead.get("message id"):
-                print(f"[Skip] Missing FU1 content or reference for {lead['email']}")
-                continue
             subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
 
         elif kind == "fu2":
-            if not lead.get("email 3") or not lead.get("message id 2"):
-                print(f"[Skip] Missing FU2 content or reference for {lead['email']}")
-                continue
             subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
@@ -206,7 +209,7 @@ for kind, lead in queue:
     except Exception as e:
         print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
 
-# === Save Leads ===
+# === Save ===
 print("[Save] Writing updated leads file...")
 data["records"] = leads
 data["total"] = len(leads)
