@@ -6,12 +6,22 @@ import fsExtra from 'fs-extra';
 
 puppeteer.use(StealthPlugin());
 
-const BASE_URL = 'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=Category&find_loc=Austin%2C+TX&find_country=USA';
-const scrapedFilePath = path.join('leads', 'scraped_leads.json');
+const SEARCH_URLS = [
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=Category&find_loc=Austin%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Bloomington%2C+IN&find_country=USA',
+  'https://www.bbb.org/search?find_text=business+tax+consultant&find_entity=60858-000&find_type=Category&find_loc=Santa+Ana%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Chicago%2C+IL&find_country=USA',
+  'https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Santa+Barbara%2C+CA&find_country=USA',
+  'https://www.bbb.org/us/la/new-orleans/category/tax-consultant',
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Minneapolis%2C+MN&find_country=USA',
+  'https://www.bbb.org/us/mn/minneapolis/category/tax-consultant',
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Tinton+Falls%2C+NJ&find_country=USA',
+];
 
+const scrapedFilePath = path.join('leads', 'scraped_leads.json');
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
 const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
-
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -134,16 +144,13 @@ async function updateLeadsJson(newData) {
       const raw = await fs.readFile(scrapedFilePath, 'utf-8');
       existing = JSON.parse(raw);
       console.log(`📊 Loaded ${existing.records.length} existing records`);
-    } catch (err) {
+    } catch {
       console.warn('⚠️ Failed to parse existing JSON. Starting fresh.');
     }
   }
 
   const dedupeKey = `${newData['business name']}|${newData['website url']}`;
-  const map = new Map(
-    existing.records.map(r => [`${r['business name']}|${r['website url']}`, r])
-  );
-
+  const map = new Map(existing.records.map(r => [`${r['business name']}|${r['website url']}`, r]));
   map.set(dedupeKey, newData);
   const final = Array.from(map.values());
 
@@ -166,29 +173,35 @@ async function updateLeadsJson(newData) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  console.log('🔍 Visiting search page...');
-  await page.goto(BASE_URL, { waitUntil: 'networkidle2', timeout: 0 });
-  await page.waitForSelector('a[href*="/profile/"]');
-  await humanScroll(page);
+  let scraped = 0;
 
-  const profileLinks = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('a[href*="/profile/"]'))
-      .map(a => a.href)
-      .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
-  );
+  for (const url of SEARCH_URLS) {
+    if (scraped >= 12) break;
 
-  console.log(`🔗 Found ${profileLinks.length} profile links.`);
+    console.log(`🔍 Visiting: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    await page.waitForSelector('a[href*="/profile/"]');
+    await humanScroll(page);
 
-  for (let i = 0; i < 3 && i < profileLinks.length; i++) {
-    const link = profileLinks[i];
-    const data = await scrapeProfile(page, link);
-    if (data) await updateLeadsJson(data);
+    const profileLinks = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+        .map(a => a.href)
+        .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
+    );
 
-    const wait = randomBetween(15000, 30000);
-    console.log(`⏳ Waiting ${Math.floor(wait / 1000)}s...`);
-    await delay(wait);
+    for (const link of profileLinks) {
+      if (scraped >= 12) break;
+      const data = await scrapeProfile(page, link);
+      if (data) {
+        await updateLeadsJson(data);
+        scraped++;
+      }
+      const wait = randomBetween(15000, 30000);
+      console.log(`⏳ Waiting ${Math.floor(wait / 1000)}s...`);
+      await delay(wait);
+    }
   }
 
   await browser.close();
-  console.log('✅ Scraping complete.');
+  console.log(`✅ Scraping complete. Total new profiles scraped: ${scraped}`);
 })();
