@@ -124,7 +124,6 @@ async function scrapeProfile(page, url) {
       'reply': ''
     };
 
-    console.log(`✅ Scraped ${split['first name']} ${split['middle name']} ${split['last name']} of ${data.businessName}`);
     return record;
 
   } catch (err) {
@@ -133,34 +132,20 @@ async function scrapeProfile(page, url) {
   }
 }
 
-async function updateLeadsJson(newData) {
-  console.log('📝 Updating scraped_leads.json...');
-  await fsExtra.ensureDir(path.dirname(scrapedFilePath));
-
-  let existing = { scraped_at: '', total: 0, records: [] };
-
-  if (await fsExtra.pathExists(scrapedFilePath)) {
-    try {
-      const raw = await fs.readFile(scrapedFilePath, 'utf-8');
-      existing = JSON.parse(raw);
-      console.log(`📊 Loaded ${existing.records.length} existing records`);
-    } catch {
-      console.warn('⚠️ Failed to parse existing JSON. Starting fresh.');
-    }
-  }
-
+async function updateLeadsJson(newData, existingMap) {
   const dedupeKey = `${newData['business name']}|${newData['website url']}`;
-  const map = new Map(existing.records.map(r => [`${r['business name']}|${r['website url']}`, r]));
-  map.set(dedupeKey, newData);
-  const final = Array.from(map.values());
+  if (existingMap.has(dedupeKey)) return false;
 
+  existingMap.set(dedupeKey, newData);
+
+  const records = Array.from(existingMap.values());
   await fs.writeFile(scrapedFilePath, JSON.stringify({
     scraped_at: new Date().toISOString(),
-    total: final.length,
-    records: final
+    total: records.length,
+    records
   }, null, 2));
 
-  console.log(`✅ Updated ${scrapedFilePath} with ${final.length} total records`);
+  return true;
 }
 
 (async () => {
@@ -173,15 +158,29 @@ async function updateLeadsJson(newData) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
+  await fsExtra.ensureDir(path.dirname(scrapedFilePath));
+
+  let existingMap = new Map();
+
+  if (await fsExtra.pathExists(scrapedFilePath)) {
+    try {
+      const raw = await fs.readFile(scrapedFilePath, 'utf-8');
+      const existing = JSON.parse(raw);
+      for (const rec of existing.records) {
+        const key = `${rec['business name']}|${rec['website url']}`;
+        existingMap.set(key, rec);
+      }
+      console.log(`📂 Loaded ${existingMap.size} previously scraped records.`);
+    } catch {
+      console.warn('⚠️ Failed to parse existing JSON. Starting fresh.');
+    }
+  }
+
   for (const baseUrl of SEARCH_URLS) {
-    let scrapedInLink = 0;
+    let newScraped = 0;
     let currentUrl = baseUrl;
-    let pageCount = 0;
 
-    console.log(`🔍 Visiting: ${baseUrl}`);
-
-    while (scrapedInLink < 11 && currentUrl) {
-      pageCount++;
+    while (newScraped < 11 && currentUrl) {
       await page.goto(currentUrl, { waitUntil: 'networkidle2', timeout: 0 });
       await page.waitForSelector('a[href*="/profile/"]', { timeout: 10000 });
       await humanScroll(page);
@@ -193,12 +192,17 @@ async function updateLeadsJson(newData) {
       );
 
       for (const link of profileLinks) {
-        if (scrapedInLink >= 11) break;
+        if (newScraped >= 11) break;
 
         const data = await scrapeProfile(page, link);
         if (data) {
-          await updateLeadsJson(data);
-          scrapedInLink++;
+          const added = await updateLeadsJson(data, existingMap);
+          if (added) {
+            newScraped++;
+            console.log(`✅ Added: ${data['business name']}`);
+          } else {
+            console.log(`⏭️ Skipped duplicate: ${data['business name']}`);
+          }
         }
 
         const wait = randomBetween(15000, 30000);
@@ -206,19 +210,18 @@ async function updateLeadsJson(newData) {
         await delay(wait);
       }
 
-      // Try to find the "Next" pagination link
       const nextPageUrl = await page.evaluate(() => {
         const nextBtn = document.querySelector('a[rel="next"], a.pagination__next');
         return nextBtn ? nextBtn.href : null;
       });
 
-      if (!nextPageUrl || scrapedInLink >= 11) break;
+      if (!nextPageUrl || newScraped >= 11) break;
       currentUrl = nextPageUrl;
     }
 
-    console.log(`📍 Finished ${baseUrl} → Scraped ${scrapedInLink} valid profiles`);
+    console.log(`📌 Done with ${baseUrl} — Added ${newScraped} new profiles`);
   }
 
   await browser.close();
-  console.log(`✅ Scraping complete.`);
+  console.log(`✅ All scraping complete.`);
 })();
