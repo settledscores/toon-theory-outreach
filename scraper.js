@@ -173,35 +173,52 @@ async function updateLeadsJson(newData) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  let scraped = 0;
+  for (const baseUrl of SEARCH_URLS) {
+    let scrapedInLink = 0;
+    let currentUrl = baseUrl;
+    let pageCount = 0;
 
-  for (const url of SEARCH_URLS) {
-    if (scraped >= 12) break;
+    console.log(`🔍 Visiting: ${baseUrl}`);
 
-    console.log(`🔍 Visiting: ${url}`);
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
-    await page.waitForSelector('a[href*="/profile/"]');
-    await humanScroll(page);
+    while (scrapedInLink < 11 && currentUrl) {
+      pageCount++;
+      await page.goto(currentUrl, { waitUntil: 'networkidle2', timeout: 0 });
+      await page.waitForSelector('a[href*="/profile/"]', { timeout: 10000 });
+      await humanScroll(page);
 
-    const profileLinks = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('a[href*="/profile/"]'))
-        .map(a => a.href)
-        .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
-    );
+      const profileLinks = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+          .map(a => a.href)
+          .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
+      );
 
-    for (const link of profileLinks) {
-      if (scraped >= 12) break;
-      const data = await scrapeProfile(page, link);
-      if (data) {
-        await updateLeadsJson(data);
-        scraped++;
+      for (const link of profileLinks) {
+        if (scrapedInLink >= 11) break;
+
+        const data = await scrapeProfile(page, link);
+        if (data) {
+          await updateLeadsJson(data);
+          scrapedInLink++;
+        }
+
+        const wait = randomBetween(15000, 30000);
+        console.log(`⏳ Waiting ${Math.floor(wait / 1000)}s...`);
+        await delay(wait);
       }
-      const wait = randomBetween(15000, 30000);
-      console.log(`⏳ Waiting ${Math.floor(wait / 1000)}s...`);
-      await delay(wait);
+
+      // Try to find the "Next" pagination link
+      const nextPageUrl = await page.evaluate(() => {
+        const nextBtn = document.querySelector('a[rel="next"], a.pagination__next');
+        return nextBtn ? nextBtn.href : null;
+      });
+
+      if (!nextPageUrl || scrapedInLink >= 11) break;
+      currentUrl = nextPageUrl;
     }
+
+    console.log(`📍 Finished ${baseUrl} → Scraped ${scrapedInLink} valid profiles`);
   }
 
   await browser.close();
-  console.log(`✅ Scraping complete. Total new profiles scraped: ${scraped}`);
+  console.log(`✅ Scraping complete.`);
 })();
