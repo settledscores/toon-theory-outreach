@@ -163,11 +163,19 @@ async function appendIfNew(record) {
 
   for (const baseUrl of SEARCH_URLS) {
     let count = 0;
-    let currentUrl = baseUrl;
+    let pageNum = 1;
 
-    while (count < 25 && currentUrl) {
-      await page.goto(currentUrl, { waitUntil: 'networkidle2', timeout: 0 });
-      await page.waitForSelector('a[href*="/profile/"]', { timeout: 10000 });
+    while (count < 25) {
+      const paginatedUrl = `${baseUrl}&page=${pageNum}`;
+      console.log(`🌐 Visiting: ${paginatedUrl}`);
+      await page.goto(paginatedUrl, { waitUntil: 'networkidle2', timeout: 0 });
+
+      const linksExist = await page.$('a[href*="/profile/"]');
+      if (!linksExist) {
+        console.log('⚠️ No profiles found on this page, stopping pagination.');
+        break;
+      }
+
       await humanScroll(page);
 
       const profileLinks = await page.evaluate(() =>
@@ -175,6 +183,11 @@ async function appendIfNew(record) {
           .map(a => a.href)
           .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
       );
+
+      if (profileLinks.length === 0) {
+        console.log('⚠️ No profile links on this page.');
+        break;
+      }
 
       for (const link of profileLinks) {
         if (count >= 25) break;
@@ -193,13 +206,7 @@ async function appendIfNew(record) {
         await delay(pause);
       }
 
-      const nextPage = await page.evaluate(() => {
-        const next = document.querySelector('a[rel="next"], a.pagination__next');
-        return next ? next.href : null;
-      });
-
-      if (!nextPage || count >= 25) break;
-      currentUrl = nextPage;
+      pageNum++;
     }
 
     console.log(`📌 Finished ${baseUrl} — ${count} new`);
