@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -24,15 +24,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install groq python-dotenv
+          pip install -U google-generativeai python-dotenv
 
       - name: Run extract_services.py
         run: python extract_services.py
 
-      - name: Commit updated scraped_leads.ndjson
+      - name: Commit updated leads
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
-          git commit -m "🔍 Auto-update services from Groq [bot]" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git commit -m "🔍 Auto-update services from Gemini [bot]" || echo "No changes"
+          git push
