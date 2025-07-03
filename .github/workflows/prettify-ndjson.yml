@@ -1,0 +1,46 @@
+name: Prettify NDJSON
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - leads/scraped_leads.ndjson
+
+permissions:
+  contents: write
+
+jobs:
+  prettify-ndjson:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --quiet
+
+      - name: Prettify scraped_leads.ndjson
+        run: |
+          python <<EOF
+          import json
+          input_path = "leads/scraped_leads.ndjson"
+          with open(input_path, "r", encoding="utf-8") as f:
+              lines = [json.loads(line) for line in f if line.strip()]
+          with open(input_path, "w", encoding="utf-8") as f:
+              for obj in lines:
+                  f.write(json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
+          EOF
+
+      - name: Commit prettified NDJSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git commit -m "🧹 Prettify scraped_leads.ndjson [bot]" || echo "No changes to commit"
+          git push
