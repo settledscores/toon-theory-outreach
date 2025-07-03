@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LEADS_FILE = "leads/scraped_leads.json"
+LEADS_FILE = "leads/scraped_leads.ndjson"
 
-# --- Rotator Class ----------------------------------------------------------
+# --- VariantRotator --------------------------------------------------------
 
 class VariantRotator:
     def __init__(self, items):
@@ -24,10 +24,11 @@ class VariantRotator:
             self._reshuffle()
         return self.pool.pop()
 
-# --- Salutations & Signatures (expanded by +5 each) ------------------------
+# --- Salutations & Signatures ----------------------------------------------
 
 salutations = [
-    "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there", "Good day", "Greetings", "Howdy",  # +5
+    "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there",
+    "Good day", "Greetings", "Howdy"
 ]
 
 signatures = [
@@ -36,13 +37,13 @@ signatures = [
     "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Best wishes,\nTrent — Founder, Toon Theory\nwww.toontheory.com",  # +5
+    "Best wishes,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "Kind regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
     "With appreciation,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Respectfully,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
+    "Respectfully,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
 ]
 
-# --- Email 1 Paragraph Blocks ----------------------------------------------
+# --- Paragraph Templates for Email 1 ---------------------------------------
 
 paragraph1_templates = [
     "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
@@ -50,38 +51,38 @@ paragraph1_templates = [
     "Hey {name},\n\nI came across {company} recently and thought I’d drop you a quick note.",
     "Hi {name},\n\nI stumbled on {company} the other day and wanted to get in touch.",
     "Hi {name},\n\nI stumbled across {company} and thought I’d reach out.",
-    "Hi {name},\n\nHope you don't mind me reaching out; I came across {company} recently and thought there could be an opportunity to collaborate."
+    "Hi {name},\n\nI came across {company} recently and thought there could be an opportunity to collaborate."
 ]
 
 paragraph2_variants = [
-    "I'm Trent. I run Toon Theory, a whiteboard animation studio based in the UK. We create strategic, story-driven explainer videos that simplify complex ideas and boost engagement, especially for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, founder of Toon Theory: a UK-based animation studio that creates story-driven whiteboard animations to help businesses like yours explain ideas with clarity and speed, especially for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, I run Toon Theory, an animation studio based in the UK. We focus on helping businesses cut through the noise using clean, hand-drawn storytelling, especially for B2B services, thought leadership, and data-driven education."
+    "I'm Trent, and I run Toon Theory; an animation studio based in the UK. We make whiteboard videos that break down complex ideas with simple, hand-drawn visuals. It’s perfect for B2B, thought leadership, and data-heavy education.",
+    "I'm Trent. I run Toon Theory, a whiteboard animation studio in the UK. We make simple, story-driven explainer videos that help people understand dense ideas. They're great for B2B services, thought leadership, and data-rich education.",
+    "I'm Trent, and I run Toon Theory; an animation studio based in the UK. We use hand-drawn animations to help businesses get their message across. It's a simple way to cut through noise, especially in B2B, thought leadership, and data-heavy fields."
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there’s real potential to add a layer of visual storytelling that helps even more people 'get it' faster.\n\nOur animations are fully done-for-you: illustrations, scripting, voiceover, storyboard; and are can be used for:\n",
-    "I see a clear opportunity for {company} to use visual storytelling as a way to explain things faster and more memorably.\n\nWe handle everything end-to-end; illustration, scripting, voice, and storyboarding; and they can be used for:\n",
-    "Visual storytelling could be a strong lever for {company}, especially when getting the message across is vital.\n\nWe take care of the entire process; illustrations, scripting and voiceover and they may be used for:\n",
-    "{company} has a solid foundation, and a short animated piece could be a powerful way to bring your message to life quickly.\n\nWe handle the full creative lift; script, illustrations, voice; and they may be used for:\n"
+    "For {company}, I see a great opportunity to use visual storytelling to help more people “get it” faster. Our animations are fully done-for-you: script, illustrations, voice, and storyboard; and they’re great for:\n",
+    "I think {company} could really benefit from using visual storytelling to explain things faster and make them stick. We take care of everything: scripting, illustration, voiceover and storyboarding; so you can use the final video for:\n",
+    "{company} has a strong foundation, and a short animated video could be a powerful way to bring your message to life. We’ll take care of the full creative lift: script, voice, and illustrations, so you can use it for:\n"
 ]
 
 paragraph4b_variants = [
     "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
     "These animations don’t just explain, they convert; Many of our past clients see a big lift in engagement, trust, and sales.",
-    "Clients often tell us these pieces help cut through the mess, increase clarity, and lead to more meaningful conversions.",
-    "Whether it’s more signups, better retention, or faster understanding, these animations know how to hit hard and move the needle where it counts."
+    "Clients often tell us these pieces help reduce bloat, increase clarity, and lead to more meaningful conversions.",
+    "Whether it’s more signups, better retention, or faster understanding, these animations know how to hit hard and they move the needle where it counts."
 ]
 
 paragraph5_variants = [
-    "If you'd be open to it, I’d love to share a brief demo tailored to one of your core offerings. This could be a sample script or a ten second sketch. No strings attached; just curious to explore how it might sound with {company}'s voice behind it.",
-    "If you’re open to it, I’d love to share a quick sketch or sample script tailored to one of your key offerings. No pressure at all; just interested in how this could come to life with {company}'s voice behind it.",
+    "If you’re open to it, I’d love to share a quick demo built around something {company} offers. Just a sketch or script; no pressure, no pitch; just curious to see what it might sound like in your voice.",
+    "I could pull together a quick sketch or sample script based on one of {company}’s core offerings. Just a lightweight preview, no expectations; just to show what’s possible.",
     "I'd be happy to draft a ten-second demo around something core to your brand. Totally low-lift, just keen to explore what this could look like with {company}'s voice behind it.",
     "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? No expectations; just interested in showing you what’s possible.",
     "If you're open to a quick preview, I could whip up a ten-second mock or short script tailored to something core at {company}; No pressure, no cost, purely exploratory.",
     "I'd be more than happy to whip up a quick snippet; a short script or sketch; that speaks to what {company} does best. No commitments at all, just a chance to show you what's possible.",
-    "If you're curious, I can pull together a short sketch or draft a script focused on something {company} offers. Just to give you a sense of what it might sound like. No strings, no cost",
-    "I’d love to put together a quick concept; maybe a script or a short teaser; around one of your key offerings. No strings, just a glimpse of what's possible with {company}'s voice behind it.",
+    "I’d be glad to pull together a short demo; maybe a script or quick sketch; based on what {company} does best. No pressure, just a chance to preview what it might look and sound like.",
+    "If you're curious, I could draft a ten-second teaser or sketch based on what {company} offers. Nothing formal. Just something you can react to, no strings or expectations.",
+    "I’d love to put together a quick concept; maybe a script or a short teaser; around one of your key offerings. No strings, just a preview of what's possible with {company}'s voice behind it.",
     "How about a quick sample built around {company}'s strengths? Ten seconds or so, just a feeler to see what resonates.",
     "Could I sketch something out for you? A short demo or script idea based on what {company} offers. No pitch; just something for you to react to."
 ]
@@ -93,12 +94,12 @@ paragraph6_variants = [
 ]
 
 paragraph7_cta_variants = [
-    "Feel free to reply if you’d like to explore what this could look like. There’s also a link to our site in my signature if you’d like to take a peek at some of our previous work.",
-    "You’ll find a link to our site in the signature if you’d like to check out our past work. I’d love to hear your thoughts if anything stands out.",
+    "Feel free to reply if you’d like to explore this a bit more. There’s also a link to our site in my signature if you’d like to take a peek at some past work.",
+    "You’ll find a link to our site in the signature if you’d like to see a few examples. And if anything clicks, I’d love to hear your thoughts.",
     "If it feels like a fit, you can reply any time. There’s also a link in my signature in case you want to browse a few previous projects.",
     "If you're open to chatting more, just hit reply. And if you're curious, there’s a site link in the signature with a few past examples.",
-    "If you're curious about what this might look like for you, just reach out to me. You’ll also find some previous work via the link in the signature too.",
-    "I'd be happy to dive deeper if you're interested. You can reply anytime, and there’s a portfolio link in my signature if you’d like to have a look.",
+    "If you’re curious about what this might look like, just reach out. There’s a link in my signature with a few examples you can check out, too.",
+    "I’d be happy to dig in deeper if you’re interested. Just reply anytime, and feel free to check out some of our work through the link in my signature.",
     "Let me know if you'd like to take this further. You can check out some of our work through the link in my signature as well.",
     "Always open to a quick chat if this feels worth exploring. In the meantime, you can view a few past projects via the link in my signature.",
     "Reply anytime if you'd like to talk more about this. There’s also a link below with some samples of what we’ve done before.",
@@ -114,7 +115,7 @@ Just looping back in case this got lost in your inbox. I mentioned how whiteboar
 
 These videos are especially helpful when you’re trying to explain something technical, strategic, or new in a way that sticks.
 
-If it helps, I’d be happy to put together a short script or visual sample to show what this could look like.
+If it helps, I’d be happy to put together a short script or quick teaser to show what this could look like.
 
 Feel free to reply if you’d like to explore it. You’ll find examples of our work in my signature.
 
@@ -136,7 +137,7 @@ There’s a link to our past projects in my signature if you’d like to browse.
 
 Just circling back. I realize it can be tricky to see how something like whiteboard animation fits into a business like {company}, which is why I’d love to show rather than tell.
 
-If you’d be open to a 10-second visual sample or a short script tailored to one of your core offerings, I’d be glad to share.
+If you’d be open to a 10-second snippet or a short script tailored to one of your core offerings, I’d be glad to share.
 
 It’s no obligation, just a way to explore what this could look like in your context.
 
@@ -158,7 +159,7 @@ Reply anytime;  there’s also a link to our previous work below.
 
     """{salutation} {name},
 
-I didn’t want to leave things hanging without checking in. I mentioned how whiteboard animation can be a strong complement to what {company} is already doing, especially when you’re communicating ideas that needs a touch of personalisation.
+I didn’t want to leave things hanging without checking in. I mentioned how whiteboard animation can be a strong complement to what {company} is already doing, especially when you’re communicating ideas that needs a touch of personalization.
 
 If it’s helpful, I can pull together a short visual sketch or sample script based on one of your key offerings.
 
@@ -344,7 +345,7 @@ You will find past examples linked in my signature. Feel free to reply if you wo
 
     """{salutation} {name},
 
-I am still happy to share a quick sketch or visual sample if it is helpful. Many of our clients use animation to break down services, explain strategy, or walk users through dashboards and pages.
+I am still happy to share a quick sketch or demo if it is helpful. Many of our clients use animation to break down services, explain strategy, or walk users through dashboards and pages.
 
 If {company} has anything you are trying to simplify, I would love to help you explore it. Just reply if you want me to send something over.
 
@@ -498,7 +499,7 @@ Just following up again because I think animation could add real value to {compa
 
 It’s an engaging way to capture attention and explain what makes your business stand out.
 
-If it sounds useful, I’d be glad to prepare a quick visual sample or script to show you what’s possible.
+If it sounds useful, I’d be glad to prepare a quick teaser or script to show you what’s possible.
 
 You can reply anytime, and a link to our portfolio is in my signature.
 
@@ -541,7 +542,10 @@ Please don’t hesitate to reply. Our past projects are linked below.
 {signature}""",
 ]
 
-# --- Rotators ---------------------------------------------------------------
+from templates_email2 import email2_templates
+from templates_email3 import email3_templates
+
+# --- Rotators --------------------------------------------------------------
 
 rotators = {
     "p1": VariantRotator(paragraph1_templates),
@@ -556,11 +560,11 @@ rotators = {
     "e3": VariantRotator(email3_templates),
 }
 
-# --- Utility Functions -----------------------------------------------------
+# --- Utilities -------------------------------------------------------------
 
 def parse_use_cases(raw):
     items = [item.strip() for item in str(raw or "").split("|") if item.strip()]
-    return random.sample(items, min(3, len(items)))  # pick exactly three random use cases
+    return random.sample(items, min(3, len(items)))
 
 def build_email1(lead):
     name = lead.get("first name", "there")
@@ -591,24 +595,21 @@ def build_email3(lead):
     signature = rotators["sig"].next()
     return rotators["e3"].next().format(salutation=salutation, name=name, company=company, signature=signature)
 
-# --- Load & Save ------------------------------------------------------------
+# --- NDJSON Helpers --------------------------------------------------------
 
-def load_leads():
-    with open(LEADS_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    leads = data.get("records", [])
-    if not isinstance(leads, list) or not all(isinstance(x, dict) for x in leads):
-        raise ValueError("❌ 'records' must be a list of dicts inside scraped_leads.json.")
-    return data, leads
+def load_ndjson(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
 
-def save_leads(data):
-    with open(LEADS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def save_ndjson(filepath, records):
+    with open(filepath, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 # --- Main ------------------------------------------------------------------
 
 def main():
-    data, leads = load_leads()
+    leads = load_ndjson(LEADS_FILE)
     updated1 = updated2 = updated3 = 0
 
     for lead in leads:
@@ -622,8 +623,7 @@ def main():
             lead["email 3"] = build_email3(lead)
             updated3 += 1
 
-    data["records"] = leads
-    save_leads(data)
+    save_ndjson(LEADS_FILE, leads)
     print(f"✅ Done: {updated1} email 1s, {updated2} email 2s, {updated3} email 3s generated.")
 
 if __name__ == "__main__":
