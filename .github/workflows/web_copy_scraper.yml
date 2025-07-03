@@ -3,6 +3,10 @@ name: Run Web Copy Scraper
 on:
   workflow_dispatch:
 
+concurrency:
+  group: scrape-web-copy
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -31,4 +35,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
           git commit -m "📄 Auto-update web copy in scraped_leads.ndjson [bot]" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git pull --rebase origin main || true
+          git push
+
+      - name: Emergency commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency save after web scrape crash [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
