@@ -7,11 +7,9 @@ from groq import Groq
 
 load_dotenv()
 
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 INPUT_PATH = "leads/scraped_leads.ndjson"
 MAX_SERVICES_LENGTH = 1000
-
-# Groq setup
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def postprocess_output(text):
     lines = text.splitlines()
@@ -50,39 +48,42 @@ Services:
 
 def main():
     print("🚀 Generating use cases from scraped_leads.ndjson...")
-    try:
-        with open(INPUT_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        print(f"❌ Failed to load JSON: {e}")
-        return
 
     updated = 0
-    for record in data.get("records", []):
-        services = record.get("services", "").strip()
-        existing = record.get("use cases", "").strip()
+    records = []
 
-        if not services or existing:
-            continue
+    with open(INPUT_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                record = json.loads(line)
+            except:
+                continue
 
-        print(f"🔍 Processing: {record.get('business name', '[no name]')}")
-        use_cases = generate_use_cases(services[:MAX_SERVICES_LENGTH])
+            services = record.get("services", "").strip()
+            existing = record.get("use cases", "").strip()
 
-        if use_cases:
-            record["use cases"] = use_cases
-            updated += 1
-            print("✅ Use cases added")
-        else:
-            print("⚠️ Skipped due to generation issue")
+            if not services or existing:
+                records.append(record)
+                continue
 
-        time.sleep(6)  # Throttle to 10 req/min
+            print(f"🔍 Processing: {record.get('business name', '[no name]')}")
+            use_cases = generate_use_cases(services[:MAX_SERVICES_LENGTH])
 
-    try:
-        with open(INPUT_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"\n🎯 Done. {updated} records updated in scraped_leads.ndjson.")
-    except Exception as e:
-        print(f"❌ Failed to save updates: {e}")
+            if use_cases:
+                record["use cases"] = use_cases
+                updated += 1
+                print("✅ Use cases added")
+            else:
+                print("⚠️ Skipped due to generation issue")
+
+            records.append(record)
+            time.sleep(6)
+
+    with open(INPUT_PATH, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     main()
