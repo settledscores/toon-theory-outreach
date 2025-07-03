@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: send-emails
+  group: lead-pipeline
   cancel-in-progress: false
 
 permissions:
