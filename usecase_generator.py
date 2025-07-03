@@ -70,7 +70,7 @@ def main():
             prompt = generate_prompt(services)
 
             try:
-                response = model.generate_content(prompt)
+                response = model.generate_content([prompt])
                 raw_output = response.text.strip()
                 cleaned = postprocess_output(raw_output)
                 record["use cases"] = cleaned
