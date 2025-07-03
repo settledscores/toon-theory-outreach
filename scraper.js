@@ -1,8 +1,10 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'fs';
+import fsPromises from 'fs/promises';
 import fsExtra from 'fs-extra';
+import readline from 'readline';
+import path from 'path';
 
 puppeteer.use(StealthPlugin());
 
@@ -19,27 +21,32 @@ const SEARCH_URLS = [
   'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Tinton+Falls%2C+NJ&find_country=USA',
 ];
 
-const scrapedFilePath = path.join('leads', 'scraped_leads.json');
-const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
-const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const leadsPath = path.join('leads', 'scraped_leads.ndjson');
+const knownUrls = new Set();
+const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-async function humanScroll(page) {
-  const steps = randomBetween(5, 8);
-  for (let i = 0; i < steps; i++) {
-    await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(300, 800));
+const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
+const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
+
+async function loadKnownUrls() {
+  if (!fs.existsSync(leadsPath)) return;
+  const rl = readline.createInterface({
+    input: fs.createReadStream(leadsPath),
+    crlfDelay: Infinity
+  });
+  for await (const line of rl) {
+    try {
+      const record = JSON.parse(line);
+      if (record['website url']) knownUrls.add(record['website url']);
+    } catch (_) {}
   }
 }
 
 function cleanBusinessName(name) {
   if (!name) return '';
   let cleaned = name;
-  for (const suffix of businessSuffixes) {
-    cleaned = cleaned.replace(suffix, '').trim();
-  }
+  for (const suffix of businessSuffixes) cleaned = cleaned.replace(suffix, '').trim();
   return cleaned.replace(/[.,]$/, '').trim();
 }
 
@@ -50,16 +57,19 @@ function cleanAndSplitName(raw, businessName = '') {
   let clean = raw.replace(honorificRegex, '').replace(/[,/\\]+$/, '').trim();
   let namePart = clean;
   let titlePart = '';
+
   if (clean.includes(',')) {
     const [name, title] = clean.split(',', 2);
     namePart = name.trim();
     titlePart = title.trim();
   }
+
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
   let tokens = namePart.split(/\s+/).filter(Boolean);
   if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
     tokens.pop();
   }
+
   if (tokens.length < 2 || tokens.length > 4) return null;
   return {
     'first name': tokens[0],
@@ -69,10 +79,19 @@ function cleanAndSplitName(raw, businessName = '') {
   };
 }
 
+async function humanScroll(page) {
+  const steps = randomBetween(5, 8);
+  for (let i = 0; i < steps; i++) {
+    await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
+    await delay(randomBetween(300, 800));
+  }
+}
+
 async function scrapeProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
-    console.log(`🧭 Scraping profile: ${url}`);
+    console.log(`🧭 Scraping: ${url}`);
     await delay(randomBetween(1500, 3000));
     await humanScroll(page);
 
@@ -95,11 +114,11 @@ async function scrapeProfile(page, url) {
     const split = cleanAndSplitName(data.principalContact, data.businessName);
 
     if (!split || !data.website || !data.businessName) {
-      console.log('⚠️ Invalid or incomplete profile. Skipping...');
+      console.log('⚠️ Incomplete profile. Skipping.');
       return null;
     }
 
-    const record = {
+    return {
       'business name': data.businessName,
       'website url': data.website,
       'location': data.location,
@@ -123,32 +142,25 @@ async function scrapeProfile(page, url) {
       'follow-up 2 date': '',
       'reply': ''
     };
-
-    return record;
-
   } catch (err) {
-    console.error(`❌ Error scraping ${url}:`, err.message);
+    console.error(`❌ Error: ${err.message}`);
     return null;
   }
 }
 
-async function updateLeadsJson(newData, existingMap) {
-  const dedupeKey = `${newData['business name']}|${newData['website url']}`;
-  if (existingMap.has(dedupeKey)) return false;
-
-  existingMap.set(dedupeKey, newData);
-
-  const records = Array.from(existingMap.values());
-  await fs.writeFile(scrapedFilePath, JSON.stringify({
-    scraped_at: new Date().toISOString(),
-    total: records.length,
-    records
-  }, null, 2));
-
+async function appendIfNew(record) {
+  const key = record['website url'];
+  if (!key || knownUrls.has(key)) return false;
+  const pretty = JSON.stringify(record, null, 2);
+  await fsPromises.appendFile(leadsPath, pretty + '\n\n');
+  knownUrls.add(key);
   return true;
 }
 
 (async () => {
+  await fsExtra.ensureDir(path.dirname(leadsPath));
+  await loadKnownUrls();
+
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
@@ -158,29 +170,11 @@ async function updateLeadsJson(newData, existingMap) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  await fsExtra.ensureDir(path.dirname(scrapedFilePath));
-
-  let existingMap = new Map();
-
-  if (await fsExtra.pathExists(scrapedFilePath)) {
-    try {
-      const raw = await fs.readFile(scrapedFilePath, 'utf-8');
-      const existing = JSON.parse(raw);
-      for (const rec of existing.records) {
-        const key = `${rec['business name']}|${rec['website url']}`;
-        existingMap.set(key, rec);
-      }
-      console.log(`📂 Loaded ${existingMap.size} previously scraped records.`);
-    } catch {
-      console.warn('⚠️ Failed to parse existing JSON. Starting fresh.');
-    }
-  }
-
   for (const baseUrl of SEARCH_URLS) {
-    let newScraped = 0;
+    let count = 0;
     let currentUrl = baseUrl;
 
-    while (newScraped < 11 && currentUrl) {
+    while (count < 25 && currentUrl) {
       await page.goto(currentUrl, { waitUntil: 'networkidle2', timeout: 0 });
       await page.waitForSelector('a[href*="/profile/"]', { timeout: 10000 });
       await humanScroll(page);
@@ -192,36 +186,34 @@ async function updateLeadsJson(newData, existingMap) {
       );
 
       for (const link of profileLinks) {
-        if (newScraped >= 11) break;
-
-        const data = await scrapeProfile(page, link);
-        if (data) {
-          const added = await updateLeadsJson(data, existingMap);
+        if (count >= 25) break;
+        const rec = await scrapeProfile(page, link);
+        if (rec) {
+          const added = await appendIfNew(rec);
           if (added) {
-            newScraped++;
-            console.log(`✅ Added: ${data['business name']}`);
+            count++;
+            console.log(`✅ Saved: ${rec['business name']}`);
           } else {
-            console.log(`⏭️ Skipped duplicate: ${data['business name']}`);
+            console.log(`⏭️ Duplicate: ${rec['business name']}`);
           }
         }
-
-        const wait = randomBetween(15000, 30000);
-        console.log(`⏳ Waiting ${Math.floor(wait / 1000)}s...`);
-        await delay(wait);
+        const pause = randomBetween(12000, 25000);
+        console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
+        await delay(pause);
       }
 
-      const nextPageUrl = await page.evaluate(() => {
-        const nextBtn = document.querySelector('a[rel="next"], a.pagination__next');
-        return nextBtn ? nextBtn.href : null;
+      const nextPage = await page.evaluate(() => {
+        const next = document.querySelector('a[rel="next"], a.pagination__next');
+        return next ? next.href : null;
       });
 
-      if (!nextPageUrl || newScraped >= 11) break;
-      currentUrl = nextPageUrl;
+      if (!nextPage || count >= 25) break;
+      currentUrl = nextPage;
     }
 
-    console.log(`📌 Done with ${baseUrl} — Added ${newScraped} new profiles`);
+    console.log(`📌 Finished ${baseUrl} — ${count} new`);
   }
 
   await browser.close();
-  console.log(`✅ All scraping complete.`);
+  console.log(`✅ Scraping done.`);
 })();
