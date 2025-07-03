@@ -6,10 +6,9 @@ from groq import Groq
 
 load_dotenv()
 
-# Groq setup
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-INPUT_PATH = "leads/scraped_leads.json"
+INPUT_PATH = "leads/scraped_leads.ndjson"
 MAX_INPUT_LENGTH = 14000
 
 def truncate_text(text, limit=MAX_INPUT_LENGTH):
@@ -38,52 +37,57 @@ def postprocess_output(text):
     return " | ".join(clean_lines)
 
 def main():
-    print("🚀 Extracting services from scraped_leads.json...")
-
-    try:
-        with open(INPUT_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        print(f"❌ Failed to load scraped_leads.json: {e}")
+    print("🚀 Extracting services from scraped_leads.ndjson...")
+    if not os.path.exists(INPUT_PATH):
+        print(f"❌ File not found: {INPUT_PATH}")
         return
 
     updated = 0
-    for record in data.get("records", []):
-        full_text = record.get("web copy", "")
-        services_text = record.get("services", "")
-        website = record.get("website url", "[no website]")
+    records = []
 
-        if not full_text.strip() or services_text.strip():
-            continue
+    with open(INPUT_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                record = json.loads(line)
+            except Exception:
+                continue
 
-        print(f"🔍 Extracting services for: {website}")
+            full_text = record.get("web copy", "").strip()
+            services_text = record.get("services", "").strip()
+            website = record.get("website url", "[no website]")
 
-        prompt = generate_prompt(truncate_text(full_text))
+            if not full_text or services_text:
+                records.append(record)
+                continue
 
-        try:
-            response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=1000,
-            )
+            print(f"🔍 Extracting services for: {website}")
+            prompt = generate_prompt(truncate_text(full_text))
 
-            raw_output = response.choices[0].message.content.strip()
-            cleaned_output = postprocess_output(raw_output)
+            try:
+                response = client.chat.completions.create(
+                    model="llama3-70b-8192",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=1000,
+                )
 
-            record["services"] = cleaned_output
-            updated += 1
-            print("✅ Services field updated")
+                raw_output = response.choices[0].message.content.strip()
+                cleaned_output = postprocess_output(raw_output)
 
-        except Exception as e:
-            print(f"❌ Error generating services: {e}")
+                record["services"] = cleaned_output
+                updated += 1
+                print("✅ Services field updated")
 
-    try:
-        with open(INPUT_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"\n🎯 Done. {updated} records updated in scraped_leads.json.")
-    except Exception as e:
-        print(f"❌ Failed to write updates to scraped_leads.json: {e}")
+            except Exception as e:
+                print(f"❌ Error generating services: {e}")
+
+            records.append(record)
+
+    with open(INPUT_PATH, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    print(f"\n🎯 Done. {updated} records updated.")
 
 if __name__ == "__main__":
     main()
