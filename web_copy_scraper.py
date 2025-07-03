@@ -1,23 +1,21 @@
 import os
-import json
 import re
+import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
 
-# Path
+# === Config ===
 SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
-
-# Settings
 MAX_PAGES = 15
 MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
-
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"
 }
 
+# === Helpers ===
 def clean_text(text):
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
     return " ".join(text.split())
@@ -61,23 +59,40 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
     return clean_text(all_text)
 
+# === NDJSON Parser (multi-line support) ===
+def parse_ndjson_multiline(path):
+    with open(path, "r", encoding="utf-8") as f:
+        buffer = ""
+        for line in f:
+            if not line.strip():
+                continue
+            buffer += line
+            try:
+                yield json.loads(buffer)
+                buffer = ""
+            except json.JSONDecodeError:
+                continue
+
+def write_ndjson_multiline(path, records):
+    with open(path, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n\n")
+
+# === Main ===
 def main():
     if not os.path.exists(SCRAPED_LEADS_PATH):
         print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
         return
 
-    with open(SCRAPED_LEADS_PATH, "r", encoding="utf-8") as f:
-        leads = [json.loads(line) for line in f if line.strip()]
-
-    updated = []
+    updated_records = []
     changed = False
 
-    for lead in leads:
+    for lead in parse_ndjson_multiline(SCRAPED_LEADS_PATH):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
         if not website or web_copy:
-            updated.append(lead)
+            updated_records.append(lead)
             continue
 
         norm_url = normalize_url(website)
@@ -86,22 +101,21 @@ def main():
         content = crawl_site(norm_url)
         if len(content.split()) < MIN_WORDS_THRESHOLD:
             print("⚠️ Skipping — not enough content.")
-            updated.append(lead)
+            updated_records.append(lead)
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
         lead["web copy"] = trimmed
-        updated.append(lead)
+        updated_records.append(lead)
         changed = True
         print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
     if changed:
-        with open(SCRAPED_LEADS_PATH, "w", encoding="utf-8") as f:
-            for lead in updated:
-                f.write(json.dumps(lead, ensure_ascii=False) + "\n")
+        write_ndjson_multiline(SCRAPED_LEADS_PATH, updated_records)
         print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
     else:
         print("⚠️ No new web copy to update.")
 
 if __name__ == "__main__":
     main()
+s
