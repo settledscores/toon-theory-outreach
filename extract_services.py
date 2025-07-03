@@ -69,7 +69,7 @@ def main():
             print(f"➡️ {website}")
             try:
                 prompt = generate_prompt(truncate(text))
-                response = model.generate_content(prompt)
+                response = model.generate_content([prompt])
                 raw_output = response.text.strip()
                 cleaned = postprocess_output(raw_output)
                 record["services"] = cleaned
