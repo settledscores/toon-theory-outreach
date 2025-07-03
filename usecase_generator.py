@@ -22,12 +22,13 @@ def generate_prompt(services):
     return f"""Based on the company's services below, list 3 practical use cases for explainer videos that could help the business communicate more clearly.
 
 Each bullet must:
-- Start with a gerund (e.g., Showing, Explaining, Demonstrating)
+- Start with a gerund (e.g., Showing, Explaining, Clarifying, Demonstrating, Describing, Walking through)
 - Be short (under 20 words)
-- Avoid corporate jargon
-- Relate directly to the listed services
+- Be clear, natural, and human — avoid jargon or corporate language
+- Directly relate to the company's actual services
 
-Return the 3 use cases on separate lines, no extra commentary.
+Do not mention the company name.
+Do not include any labels, intros, or explanations — just return the raw list, separated by the "|" as a delimiter..
 
 Services:
 {services}
