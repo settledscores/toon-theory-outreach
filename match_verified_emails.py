@@ -3,7 +3,7 @@ import json
 import re
 
 VERIFIED_TXT = "leads/verified.txt"
-SCRAPED_JSON = "leads/scraped_leads.ndjson"
+SCRAPED_NDJSON = "leads/scraped_leads.ndjson"
 
 def extract_domain_from_email(email):
     return email.split('@')[-1].strip().lower()
@@ -21,36 +21,38 @@ def load_verified_emails():
         lines = f.readlines()
     return [line.strip() for line in lines if "@" in line]
 
-def load_json_leads():
-    with open(SCRAPED_JSON, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def save_json_leads(data):
-    with open(SCRAPED_JSON, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
 def main():
+    print("🔄 Matching verified emails to leads...")
     verified_emails = load_verified_emails()
     verified_map = {
         extract_domain_from_email(email): email
         for email in verified_emails
     }
 
-    json_data = load_json_leads()
-    leads = json_data.get("records", [])
     updated = 0
+    results = []
 
-    for lead in leads:
-        website_url = lead.get("website url", "")
-        website_domain = extract_domain_from_url(website_url)
+    with open(SCRAPED_NDJSON, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                record = json.loads(line)
+            except:
+                continue
 
-        if not lead.get("email") and website_domain in verified_map:
-            lead["email"] = verified_map[website_domain]
-            updated += 1
+            website_url = record.get("website url", "")
+            website_domain = extract_domain_from_url(website_url)
 
-    json_data["records"] = leads
-    save_json_leads(json_data)
-    print(f"✅ {updated} emails paired and updated in {SCRAPED_JSON}")
+            if not record.get("email") and website_domain in verified_map:
+                record["email"] = verified_map[website_domain]
+                updated += 1
+
+            results.append(record)
+
+    with open(SCRAPED_NDJSON, "w", encoding="utf-8") as f:
+        for record in results:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    print(f"✅ {updated} emails paired and updated in {SCRAPED_NDJSON}")
 
 if __name__ == "__main__":
     main()
