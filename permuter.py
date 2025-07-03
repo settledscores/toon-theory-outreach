@@ -2,7 +2,7 @@ import os
 import json
 from urllib.parse import urlparse
 
-INPUT_PATH = "leads/scraped_leads.json"
+INPUT_PATH = "leads/scraped_leads.ndjson"
 OUTPUT_PATH = "leads/permutations.txt"
 
 def extract_domain(url):
@@ -22,33 +22,35 @@ def generate_permutations(first, last, domain):
         f"{first}{last}@{domain}"
     ]
 
+def load_multiline_ndjson(path):
+    """Supports pretty-formatted NDJSON with objects spanning multiple lines."""
+    with open(path, "r", encoding="utf-8") as f:
+        buffer = ""
+        for line in f:
+            if line.strip() == "":
+                continue
+            buffer += line
+            if line.strip().endswith("}"):
+                try:
+                    yield json.loads(buffer)
+                except Exception as e:
+                    print(f"❌ Skipping invalid JSON block: {e}")
+                buffer = ""
+
 def main():
     print("📥 Loading scraped leads...")
-    records = []
-
-    try:
-        with open(INPUT_PATH, "r", encoding="utf-8") as f:
-            buffer = ""
-            for line in f:
-                if line.strip() == "":
-                    continue
-                buffer += line
-                if line.strip() == "}":
-                    try:
-                        record = json.loads(buffer)
-                        records.append(record)
-                    except Exception as e:
-                        print(f"❌ Skipping invalid JSON block: {e}")
-                    buffer = ""
-    except Exception as e:
-        print(f"❌ Failed to read scraped_leads.json: {e}")
+    if not os.path.exists(INPUT_PATH):
+        print(f"❌ Input file not found: {INPUT_PATH}")
         return
 
     all_permutations = set()
 
-    for record in records:
+    for record in load_multiline_ndjson(INPUT_PATH):
+        if not isinstance(record, dict):
+            continue
+
         if not record.get("web copy", "").strip():
-            continue  # ❌ Skip if 'web copy' is empty or missing
+            continue  # ❌ Skip if web copy is missing
 
         first = record.get("first name", "").strip()
         last = record.get("last name", "").strip()
