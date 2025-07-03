@@ -1,3 +1,4 @@
+
 import os
 import json
 import random
@@ -604,7 +605,7 @@ def load_ndjson(filepath):
 def save_ndjson(filepath, records):
     with open(filepath, "w", encoding="utf-8") as f:
         for record in records:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
 
 # --- Main ------------------------------------------------------------------
 
@@ -613,6 +614,10 @@ def main():
     updated1 = updated2 = updated3 = 0
 
     for lead in leads:
+    use_cases = lead.get("use cases", "").strip()
+    if not use_cases:
+        continue  # ❌ Skip this lead if no use cases
+
         if not lead.get("email 1", "").strip():
             lead["email 1"] = build_email1(lead)
             updated1 += 1
