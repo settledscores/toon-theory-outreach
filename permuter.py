@@ -24,16 +24,32 @@ def generate_permutations(first, last, domain):
 
 def main():
     print("📥 Loading scraped leads...")
+    records = []
+
     try:
         with open(INPUT_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            buffer = ""
+            for line in f:
+                if line.strip() == "":
+                    continue
+                buffer += line
+                if line.strip() == "}":
+                    try:
+                        record = json.loads(buffer)
+                        records.append(record)
+                    except Exception as e:
+                        print(f"❌ Skipping invalid JSON block: {e}")
+                    buffer = ""
     except Exception as e:
         print(f"❌ Failed to read scraped_leads.json: {e}")
         return
 
     all_permutations = set()
 
-    for record in data.get("records", []):
+    for record in records:
+        if not record.get("web copy", "").strip():
+            continue  # ❌ Skip if 'web copy' is empty or missing
+
         first = record.get("first name", "").strip()
         last = record.get("last name", "").strip()
         website = record.get("website url", "").strip()
