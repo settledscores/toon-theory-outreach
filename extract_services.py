@@ -7,7 +7,7 @@ from google.generativeai import configure, GenerativeModel
 load_dotenv()
 configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = GenerativeModel("gemini-pro")
+model = GenerativeModel("gemini-1.5-flash")
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
 MAX_INPUT_LENGTH = 20000
