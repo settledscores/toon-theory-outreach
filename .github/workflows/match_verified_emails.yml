@@ -8,6 +8,10 @@ on:
       - 'leads/scraped_leads.ndjson'
       - 'pair_verified_emails.py'
 
+concurrency:
+  group: match-verified-emails
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -16,28 +20,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies (none required)
-      run: echo "No dependencies needed"
+      - name: Install dependencies (none required)
+        run: echo "No dependencies needed"
 
-    - name: Run email pairing script
-      run: python match_verified_emails.py
+      - name: Run email pairing script
+        run: python match_verified_emails.py
 
-    - name: Commit and push changes if any
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add leads/scraped_leads.ndjson
-        if git diff --cached --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "chore: auto-sync verified emails to scraped leads"
-          git push
-        fi
+      - name: Commit and push changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "✅ Auto-sync verified emails to leads [bot]"
+            git pull --rebase origin main || true
+            git push
+          fi
+
+      - name: Emergency commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency email match save [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
