@@ -7,7 +7,7 @@ from urllib.parse import urljoin, urlparse
 from datetime import datetime
 
 # Path
-SCRAPED_LEADS_PATH = "leads/scraped_leads.json"
+SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
 
 # Settings
 MAX_PAGES = 15
