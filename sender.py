@@ -19,7 +19,7 @@ IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = os.environ["SMTP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
 
-LEADS_FILE = "leads/scraped_leads.json"
+LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 WEEKDAY = TODAY.weekday()
