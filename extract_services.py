@@ -2,17 +2,17 @@ import os
 import re
 import json
 from dotenv import load_dotenv
-from google.generativeai import configure, GenerativeModel
+from groq import Groq
 
 load_dotenv()
-configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = GenerativeModel("gemini-1.5-flash")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
-MAX_INPUT_LENGTH = 20000
+MAX_INPUT_LENGTH = 14000
 
-def truncate(text, limit=MAX_INPUT_LENGTH):
+def truncate_text(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
 def generate_prompt(text):
@@ -23,7 +23,8 @@ def generate_prompt(text):
 - No bullet headers or section titles.
 - Just return the raw list of service lines, one per line, with no extra wording or formatting.
 
-{text}"""
+{text}
+"""
 
 def postprocess_output(text):
     lines = text.splitlines()
@@ -47,42 +48,63 @@ def read_multiline_ndjson(path):
                 try:
                     records.append(json.loads(buffer))
                 except Exception as e:
-                    print(f"❌ Skipping invalid block: {e}")
+                    print(f"❌ Skipping invalid record: {e}")
                 buffer = ""
     return records
 
+def write_ndjson(records, path):
+    with open(path, "w", encoding="utf-8") as f:
+        for record in records:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
 def main():
-    print("🔍 Extracting services from web copy...")
+    print("🚀 Extracting services from scraped_leads.ndjson...")
+
+    try:
+        records = read_multiline_ndjson(INPUT_PATH)
+    except Exception as e:
+        print(f"❌ Failed to load NDJSON: {e}")
+        return
 
     updated = 0
-    records = read_multiline_ndjson(INPUT_PATH)
+    results = []
 
-    with open(TEMP_PATH, "w", encoding="utf-8") as out_f:
-        for record in records:
-            text = record.get("web copy", "").strip()
-            website = record.get("website url", "[no website]")
-            if not text or record.get("services", "").strip():
-                json.dump(record, out_f, indent=2, ensure_ascii=False)
-                out_f.write("\n")
-                continue
+    for record in records:
+        full_text = record.get("web copy", "")
+        services_text = record.get("services", "")
+        website = record.get("website url", "[no website]")
 
-            print(f"➡️ {website}")
-            try:
-                prompt = generate_prompt(truncate(text))
-                response = model.generate_content([prompt])
-                raw_output = response.text.strip()
-                cleaned = postprocess_output(raw_output)
-                record["services"] = cleaned
-                updated += 1
-                print("✅ Services extracted")
-            except Exception as e:
-                print(f"❌ Error: {e}")
+        if not full_text.strip() or services_text.strip():
+            results.append(record)
+            continue
 
-            json.dump(record, out_f, indent=2, ensure_ascii=False)
-            out_f.write("\n")
+        print(f"🔍 Extracting services for: {website}")
+        prompt = generate_prompt(truncate_text(full_text))
 
-    os.replace(TEMP_PATH, INPUT_PATH)
-    print(f"\n🎯 Done. {updated} services updated.")
+        try:
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1000,
+            )
+            raw_output = response.choices[0].message.content.strip()
+            cleaned_output = postprocess_output(raw_output)
+            record["services"] = cleaned_output
+            updated += 1
+            print("✅ Services field updated")
+        except Exception as e:
+            print(f"❌ Error generating services: {e}")
+
+        results.append(record)
+
+    try:
+        write_ndjson(results, TEMP_PATH)
+        os.replace(TEMP_PATH, INPUT_PATH)
+        print(f"\n🎯 Done. {updated} records updated in scraped_leads.ndjson.")
+    except Exception as e:
+        print(f"❌ Failed to write updates to NDJSON: {e}")
 
 if __name__ == "__main__":
     main()
