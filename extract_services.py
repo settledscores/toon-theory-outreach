@@ -9,6 +9,7 @@ configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 model = GenerativeModel("gemini-pro")
 INPUT_PATH = "leads/scraped_leads.ndjson"
+TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
 MAX_INPUT_LENGTH = 20000
 
 def truncate(text, limit=MAX_INPUT_LENGTH):
@@ -35,29 +36,39 @@ def postprocess_output(text):
             clean_lines.append(line)
     return " | ".join(clean_lines)
 
+def read_multiline_ndjson(path):
+    buffer, records = "", []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            buffer += line
+            if line.strip() == "}":
+                try:
+                    records.append(json.loads(buffer))
+                except Exception as e:
+                    print(f"❌ Skipping invalid block: {e}")
+                buffer = ""
+    return records
+
 def main():
     print("🔍 Extracting services from web copy...")
 
     updated = 0
-    records = []
+    records = read_multiline_ndjson(INPUT_PATH)
 
-    with open(INPUT_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                record = json.loads(line)
-            except:
-                continue
-
+    with open(TEMP_PATH, "w", encoding="utf-8") as out_f:
+        for record in records:
             text = record.get("web copy", "").strip()
             website = record.get("website url", "[no website]")
             if not text or record.get("services", "").strip():
-                records.append(record)
+                json.dump(record, out_f, indent=2, ensure_ascii=False)
+                out_f.write("\n")
                 continue
 
             print(f"➡️ {website}")
-            prompt = generate_prompt(truncate(text))
-
             try:
+                prompt = generate_prompt(truncate(text))
                 response = model.generate_content(prompt)
                 raw_output = response.text.strip()
                 cleaned = postprocess_output(raw_output)
@@ -67,12 +78,10 @@ def main():
             except Exception as e:
                 print(f"❌ Error: {e}")
 
-            records.append(record)
+            json.dump(record, out_f, indent=2, ensure_ascii=False)
+            out_f.write("\n")
 
-    with open(INPUT_PATH, "w", encoding="utf-8") as f:
-        for record in records:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
+    os.replace(TEMP_PATH, INPUT_PATH)
     print(f"\n🎯 Done. {updated} services updated.")
 
 if __name__ == "__main__":
