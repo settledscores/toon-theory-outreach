@@ -32,7 +32,7 @@ jobs:
 
       - name: Commit changes
         run: |
-          git add leads/scraped_leads.json
+          git add leads/scraped_leads.ndjson
           git diff --cached --quiet || git commit -m "chore: update emails from email_generator.py"
 
       - name: Push changes
