@@ -67,12 +67,12 @@ def main():
         return
 
     with open(SCRAPED_LEADS_PATH, "r", encoding="utf-8") as f:
-        leads = json.load(f)
+        leads = [json.loads(line) for line in f if line.strip()]
 
     updated = []
     changed = False
 
-    for lead in leads.get("records", []):
+    for lead in leads:
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
@@ -96,15 +96,9 @@ def main():
         print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
     if changed:
-        output = {
-            "scraped_at": datetime.utcnow().isoformat(),
-            "total": len(updated),
-            "records": updated
-        }
-
         with open(SCRAPED_LEADS_PATH, "w", encoding="utf-8") as f:
-            json.dump(output, f, indent=2)
-
+            for lead in updated:
+                f.write(json.dumps(lead, ensure_ascii=False) + "\n")
         print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
     else:
         print("⚠️ No new web copy to update.")
