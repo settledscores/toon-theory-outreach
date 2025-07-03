@@ -114,9 +114,8 @@ def check_replies(message_ids):
 # === Load Leads ===
 print("[Load] Loading leads file...")
 with open(LEADS_FILE, "r", encoding="utf-8") as f:
-    data = json.load(f)
+    leads = [json.loads(line) for line in f if line.strip()]
 
-leads = data.get("records", [])
 for lead in leads:
     for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name",
@@ -211,10 +210,8 @@ for kind, lead in queue:
 
 # === Save ===
 print("[Save] Writing updated leads file...")
-data["records"] = leads
-data["total"] = len(leads)
-data["scraped_at"] = datetime.now().isoformat()
 with open(LEADS_FILE, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
+    for lead in leads:
+        f.write(json.dumps(lead, ensure_ascii=False) + "\n")
 
 print("[Done] Script completed.")
