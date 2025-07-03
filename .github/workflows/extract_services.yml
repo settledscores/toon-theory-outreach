@@ -3,6 +3,10 @@ name: Extract Core Offerings
 on:
   workflow_dispatch:
 
+concurrency:
+  group: extract-core-offerings
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -31,8 +35,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -U groq python-dotenv
+        run: pip install -U groq python-dotenv
 
       - name: Run extract_services.py
         run: python extract_services.py
@@ -43,10 +46,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
           git commit -m "🔍 Auto-update services from Groq [bot]" || echo "No changes"
-          # Retry git push up to 3 times with delay
-          for i in 1 2 3; do
-            git push && break || echo "Push failed, attempt $i/3" && sleep $((i * 10))
-          done
+          git pull --rebase origin main || true
+          git push
 
       - name: Emergency commit in case of crash
         if: always()
@@ -54,8 +55,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
-          git diff --cached --quiet || git commit -m "🧯 Emergency save after crash [bot]"
-          # Retry git push up to 3 times with delay
-          for i in 1 2 3; do
-            git push && break || echo "Emergency push failed, attempt $i/3" && sleep $((i * 10))
-          done
+          git diff --cached --quiet || git commit -m "🧯 Emergency save after Groq crash [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
