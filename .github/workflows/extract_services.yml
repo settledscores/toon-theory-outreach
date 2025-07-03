@@ -1,4 +1,4 @@
-name: Extract Core Offerings
+name: Extract Core Offerings (Groq)
 
 on:
   workflow_dispatch:
@@ -11,11 +11,19 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*.py', '**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,18 +32,21 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U google-generativeai python-dotenv
+          pip install -U groq python-dotenv
 
-      - name: Run extract_services.py
-        run: python extract_services.py
+      - name: Run extract_services_groq.py
+        run: python extract_services_groq.py
 
       - name: Commit updated leads
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
-          git commit -m "🔍 Auto-update services from Gemini [bot]" || echo "No changes"
-          git push
+          git commit -m "🔍 Auto-update services from Groq [bot]" || echo "No changes"
+          # Retry git push up to 3 times with delay
+          for i in 1 2 3; do
+            git push && break || echo "Push failed, attempt $i/3" && sleep $((i * 10))
+          done
 
       - name: Emergency commit in case of crash
         if: always()
@@ -44,4 +55,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
           git diff --cached --quiet || git commit -m "🧯 Emergency save after crash [bot]"
-          git push || echo "❗ Push failed"
+          # Retry git push up to 3 times with delay
+          for i in 1 2 3; do
+            git push && break || echo "Emergency push failed, attempt $i/3" && sleep $((i * 10))
+          done
