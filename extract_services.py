@@ -17,10 +17,10 @@ def truncate(text, limit=MAX_INPUT_LENGTH):
 def generate_prompt(text):
     return f"""Extract only the actual services provided by the company from the text below.
 
-- No summaries, assistant language, or explanations.
-- No intros like “Here are...” or “This company offers...”
-- No bullet headers, section titles, or labels.
-- Return a list of services only, each on its own line.
+- No explanations, summaries, or assistant language.
+- No intros like “Here are...”, “This company offers...”, or “The core services include...”.
+- No bullet headers or section titles.
+- Just return the raw list of service lines, one per line, with no extra wording or formatting.
 
 {text}"""
 
