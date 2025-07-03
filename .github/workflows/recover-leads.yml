@@ -1,0 +1,33 @@
+name: 🔁 Recover Leads File From Cache
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  recover-file:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Restore cache with known key
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            leads/scraped_leads.ndjson
+          key: Linux-pip-6b32587421de728871b4fdbd4956023183743e26ad0b38214f40a095f9487795
+
+      - name: List leads directory (confirm recovery)
+        run: ls -lah leads/
+
+      - name: Commit and push recovered NDJSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git commit -m "🧯 Recovered scraped_leads.ndjson from cache"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
