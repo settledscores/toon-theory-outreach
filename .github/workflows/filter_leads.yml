@@ -1,0 +1,35 @@
+name: Remove Ineligible Leads
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'leads/scraped_leads.ndjson'
+      - 'filter_leads.py'
+
+permissions:
+  contents: write
+
+jobs:
+  filter-leads:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run filter_leads.py
+        run: python filter_leads.py
+
+      - name: Commit filtered leads
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧹 Filter leads missing web copy [bot]"
+          git push || echo "❗ Push failed"
