@@ -9,7 +9,7 @@ on:
       - 'pair_verified_emails.py'
 
 concurrency:
-  group: match-verified-emails
+  group: lead-pipeline
   cancel-in-progress: false
 
 permissions:
