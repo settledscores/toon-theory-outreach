@@ -9,7 +9,15 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=Category&find_loc=Austin%2C+TX&find_country=USA'
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Bloomington%2C+IN&find_country=USA',
+  'https://www.bbb.org/search?find_text=business+tax+consultant&find_entity=60858-000&find_type=Category&find_loc=Santa+Ana%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Chicago%2C+IL&find_country=USA',
+  'https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=&find_type=&find_loc=Brooklyn%2C+NY&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Development&find_entity=60170-110&find_type=Category&find_loc=Santa+Barbara%2C+CA&find_country=USA',
+  'https://www.bbb.org/us/la/new-orleans/category/tax-consultant',
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Minneapolis%2C+MN&find_country=USA',
+  'https://www.bbb.org/us/mn/minneapolis/category/tax-consultant',
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Tinton+Falls%2C+NJ&find_country=USA',
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
