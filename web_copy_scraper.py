@@ -1,13 +1,13 @@
 import os
 import re
 import json
-import sys
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from datetime import datetime
 
 SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
+
 MAX_PAGES = 15
 MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
@@ -59,35 +59,40 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
     return clean_text(all_text)
 
-def read_ndjson(path):
+def read_ndjson_pretty(path):
     with open(path, "r", encoding="utf-8") as f:
         buffer = ""
         for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            buffer += line
+            if not line.strip():
+                if buffer.strip():
+                    try:
+                        yield json.loads(buffer)
+                    except json.JSONDecodeError as e:
+                        print(f"❌ Skipping malformed record: {e}")
+                    buffer = ""
+            else:
+                buffer += line
+        if buffer.strip():
             try:
                 yield json.loads(buffer)
-                buffer = ""
-            except json.JSONDecodeError:
-                buffer += "\n"
+            except json.JSONDecodeError as e:
+                print(f"❌ Skipping trailing malformed record: {e}")
 
-def write_ndjson(path, records):
+def write_ndjson_pretty(path, records):
     with open(path, "w", encoding="utf-8") as f:
         for record in records:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            json.dump(record, f, indent=2, ensure_ascii=False)
+            f.write("\n\n")
 
 def main():
     if not os.path.exists(SCRAPED_LEADS_PATH):
         print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
-        sys.exit(0)
+        return
 
-    leads = list(read_ndjson(SCRAPED_LEADS_PATH))
     updated = []
     changed = False
 
-    for lead in leads:
+    for lead in read_ndjson_pretty(SCRAPED_LEADS_PATH):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
@@ -111,16 +116,10 @@ def main():
         print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
     if changed:
-        write_ndjson(SCRAPED_LEADS_PATH, updated)
+        write_ndjson_pretty(SCRAPED_LEADS_PATH, updated)
         print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
     else:
         print("⚠️ No new web copy to update.")
 
-    sys.exit(0)
-
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"❌ Fatal error: {e}")
-        sys.exit(0)
+    main()
