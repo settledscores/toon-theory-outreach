@@ -3,7 +3,7 @@ import json
 import re
 
 VERIFIED_TXT = "leads/verified.txt"
-SCRAPED_JSON = "leads/scraped_leads.json"
+SCRAPED_JSON = "leads/scraped_leads.ndjson"
 
 def extract_domain_from_email(email):
     return email.split('@')[-1].strip().lower()
