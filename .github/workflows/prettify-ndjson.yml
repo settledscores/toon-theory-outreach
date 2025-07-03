@@ -22,9 +22,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install --quiet
-
       - name: Prettify scraped_leads.ndjson
         run: |
           python <<EOF
