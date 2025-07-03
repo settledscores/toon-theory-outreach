@@ -29,7 +29,7 @@ jobs:
       - name: Run extract_services.py
         run: python extract_services.py
 
-      - name: Commit updated scraped_leads.json
+      - name: Commit updated scraped_leads.ndjson
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
