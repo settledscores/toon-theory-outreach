@@ -6,6 +6,10 @@ on:
     paths:
       - leads/scraped_leads.ndjson
 
+concurrency:
+  group: prettify-ndjson
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -40,4 +44,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
           git commit -m "🧹 Prettify scraped_leads.ndjson [bot]" || echo "No changes to commit"
+          git pull --rebase origin main || true
           git push
+
+      - name: Emergency commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency prettify save [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
