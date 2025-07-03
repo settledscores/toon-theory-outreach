@@ -3,8 +3,12 @@ name: Generate Emails
 on:
   workflow_dispatch:
 
+concurrency:
+  group: generate-emails
+  cancel-in-progress: false
+
 permissions:
-  contents: write  # ✅ Needed for push to succeed
+  contents: write
 
 jobs:
   update-emails:
@@ -30,13 +34,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit changes
+      - name: Commit and push
         run: |
           git add leads/scraped_leads.ndjson
-          git diff --cached --quiet || git commit -m "chore: update emails from email_generator.py"
+          git diff --cached --quiet || git commit -m "✉️ Auto-update emails from generator [bot]"
+          git pull --rebase origin main || true
+          git push
 
-      - name: Push changes
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+      - name: Emergency commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency email update save [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
