@@ -4,22 +4,22 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # ✅ Required to allow commit and push
+  contents: write
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: 📥 Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 🧰 Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Cache node modules
+      - name: 🧱 Cache node modules
         uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -27,16 +27,17 @@ jobs:
           restore-keys: |
             node-modules-
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm install
 
-      - name: Run BBB Scraper
+      - name: 🕷️ Run BBB Scraper
         run: npm start
 
-      - name: Commit updated leads
+      - name: 🔄 Commit updated leads
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leads/scraped_leads.json
-          git commit -m "🔄 Auto-update scraped_leads.json [bot]" || echo "No changes to commit"
+          git add leads/scraped_leads.ndjson
+          git commit -m "🔄 Auto-update scraped_leads.ndjson [bot]" || echo "No changes to commit"
+          git pull --rebase origin main || true
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
