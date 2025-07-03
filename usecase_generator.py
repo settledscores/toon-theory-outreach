@@ -7,7 +7,7 @@ from groq import Groq
 
 load_dotenv()
 
-INPUT_PATH = "leads/scraped_leads.json"
+INPUT_PATH = "leads/scraped_leads.ndjson"
 MAX_SERVICES_LENGTH = 1000
 
 # Groq setup
@@ -49,7 +49,7 @@ Services:
         return None
 
 def main():
-    print("🚀 Generating use cases from scraped_leads.json...")
+    print("🚀 Generating use cases from scraped_leads.ndjson...")
     try:
         with open(INPUT_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -80,7 +80,7 @@ def main():
     try:
         with open(INPUT_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"\n🎯 Done. {updated} records updated in scraped_leads.json.")
+        print(f"\n🎯 Done. {updated} records updated in scraped_leads.ndjson.")
     except Exception as e:
         print(f"❌ Failed to save updates: {e}")
 
