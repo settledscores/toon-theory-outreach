@@ -2,28 +2,27 @@ import os
 import re
 import json
 from dotenv import load_dotenv
-from groq import Groq
+from google.generativeai import configure, GenerativeModel
 
 load_dotenv()
+configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
+model = GenerativeModel("gemini-pro")
 INPUT_PATH = "leads/scraped_leads.ndjson"
-MAX_INPUT_LENGTH = 14000
+MAX_INPUT_LENGTH = 20000
 
-def truncate_text(text, limit=MAX_INPUT_LENGTH):
+def truncate(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
 def generate_prompt(text):
     return f"""Extract only the actual services provided by the company from the text below.
 
-- No explanations, summaries, or assistant language.
-- No intros like “Here are...”, “This company offers...”, or “The core services include...”.
-- No bullet headers or section titles.
-- Just return the raw list of service lines, one per line, with no extra wording or formatting.
+- No summaries, assistant language, or explanations.
+- No intros like “Here are...” or “This company offers...”
+- No bullet headers, section titles, or labels.
+- Return a list of services only, each on its own line.
 
-{text}
-"""
+{text}"""
 
 def postprocess_output(text):
     lines = text.splitlines()
@@ -37,10 +36,7 @@ def postprocess_output(text):
     return " | ".join(clean_lines)
 
 def main():
-    print("🚀 Extracting services from scraped_leads.ndjson...")
-    if not os.path.exists(INPUT_PATH):
-        print(f"❌ File not found: {INPUT_PATH}")
-        return
+    print("🔍 Extracting services from web copy...")
 
     updated = 0
     records = []
@@ -49,37 +45,27 @@ def main():
         for line in f:
             try:
                 record = json.loads(line)
-            except Exception:
+            except:
                 continue
 
-            full_text = record.get("web copy", "").strip()
-            services_text = record.get("services", "").strip()
+            text = record.get("web copy", "").strip()
             website = record.get("website url", "[no website]")
-
-            if not full_text or services_text:
+            if not text or record.get("services", "").strip():
                 records.append(record)
                 continue
 
-            print(f"🔍 Extracting services for: {website}")
-            prompt = generate_prompt(truncate_text(full_text))
+            print(f"➡️ {website}")
+            prompt = generate_prompt(truncate(text))
 
             try:
-                response = client.chat.completions.create(
-                    model="llama3-70b-8192",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3,
-                    max_tokens=1000,
-                )
-
-                raw_output = response.choices[0].message.content.strip()
-                cleaned_output = postprocess_output(raw_output)
-
-                record["services"] = cleaned_output
+                response = model.generate_content(prompt)
+                raw_output = response.text.strip()
+                cleaned = postprocess_output(raw_output)
+                record["services"] = cleaned
                 updated += 1
-                print("✅ Services field updated")
-
+                print("✅ Services extracted")
             except Exception as e:
-                print(f"❌ Error generating services: {e}")
+                print(f"❌ Error: {e}")
 
             records.append(record)
 
@@ -87,7 +73,7 @@ def main():
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    print(f"\n🎯 Done. {updated} records updated.")
+    print(f"\n🎯 Done. {updated} services updated.")
 
 if __name__ == "__main__":
     main()
