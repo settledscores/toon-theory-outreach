@@ -8,7 +8,7 @@ on:
       - 'filter_leads.py'
 
 concurrency:
-  group: filter-leads
+  group: lead-pipeline
   cancel-in-progress: false
 
 permissions:
