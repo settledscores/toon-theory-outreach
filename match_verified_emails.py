@@ -21,6 +21,29 @@ def load_verified_emails():
         lines = f.readlines()
     return [line.strip() for line in lines if "@" in line]
 
+def read_ndjson_multiline(path):
+    results = []
+    buffer = ""
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            buffer += line
+            if line.strip() == "}":
+                try:
+                    obj = json.loads(buffer)
+                    results.append(obj)
+                except Exception as e:
+                    print(f"❌ Skipping invalid block: {e}")
+                buffer = ""
+    return results
+
+def write_ndjson_multiline(path, records):
+    with open(path, "w", encoding="utf-8") as f:
+        for record in records:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
 def main():
     print("🔄 Matching verified emails to leads...")
     verified_emails = load_verified_emails()
@@ -30,28 +53,17 @@ def main():
     }
 
     updated = 0
-    results = []
+    results = read_ndjson_multiline(SCRAPED_NDJSON)
 
-    with open(SCRAPED_NDJSON, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                record = json.loads(line)
-            except:
-                continue
+    for record in results:
+        website_url = record.get("website url", "")
+        website_domain = extract_domain_from_url(website_url)
 
-            website_url = record.get("website url", "")
-            website_domain = extract_domain_from_url(website_url)
+        if not record.get("email") and website_domain in verified_map:
+            record["email"] = verified_map[website_domain]
+            updated += 1
 
-            if not record.get("email") and website_domain in verified_map:
-                record["email"] = verified_map[website_domain]
-                updated += 1
-
-            results.append(record)
-
-    with open(SCRAPED_NDJSON, "w", encoding="utf-8") as f:
-        for record in results:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
+    write_ndjson_multiline(SCRAPED_NDJSON, results)
     print(f"✅ {updated} emails paired and updated in {SCRAPED_NDJSON}")
 
 if __name__ == "__main__":
