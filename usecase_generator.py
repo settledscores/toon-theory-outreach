@@ -3,13 +3,13 @@ import re
 import json
 import time
 from dotenv import load_dotenv
-from groq import Groq
+from google.generativeai import configure, GenerativeModel
 
 load_dotenv()
+configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+model = GenerativeModel("gemini-pro")
 INPUT_PATH = "leads/scraped_leads.ndjson"
-MAX_SERVICES_LENGTH = 1000
 
 def postprocess_output(text):
     lines = text.splitlines()
@@ -18,36 +18,23 @@ def postprocess_output(text):
         if line.strip() and not re.match(r"(?i)^here\s+(is|are)\b", line.strip())
     ])
 
-def generate_use_cases(services):
-    prompt = f"""
-Based on the company's services below, list 3 practical use cases for explainer videos that could help the business communicate more clearly.
+def generate_prompt(services):
+    return f"""Based on the company's services below, list 3 practical use cases for explainer videos that could help the business communicate more clearly.
 
 Each bullet must:
-- Start with a gerund (e.g., Showing, Explaining, Clarifying, Demonstrating, Describing, Walking through)
+- Start with a gerund (e.g., Showing, Explaining, Demonstrating)
 - Be short (under 20 words)
-- Be clear, natural, and human — avoid jargon or corporate language
-- Directly relate to the company's actual services
+- Avoid corporate jargon
+- Relate directly to the listed services
 
-Do not mention the company name.
-Do not include any labels, intros, or explanations — just return the raw list, separated by the "|" as a delimiter.
+Return the 3 use cases on separate lines, no extra commentary.
 
 Services:
 {services}
 """
-    try:
-        response = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=500,
-        )
-        return postprocess_output(response.choices[0].message.content.strip())
-    except Exception as e:
-        print(f"❌ Error generating use cases: {e}")
-        return None
 
 def main():
-    print("🚀 Generating use cases from scraped_leads.ndjson...")
+    print("🎬 Generating use cases...")
 
     updated = 0
     records = []
@@ -60,30 +47,32 @@ def main():
                 continue
 
             services = record.get("services", "").strip()
-            existing = record.get("use cases", "").strip()
-
-            if not services or existing:
+            if not services or record.get("use cases", "").strip():
                 records.append(record)
                 continue
 
-            print(f"🔍 Processing: {record.get('business name', '[no name]')}")
-            use_cases = generate_use_cases(services[:MAX_SERVICES_LENGTH])
+            name = record.get("business name", "[no name]")
+            print(f"➡️ {name}")
+            prompt = generate_prompt(services)
 
-            if use_cases:
-                record["use cases"] = use_cases
+            try:
+                response = model.generate_content(prompt)
+                raw_output = response.text.strip()
+                cleaned = postprocess_output(raw_output)
+                record["use cases"] = cleaned
                 updated += 1
                 print("✅ Use cases added")
-            else:
-                print("⚠️ Skipped due to generation issue")
+            except Exception as e:
+                print(f"❌ Error: {e}")
 
             records.append(record)
-            time.sleep(6)
+            time.sleep(1.2)
 
     with open(INPUT_PATH, "w", encoding="utf-8") as f:
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    print(f"\n🎯 Done. {updated} records updated.")
+    print(f"\n🎯 Done. {updated} use cases updated.")
 
 if __name__ == "__main__":
     main()
