@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: extract-core-offerings
+  group: lead-pipeline
   cancel-in-progress: false
 
 permissions:
