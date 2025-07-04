@@ -2,11 +2,14 @@ import os
 import re
 import json
 import requests
+import urllib3
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
-SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
 MAX_PAGES = 15
 MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
@@ -39,44 +42,54 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
         url = to_visit.pop(0)
         if url in visited:
             continue
-        try:
-            res = requests.get(url, headers=HEADERS, timeout=10)
-            if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
-                visited.add(url)
-                soup = BeautifulSoup(res.text, "html.parser")
-                visible_text = extract_visible_text(res.text)
-                all_text += visible_text + " "
 
-                for link in soup.find_all("a", href=True):
-                    href = urljoin(url, link["href"])
-                    if urlparse(href).netloc == domain and href not in visited:
-                        to_visit.append(href)
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=10, verify=False)
+        except requests.exceptions.SSLError:
+            fallback_url = url.replace("https://", "http://", 1)
+            print(f"⚠️ SSL error. Retrying with HTTP: {fallback_url}")
+            try:
+                res = requests.get(fallback_url, headers=HEADERS, timeout=10, verify=False)
+            except Exception as e:
+                print(f"❌ HTTP fallback failed: {e}")
+                continue
         except Exception as e:
             print(f"⚠️ Failed to fetch {url}: {e}")
             continue
+
+        if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
+            visited.add(url)
+            soup = BeautifulSoup(res.text, "html.parser")
+            visible_text = extract_visible_text(res.text)
+            all_text += visible_text + " "
+
+            for link in soup.find_all("a", href=True):
+                href = urljoin(url, link["href"])
+                if urlparse(href).netloc == domain and href not in visited:
+                    to_visit.append(href)
+
     return clean_text(all_text)
 
-def read_multiline_ndjson(path):
-    buffer, records = "", []
+def read_ndjson_nested(path):
+    buffer = ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if line.strip() == "":
+            if not line.strip():
                 if buffer.strip():
                     try:
-                        records.append(json.loads(buffer))
-                    except json.JSONDecodeError as e:
+                        yield json.loads(buffer)
+                    except Exception as e:
                         print(f"❌ Skipping malformed record: {e}")
                     buffer = ""
             else:
                 buffer += line
         if buffer.strip():
             try:
-                records.append(json.loads(buffer))
-            except json.JSONDecodeError as e:
+                yield json.loads(buffer)
+            except Exception as e:
                 print(f"❌ Skipping trailing malformed record: {e}")
-    return records
 
-def write_multiline_ndjson(path, records):
+def write_ndjson_nested(path, records):
     with open(path, "w", encoding="utf-8") as f:
         for record in records:
             json.dump(record, f, indent=2, ensure_ascii=False)
@@ -87,41 +100,40 @@ def main():
         print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
         return
 
-    records = read_multiline_ndjson(SCRAPED_LEADS_PATH)
+    updated = []
     changed = False
-    updated_records = []
 
-    for idx, lead in enumerate(records):
+    for i, lead in enumerate(read_ndjson_nested(SCRAPED_LEADS_PATH), 1):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
         if not website:
-            print(f"⏭️ Skipping record #{idx + 1} — missing website")
-            updated_records.append(lead)
+            print(f"⏭️ Skipping record #{i} — no website")
+            updated.append(lead)
             continue
 
         if web_copy:
-            print(f"⏭️ Skipping record #{idx + 1} — already has web copy")
-            updated_records.append(lead)
+            print(f"⏭️ Skipping record #{i} — already has web copy")
+            updated.append(lead)
             continue
 
         norm_url = normalize_url(website)
-        print(f"🌐 Crawling site: {norm_url}")
+        print(f"🌐 Crawling #{i}: {norm_url}")
 
         content = crawl_site(norm_url)
         if len(content.split()) < MIN_WORDS_THRESHOLD:
             print("⚠️ Skipping — not enough content.")
-            updated_records.append(lead)
+            updated.append(lead)
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
         lead["web copy"] = trimmed
-        updated_records.append(lead)
+        updated.append(lead)
         changed = True
         print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
     if changed:
-        write_multiline_ndjson(SCRAPED_LEADS_PATH, updated_records)
+        write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
         print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
     else:
         print("⚠️ No new web copy to update.")
