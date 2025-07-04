@@ -45,26 +45,53 @@ def main():
 
     all_permutations = set()
 
+    skipped_with_email = 0
+    skipped_missing_fields = 0
+    total_processed = 0
+
     for record in load_multiline_ndjson(INPUT_PATH):
         if not isinstance(record, dict):
             continue
 
-        if not record.get("web copy", "").strip():
-            continue  # ❌ Skip if web copy is missing
+        total_processed += 1
 
+        company = record.get("company name", "Unknown Company").strip()
         first = record.get("first name", "").strip()
+        display_name = first or "Unnamed"
+        label = f"{display_name} of {company}"
+
+        if record.get("email", "").strip():
+            print(f"⏭️ Skipped {label} (already has email)")
+            skipped_with_email += 1
+            continue
+
+        if not record.get("web copy", "").strip():
+            print(f"⏭️ Skipped {label} (missing web copy)")
+            skipped_missing_fields += 1
+            continue
+
         last = record.get("last name", "").strip()
         website = record.get("website url", "").strip()
 
         if not (first and last and website):
+            print(f"⏭️ Skipped {label} (missing name or website)")
+            skipped_missing_fields += 1
             continue
 
         domain = extract_domain(website)
         if not domain:
+            print(f"⏭️ Skipped {label} (could not extract domain)")
+            skipped_missing_fields += 1
             continue
 
         perms = generate_permutations(first, last, domain)
         all_permutations.update(perms)
+
+    print("\n📊 Stats:")
+    print(f"   Total leads processed: {total_processed}")
+    print(f"   Skipped (already had email): {skipped_with_email}")
+    print(f"   Skipped (missing fields): {skipped_missing_fields}")
+    print(f"   Permutations generated: {len(all_permutations)}")
 
     if not all_permutations:
         print("⚠️ No permutations generated.")
@@ -74,7 +101,7 @@ def main():
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(sorted(all_permutations)))
 
-    print(f"✅ Saved {len(all_permutations)} permutations to {OUTPUT_PATH}")
+    print(f"\n✅ Saved to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     main()
