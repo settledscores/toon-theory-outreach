@@ -59,21 +59,28 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
     return clean_text(all_text)
 
-def read_ndjson_pretty(path):
+def read_ndjson_nested(path):
+    records = []
+    buffer = []
+    depth = 0
     with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
+        for line in f:
+            if not line.strip():
+                continue
 
-    blocks = content.strip().split("\n\n")
-    for i, block in enumerate(blocks, 1):
-        block = block.strip()
-        if not block:
-            continue
-        try:
-            yield json.loads(block)
-        except json.JSONDecodeError as e:
-            print(f"❌ Skipping malformed record #{i}: {e}")
+            depth += line.count("{") - line.count("}")
+            buffer.append(line)
 
-def write_ndjson_pretty(path, records):
+            if depth == 0 and buffer:
+                try:
+                    raw = "\n".join(buffer)
+                    records.append(json.loads(raw))
+                except json.JSONDecodeError as e:
+                    print(f"❌ Skipping malformed record: {e}")
+                buffer = []
+    return records
+
+def write_ndjson_nested(path, records):
     with open(path, "w", encoding="utf-8") as f:
         for record in records:
             json.dump(record, f, indent=2, ensure_ascii=False)
@@ -84,29 +91,35 @@ def main():
         print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
         return
 
+    try:
+        leads = read_ndjson_nested(SCRAPED_LEADS_PATH)
+    except Exception as e:
+        print(f"❌ Failed to load leads: {e}")
+        return
+
     updated = []
     changed = False
 
-    for idx, lead in enumerate(read_ndjson_pretty(SCRAPED_LEADS_PATH), 1):
+    for idx, lead in enumerate(leads):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
         if not website:
-            print(f"⛔ Record #{idx} missing website URL — skipping", flush=True)
+            print(f"⚠️ Skipping record #{idx + 1} — no website")
             updated.append(lead)
             continue
 
         if web_copy:
-            print(f"⏭️ Skipping {website} — web copy already present", flush=True)
+            print(f"⏭️ Skipping record #{idx + 1} — already has web copy")
             updated.append(lead)
             continue
 
         norm_url = normalize_url(website)
-        print(f"🌐 Crawling site: {norm_url}")
+        print(f"🌐 Crawling record #{idx + 1}: {norm_url}")
 
         content = crawl_site(norm_url)
         if len(content.split()) < MIN_WORDS_THRESHOLD:
-            print("⚠️ Skipping — not enough content.")
+            print("⚠️ Not enough content, skipping.")
             updated.append(lead)
             continue
 
@@ -114,11 +127,14 @@ def main():
         lead["web copy"] = trimmed
         updated.append(lead)
         changed = True
-        print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
+        print(f"✅ Scraped and saved for {urlparse(norm_url).netloc}")
 
     if changed:
-        write_ndjson_pretty(SCRAPED_LEADS_PATH, updated)
-        print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
+        try:
+            write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
+            print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
+        except Exception as e:
+            print(f"❌ Failed to write updated leads: {e}")
     else:
         print("⚠️ No new web copy to update.")
 
