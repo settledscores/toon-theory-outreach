@@ -6,13 +6,12 @@ from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
-
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
 MAX_INPUT_LENGTH = 14000
-API_TIMEOUT_SECONDS = 60  # Timeout for each API call
+API_TIMEOUT_SECONDS = 60
 
 def timeout_handler(signum, frame):
     raise TimeoutError("API call timed out")
@@ -95,7 +94,6 @@ def main():
         prompt = generate_prompt(truncate_text(full_text))
 
         try:
-            # Setup timeout alarm
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(API_TIMEOUT_SECONDS)
 
@@ -106,7 +104,6 @@ def main():
                 max_tokens=1000,
             )
 
-            # Cancel alarm if call succeeded
             signal.alarm(0)
 
             raw_output = response.choices[0].message.content.strip()
