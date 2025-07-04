@@ -1,3 +1,5 @@
+check if these contains those vital updates
+
 
 import os
 import json
@@ -614,9 +616,9 @@ def main():
     updated1 = updated2 = updated3 = 0
 
     for lead in leads:
-    use_cases = lead.get("use cases", "").strip()
-    if not use_cases:
-        continue  # ❌ Skip this lead if no use cases
+        use_cases = lead.get("use cases", "").strip()
+        if not use_cases:
+            continue  # ❌ Skip this lead if no use cases
 
         if not lead.get("email 1", "").strip():
             lead["email 1"] = build_email1(lead)
