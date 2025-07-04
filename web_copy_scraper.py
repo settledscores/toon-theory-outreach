@@ -4,7 +4,6 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from datetime import datetime
 
 SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
 
@@ -40,7 +39,6 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
         url = to_visit.pop(0)
         if url in visited:
             continue
-
         try:
             res = requests.get(url, headers=HEADERS, timeout=10)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
@@ -56,31 +54,29 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
         except Exception as e:
             print(f"⚠️ Failed to fetch {url}: {e}")
             continue
-
     return clean_text(all_text)
 
-def read_ndjson_nested(path):
-    records = []
-    buffer = []
-    depth = 0
+def read_multiline_ndjson(path):
+    buffer, records = "", []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if not line.strip():
-                continue
-
-            depth += line.count("{") - line.count("}")
-            buffer.append(line)
-
-            if depth == 0 and buffer:
-                try:
-                    raw = "\n".join(buffer)
-                    records.append(json.loads(raw))
-                except json.JSONDecodeError as e:
-                    print(f"❌ Skipping malformed record: {e}")
-                buffer = []
+            if line.strip() == "":
+                if buffer.strip():
+                    try:
+                        records.append(json.loads(buffer))
+                    except json.JSONDecodeError as e:
+                        print(f"❌ Skipping malformed record: {e}")
+                    buffer = ""
+            else:
+                buffer += line
+        if buffer.strip():
+            try:
+                records.append(json.loads(buffer))
+            except json.JSONDecodeError as e:
+                print(f"❌ Skipping trailing malformed record: {e}")
     return records
 
-def write_ndjson_nested(path, records):
+def write_multiline_ndjson(path, records):
     with open(path, "w", encoding="utf-8") as f:
         for record in records:
             json.dump(record, f, indent=2, ensure_ascii=False)
@@ -91,50 +87,42 @@ def main():
         print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
         return
 
-    try:
-        leads = read_ndjson_nested(SCRAPED_LEADS_PATH)
-    except Exception as e:
-        print(f"❌ Failed to load leads: {e}")
-        return
-
-    updated = []
+    records = read_multiline_ndjson(SCRAPED_LEADS_PATH)
     changed = False
+    updated_records = []
 
-    for idx, lead in enumerate(leads):
+    for idx, lead in enumerate(records):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
         if not website:
-            print(f"⚠️ Skipping record #{idx + 1} — no website")
-            updated.append(lead)
+            print(f"⏭️ Skipping record #{idx + 1} — missing website")
+            updated_records.append(lead)
             continue
 
         if web_copy:
             print(f"⏭️ Skipping record #{idx + 1} — already has web copy")
-            updated.append(lead)
+            updated_records.append(lead)
             continue
 
         norm_url = normalize_url(website)
-        print(f"🌐 Crawling record #{idx + 1}: {norm_url}")
+        print(f"🌐 Crawling site: {norm_url}")
 
         content = crawl_site(norm_url)
         if len(content.split()) < MIN_WORDS_THRESHOLD:
-            print("⚠️ Not enough content, skipping.")
-            updated.append(lead)
+            print("⚠️ Skipping — not enough content.")
+            updated_records.append(lead)
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
         lead["web copy"] = trimmed
-        updated.append(lead)
+        updated_records.append(lead)
         changed = True
-        print(f"✅ Scraped and saved for {urlparse(norm_url).netloc}")
+        print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
 
     if changed:
-        try:
-            write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
-            print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
-        except Exception as e:
-            print(f"❌ Failed to write updated leads: {e}")
+        write_multiline_ndjson(SCRAPED_LEADS_PATH, updated_records)
+        print(f"\n📝 Updated web copy in {SCRAPED_LEADS_PATH}")
     else:
         print("⚠️ No new web copy to update.")
 
