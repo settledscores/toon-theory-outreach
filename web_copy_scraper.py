@@ -61,22 +61,17 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
 def read_ndjson_pretty(path):
     with open(path, "r", encoding="utf-8") as f:
-        buffer = ""
-        for line in f:
-            if not line.strip():
-                if buffer.strip():
-                    try:
-                        yield json.loads(buffer)
-                    except json.JSONDecodeError as e:
-                        print(f"❌ Skipping malformed record: {e}")
-                    buffer = ""
-            else:
-                buffer += line
-        if buffer.strip():
-            try:
-                yield json.loads(buffer)
-            except json.JSONDecodeError as e:
-                print(f"❌ Skipping trailing malformed record: {e}")
+        content = f.read()
+
+    blocks = content.strip().split("\n\n")
+    for i, block in enumerate(blocks, 1):
+        block = block.strip()
+        if not block:
+            continue
+        try:
+            yield json.loads(block)
+        except json.JSONDecodeError as e:
+            print(f"❌ Skipping malformed record #{i}: {e}")
 
 def write_ndjson_pretty(path, records):
     with open(path, "w", encoding="utf-8") as f:
@@ -92,11 +87,17 @@ def main():
     updated = []
     changed = False
 
-    for lead in read_ndjson_pretty(SCRAPED_LEADS_PATH):
+    for idx, lead in enumerate(read_ndjson_pretty(SCRAPED_LEADS_PATH), 1):
         website = lead.get("website url", "").strip()
         web_copy = lead.get("web copy", "").strip()
 
-        if not website or web_copy:
+        if not website:
+            print(f"⛔ Record #{idx} missing website URL — skipping", flush=True)
+            updated.append(lead)
+            continue
+
+        if web_copy:
+            print(f"⏭️ Skipping {website} — web copy already present", flush=True)
             updated.append(lead)
             continue
 
