@@ -1,4 +1,4 @@
-name: Prettify NDJSON
+name: Prettify & Repair NDJSON
 
 on:
   workflow_dispatch:
@@ -26,24 +26,42 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Prettify scraped_leads.ndjson
+      - name: Repair & Prettify scraped_leads.ndjson
         run: |
           python <<EOF
-          import json
+          import json, re
+
           input_path = "leads/scraped_leads.ndjson"
           with open(input_path, "r", encoding="utf-8") as f:
-              lines = [json.loads(line) for line in f if line.strip()]
+              raw = f.read()
+
+          chunks = re.findall(r'{.*?}\s*(?=\n{|\Z)', raw, flags=re.DOTALL)
+          valid = []
+          skipped = 0
+
+          for i, chunk in enumerate(chunks):
+              try:
+                  obj = json.loads(chunk)
+                  valid.append(obj)
+              except json.JSONDecodeError as e:
+                  print(f"❌ Skipping malformed block #{i+1}: {e}")
+                  skipped += 1
+
           with open(input_path, "w", encoding="utf-8") as f:
-              for obj in lines:
-                  f.write(json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
+              for obj in valid:
+                  f.write(json.dumps(obj, indent=2, ensure_ascii=False) + "\n\n")
+
+          print(f"✅ Repaired & prettified {len(valid)} records")
+          if skipped:
+              print(f"⚠️ Skipped {skipped} malformed block(s)")
           EOF
 
-      - name: Commit prettified NDJSON
+      - name: Commit repaired NDJSON
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
-          git commit -m "🧹 Prettify scraped_leads.ndjson [bot]" || echo "No changes to commit"
+          git commit -m "🩹 Repair & prettify scraped_leads.ndjson [bot]" || echo "No changes to commit"
           git pull --rebase origin main || true
           git push
 
@@ -53,6 +71,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leads/scraped_leads.ndjson
-          git diff --cached --quiet || git commit -m "🧯 Emergency prettify save [bot]"
+          git diff --cached --quiet || git commit -m "🧯 Emergency repair save [bot]"
           git pull --rebase origin main || true
           git push || echo "❗ Emergency push failed"
