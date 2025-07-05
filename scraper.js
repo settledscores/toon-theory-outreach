@@ -21,7 +21,7 @@ const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
 const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
 
-const allLeads = new Map(); // key: website url, value: record
+const allLeads = new Map();
 
 async function loadExistingLeads() {
   if (!fs.existsSync(leadsPath)) return;
@@ -80,7 +80,7 @@ async function humanScroll(page) {
   for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(150, 500)); // ⏱️ Reduced scroll delay
+    await delay(randomBetween(150, 500));
   }
 }
 
@@ -202,16 +202,16 @@ async function saveAllLeads() {
       for (const link of profileLinks) {
         if (count >= 50) break;
         const rec = await scrapeProfile(page, link);
-        if (rec) {
-          const added = storeNewLead(rec);
-          if (added) {
-            count++;
-            console.log(`✅ Added: ${rec['business name']}`);
-          } else {
-            console.log(`⏭️ Duplicate: ${rec['business name']}`);
-          }
+
+        const added = rec && storeNewLead(rec);
+        if (rec && added) {
+          count++;
+          console.log(`✅ Added: ${rec['business name']}`);
+        } else if (rec && !added) {
+          console.log(`⏭️ Duplicate: ${rec['business name']}`);
         }
-        const pause = randomBetween(5000, 12000); // ⏱️ New efficient range
+
+        const pause = rec && added ? randomBetween(5000, 12000) : 2000;
         console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
         await delay(pause);
       }
