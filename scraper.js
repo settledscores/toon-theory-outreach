@@ -8,7 +8,10 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Palo+Alto%2C+CA&find_country=USA'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Dallas%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Montpelier%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Columbus%2C+OH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Harrisburg%2C+PA&find_country=USA'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
@@ -172,7 +175,7 @@ async function saveAllLeads() {
     let count = 0;
     let pageNum = 1;
 
-    while (count < 25) {
+    while (count < 50) {
       const paginatedUrl = `${baseUrl}&page=${pageNum}`;
       console.log(`🌐 Visiting: ${paginatedUrl}`);
       await page.goto(paginatedUrl, { waitUntil: 'networkidle2', timeout: 0 });
@@ -197,7 +200,7 @@ async function saveAllLeads() {
       }
 
       for (const link of profileLinks) {
-        if (count >= 25) break;
+        if (count >= 50) break;
         const rec = await scrapeProfile(page, link);
         if (rec) {
           const added = storeNewLead(rec);
@@ -208,7 +211,7 @@ async function saveAllLeads() {
             console.log(`⏭️ Duplicate: ${rec['business name']}`);
           }
         }
-        const pause = randomBetween(12000, 25000);
+        const pause = randomBetween(12000, 50000);
         console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
         await delay(pause);
       }
