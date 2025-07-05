@@ -9,20 +9,19 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Brooklyn%2C+NY&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Minneapolis%2C+MN&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Charlotte%2C+NC&find_country=USA'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Palo+Alto%2C+CA&find_country=USA'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
-const knownUrls = new Set();
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
 const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
 
-async function loadKnownUrls() {
+const allLeads = new Map(); // key: website url, value: record
+
+async function loadExistingLeads() {
   if (!fs.existsSync(leadsPath)) return;
   const rl = readline.createInterface({
     input: fs.createReadStream(leadsPath),
@@ -31,9 +30,11 @@ async function loadKnownUrls() {
   for await (const line of rl) {
     try {
       const record = JSON.parse(line);
-      if (record['website url']) knownUrls.add(record['website url']);
+      const url = record['website url'];
+      if (url) allLeads.set(url, record);
     } catch (_) {}
   }
+  console.log(`🔁 Loaded ${allLeads.size} existing leads`);
 }
 
 function cleanBusinessName(name) {
@@ -141,18 +142,23 @@ async function scrapeProfile(page, url) {
   }
 }
 
-async function appendIfNew(record) {
-  const key = record['website url'];
-  if (!key || knownUrls.has(key)) return false;
-  const pretty = JSON.stringify(record, null, 2);
-  await fsPromises.appendFile(leadsPath, pretty + '\n\n');
-  knownUrls.add(key);
+function storeNewLead(record) {
+  const url = record['website url'];
+  if (!url || allLeads.has(url)) return false;
+  allLeads.set(url, record);
   return true;
+}
+
+async function saveAllLeads() {
+  const records = Array.from(allLeads.values());
+  const ndjsonText = records.map(obj => JSON.stringify(obj, null, 2)).join('\n\n') + '\n';
+  await fsPromises.writeFile(leadsPath, ndjsonText, 'utf-8');
+  console.log(`💾 Saved ${records.length} total leads to ${leadsPath}`);
 }
 
 (async () => {
   await fsExtra.ensureDir(path.dirname(leadsPath));
-  await loadKnownUrls();
+  await loadExistingLeads();
 
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -195,10 +201,10 @@ async function appendIfNew(record) {
         if (count >= 25) break;
         const rec = await scrapeProfile(page, link);
         if (rec) {
-          const added = await appendIfNew(rec);
+          const added = storeNewLead(rec);
           if (added) {
             count++;
-            console.log(`✅ Saved: ${rec['business name']}`);
+            console.log(`✅ Added: ${rec['business name']}`);
           } else {
             console.log(`⏭️ Duplicate: ${rec['business name']}`);
           }
@@ -215,5 +221,6 @@ async function appendIfNew(record) {
   }
 
   await browser.close();
-  console.log(`✅ Scraping done.`);
+  await saveAllLeads();
+  console.log(`✅ Scraping complete.`);
 })();
