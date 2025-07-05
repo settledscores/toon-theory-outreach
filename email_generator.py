@@ -1,6 +1,3 @@
-check if these contains those vital updates
-
-
 import os
 import json
 import random
