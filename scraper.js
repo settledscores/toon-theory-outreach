@@ -153,8 +153,8 @@ function storeNewLead(record) {
 
 async function saveAllLeads() {
   const records = Array.from(allLeads.values());
-  const ndjsonText = records.map(obj => JSON.stringify(obj, null, 2)).join('\n\n') + '\n';
-  await fsPromises.writeFile(leadsPath, ndjsonText, 'utf-8');
+  const ndjson = records.map(obj => JSON.stringify(obj, null, 2)).join('\n\n') + '\n';
+  await fsPromises.writeFile(leadsPath, ndjson, 'utf-8');
   console.log(`💾 Saved ${records.length} total leads to ${leadsPath}`);
 }
 
