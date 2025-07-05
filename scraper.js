@@ -9,11 +9,9 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Financial+Consultants&find_entity=55683-000&find_type=Category&find_loc=Denver%2C+CO&find_country=USA',
-  'https://www.bbb.org/search?find_text=accounting&find_entity=&find_type=&find_loc=Denver%2C+CO&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Littleton%2C+NH&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Brooklyn+Heights%2C+MO&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Denver%2C+CO&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Brooklyn%2C+NY&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Minneapolis%2C+MN&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Charlotte%2C+NC&find_country=USA'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
