@@ -80,7 +80,7 @@ async function humanScroll(page) {
   for (let i = 0; i < steps; i++) {
     await page.mouse.move(randomBetween(200, 800), randomBetween(100, 600));
     await page.evaluate(() => window.scrollBy(0, window.innerHeight / 2));
-    await delay(randomBetween(300, 800));
+    await delay(randomBetween(150, 500)); // ⏱️ Reduced scroll delay
   }
 }
 
@@ -88,7 +88,7 @@ async function scrapeProfile(page, url) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
     console.log(`🧭 Scraping: ${url}`);
-    await delay(randomBetween(1500, 3000));
+    await delay(randomBetween(1000, 2500));
     await humanScroll(page);
 
     const data = await page.evaluate(() => {
@@ -211,7 +211,7 @@ async function saveAllLeads() {
             console.log(`⏭️ Duplicate: ${rec['business name']}`);
           }
         }
-        const pause = randomBetween(12000, 50000);
+        const pause = randomBetween(5000, 12000); // ⏱️ New efficient range
         console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
         await delay(pause);
       }
