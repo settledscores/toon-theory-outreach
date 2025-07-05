@@ -22,8 +22,16 @@ def generate_permutations(first, last, domain):
         f"{first}{last}@{domain}"
     ]
 
+def load_existing_domains_from_txt(path):
+    """Extracts and returns all domains already used in permutations.txt."""
+    if not os.path.exists(path):
+        return set()
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    domains = {line.strip().split("@")[-1].lower() for line in lines if "@" in line}
+    return domains
+
 def load_multiline_ndjson(path):
-    """Supports pretty-formatted NDJSON with objects spanning multiple lines."""
     with open(path, "r", encoding="utf-8") as f:
         buffer = ""
         for line in f:
@@ -43,10 +51,13 @@ def main():
         print(f"❌ Input file not found: {INPUT_PATH}")
         return
 
-    all_permutations = set()
+    print("📄 Checking existing permutations...")
+    existing_domains = load_existing_domains_from_txt(OUTPUT_PATH)
+    new_permutations = set()
 
     skipped_with_email = 0
     skipped_missing_fields = 0
+    skipped_existing_domain = 0
     total_processed = 0
     new_generated = 0
 
@@ -85,25 +96,32 @@ def main():
             skipped_missing_fields += 1
             continue
 
+        if domain in existing_domains:
+            print(f"⏭️ Skipped {label} (domain already has permutations)")
+            skipped_existing_domain += 1
+            continue
+
         perms = generate_permutations(first, last, domain)
-        all_permutations.update(perms)
+        new_permutations.update(perms)
+        existing_domains.add(domain)
         new_generated += len(perms)
 
     print("\n📊 Stats:")
     print(f"   Total leads processed: {total_processed}")
     print(f"   Skipped (already had email): {skipped_with_email}")
     print(f"   Skipped (missing fields): {skipped_missing_fields}")
-    print(f"   Permutations generated: {new_generated}")
+    print(f"   Skipped (domain already in permutations.txt): {skipped_existing_domain}")
+    print(f"   New permutations added: {new_generated}")
 
-    if not all_permutations:
-        print("⚠️ No permutations generated.")
+    if not new_permutations:
+        print("⚠️ No new permutations generated.")
         return
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        f.write("\n".join(sorted(all_permutations)) + "\n")
+    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
+        f.write("\n".join(sorted(new_permutations)) + "\n")
 
-    print(f"\n✅ Overwritten {OUTPUT_PATH} with fresh permutations only")
+    print(f"\n✅ Appended {new_generated} permutations to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     main()
