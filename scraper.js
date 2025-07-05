@@ -3,7 +3,6 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import fsExtra from 'fs-extra';
-import readline from 'readline';
 import path from 'path';
 
 puppeteer.use(StealthPlugin());
@@ -23,16 +22,16 @@ const allLeads = new Map(); // key: website url, value: record
 
 async function loadExistingLeads() {
   if (!fs.existsSync(leadsPath)) return;
-  const rl = readline.createInterface({
-    input: fs.createReadStream(leadsPath),
-    crlfDelay: Infinity
-  });
-  for await (const line of rl) {
+  const content = await fsPromises.readFile(leadsPath, 'utf-8');
+  const blocks = content.split(/\n\s*\n/);
+  for (const block of blocks) {
     try {
-      const record = JSON.parse(line);
+      const record = JSON.parse(block);
       const url = record['website url'];
       if (url) allLeads.set(url, record);
-    } catch (_) {}
+    } catch {
+      console.warn('⚠️ Skipping invalid NDJSON block');
+    }
   }
   console.log(`🔁 Loaded ${allLeads.size} existing leads`);
 }
