@@ -2,6 +2,16 @@ name: Send Emails
 
 on:
   workflow_dispatch:
+  schedule:
+    # Every 8 mins between 17:40–21:40 UTC (6:40 PM–10:40 PM WAT), Sun-Fri (no Sat)
+    - cron: '40 17-21 * * 0,1,2,3,4,5'
+    - cron: '48 17-21 * * 0,1,2,3,4,5'
+    - cron: '56 17-21 * * 0,1,2,3,4,5'
+    - cron: '04 18-21 * * 0,1,2,3,4,5'
+    - cron: '12 18-21 * * 0,1,2,3,4,5'
+    - cron: '20 18-21 * * 0,1,2,3,4,5'
+    - cron: '28 18-21 * * 0,1,2,3,4,5'
+    - cron: '36 18-21 * * 0,1,2,3,4,5'
 
 concurrency:
   group: lead-pipeline
