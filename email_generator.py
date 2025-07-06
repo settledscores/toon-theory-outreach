@@ -315,6 +315,7 @@ If you’re curious, I’d be happy to draft a quick demo or script for you to r
 You can reply any time, and there’s a link to our previous work in my signature.
 
 {signature}"""
+]
 
 # --- Email 3 Templates ------------------------------------------------------
 
