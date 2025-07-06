@@ -8,8 +8,7 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_country=USA&find_entity=60005-101&find_loc=Atlanta%2C%20GA&find_text=Accounting&find_type=Category&page=1&touched=1',
-  'https://www.bbb.org/search?find_country=USA&find_entity=60451-000&find_loc=Atlanta%2C%20GA&find_text=Human%20Resources&find_type=Category&page=1&touched=1'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Portland%2C+OR&find_country=USA'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
