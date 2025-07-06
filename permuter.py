@@ -3,7 +3,8 @@ import json
 from urllib.parse import urlparse
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
-OUTPUT_PATH = "leads/permutations.txt"
+PERMS_PATH = "leads/permutations.txt"
+EMAILS_PATH = "leads/emails.txt"
 
 def extract_domain(url):
     try:
@@ -22,12 +23,17 @@ def generate_permutations(first, last, domain):
         f"{first}{last}@{domain}"
     ]
 
-def load_existing_domains_from_txt(path):
-    """Extracts domains already present in permutations.txt."""
-    if not os.path.exists(path):
-        return set()
-    with open(path, "r", encoding="utf-8") as f:
-        return {line.strip().split("@")[-1].lower() for line in f if "@" in line}
+def load_domains_from_perms_and_emails(*paths):
+    domains = set()
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                if "@" in line:
+                    domain = line.strip().split("@")[-1].lower()
+                    domains.add(domain)
+    return domains
 
 def load_multiline_ndjson(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -49,9 +55,8 @@ def main():
         print(f"❌ Input file not found: {INPUT_PATH}")
         return
 
-    print("📄 Checking previously used domains...")
-    existing_domains = load_existing_domains_from_txt(OUTPUT_PATH)
-    used_domains = set(existing_domains)
+    print("📄 Checking previously used domains (permutations + verified emails)...")
+    used_domains = load_domains_from_perms_and_emails(PERMS_PATH, EMAILS_PATH)
     new_permutations = set()
 
     skipped_with_email = 0
@@ -116,11 +121,11 @@ def main():
         print("⚠️ No new permutations generated.")
         return
 
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(PERMS_PATH), exist_ok=True)
+    with open(PERMS_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(sorted(new_permutations)) + "\n")
 
-    print(f"\n✅ Overwritten {OUTPUT_PATH} with {new_generated} new permutations")
+    print(f"\n✅ Overwritten {PERMS_PATH} with {new_generated} new permutations")
 
 if __name__ == "__main__":
     main()
