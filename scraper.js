@@ -8,10 +8,8 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Dallas%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Montpelier%2C+VT&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Columbus%2C+OH&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Harrisburg%2C+PA&find_country=USA'
+  'https://www.bbb.org/search?find_country=USA&find_entity=60005-101&find_loc=Atlanta%2C%20GA&find_text=Accounting&find_type=Category&page=1&touched=1',
+  'https://www.bbb.org/search?find_country=USA&find_entity=60451-000&find_loc=Atlanta%2C%20GA&find_text=Human%20Resources&find_type=Category&page=1&touched=1'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
