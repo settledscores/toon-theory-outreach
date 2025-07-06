@@ -2,10 +2,6 @@ name: Extract Emails from Web Copy
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'leads/scraped_leads.ndjson'
-      - 'extract_emails.py'
 
 concurrency:
   group: lead-pipeline
