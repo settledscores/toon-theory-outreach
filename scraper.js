@@ -60,11 +60,11 @@ function cleanAndSplitName(raw, businessName = '') {
 
   if (namePart.toLowerCase() === businessName.toLowerCase()) return null;
   let tokens = namePart.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2 || tokens.length > 4) return null;
   if (tokens.length > 2 && nameSuffixes.some(regex => regex.test(tokens[tokens.length - 1]))) {
     tokens.pop();
   }
 
-  if (tokens.length < 2 || tokens.length > 4) return null;
   return {
     'first name': tokens[0],
     'middle name': tokens.length > 2 ? tokens.slice(1, -1).join(' ') : '',
@@ -172,6 +172,7 @@ async function saveAllLeads() {
   for (const baseUrl of SEARCH_URLS) {
     let count = 0;
     let pageNum = 1;
+    let consecutiveEmptyPages = 0;
 
     while (count < 50) {
       const paginatedUrl = `${baseUrl}&page=${pageNum}`;
@@ -197,13 +198,17 @@ async function saveAllLeads() {
         break;
       }
 
+      let newLeadsThisPage = 0;
+
       for (const link of profileLinks) {
         if (count >= 50) break;
-        const rec = await scrapeProfile(page, link);
 
+        const rec = await scrapeProfile(page, link);
         const added = rec && storeNewLead(rec);
+
         if (rec && added) {
           count++;
+          newLeadsThisPage++;
           console.log(`✅ Added: ${rec['business name']}`);
         } else if (rec && !added) {
           console.log(`⏭️ Duplicate: ${rec['business name']}`);
@@ -212,6 +217,11 @@ async function saveAllLeads() {
         const pause = rec && added ? randomBetween(5000, 12000) : 2000;
         console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
         await delay(pause);
+      }
+
+      if (newLeadsThisPage === 0) {
+        console.log(`🚫 No eligible leads found on page ${pageNum}. Aborting this block.`);
+        break;
       }
 
       pageNum++;
