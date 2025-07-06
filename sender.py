@@ -30,6 +30,7 @@ DAILY_PLAN = {
     2: {"initial": 15, "fu1": 15, "fu2": 0},
     3: {"initial": 15, "fu1": 15, "fu2": 0},
     4: {"initial": 0, "fu1": 15, "fu2": 15},
+    6: {"initial": 2, "fu1": 0, "fu2": 0},    # Sunday ← ✅ ADD THIS
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
