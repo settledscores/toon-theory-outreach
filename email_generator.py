@@ -542,9 +542,6 @@ Please don’t hesitate to reply. Our past projects are linked below.
 {signature}""",
 ]
 
-from templates_email2 import email2_templates
-from templates_email3 import email3_templates
-
 # --- Rotators --------------------------------------------------------------
 
 rotators = {
