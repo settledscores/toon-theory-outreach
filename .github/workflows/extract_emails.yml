@@ -1,0 +1,54 @@
+name: Extract Emails from Web Copy
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'leads/scraped_leads.ndjson'
+      - 'extract_emails.py'
+
+concurrency:
+  group: lead-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  extract-emails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run email extractor
+        run: python extract_emails.py
+
+      - name: Commit and push leads/emails.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/emails.txt
+          if git diff --cached --quiet; then
+            echo "No new emails to commit"
+          else
+            git commit -m "📬 Extracted emails from web copy [bot]"
+            git pull --rebase origin main || true
+            git push
+          fi
+
+      - name: Emergency commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/emails.txt
+          git diff --cached --quiet || git commit -m "🧯 Emergency email extract save [bot]"
+          git pull --rebase origin main || true
+          git push || echo "❗ Emergency push failed"
