@@ -61,9 +61,9 @@ paragraph2_variants = [
 ]
 
 paragraph3_additional_variants = [
-    "For {company}, I think there could be a great opportunity to use visual storytelling to help more people “get it” faster. Our animations are fully done-for-you: script, illustrations, voice, and storyboard; so you can use them for:\n",
-    "I think {company} could really benefit from using visual storytelling to explain things faster and make them stick. We take care of everything: scripting, illustration, voiceover and storyboarding; so you can use the final video for:\n",
-    "{company} has a strong foundation, and a short animated video could be a powerful way to bring your message to life. We’ll take care of the full creative lift: script, voice, and illustrations, so you can use it for:\n"
+    "For {company}, I think there could be a great opportunity to use visual storytelling to help more people “get it” faster. Our animations are fully done-for-you: script, illustrations, voice, and storyboard; so you can use them for:\n\n",
+    "I think {company} could really benefit from using visual storytelling to explain things faster and make them stick. We take care of everything: scripting, illustration, voiceover and storyboarding; so you can use the final video for:\n\n",
+    "{company} has a strong foundation, and a short animated video could be a powerful way to bring your message to life. We’ll take care of the full creative lift: script, voice, and illustrations, so you can use it for:\n\n"
 ]
 
 paragraph4b_variants = [
