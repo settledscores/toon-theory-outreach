@@ -22,6 +22,8 @@ SMTP_PORT = int(os.environ["SMTP_PORT"])
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
+NOW = datetime.now(TIMEZONE)
+NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 
 DAILY_PLAN = {
@@ -29,12 +31,10 @@ DAILY_PLAN = {
     1: {"initial": 30, "fu1": 0, "fu2": 0},
     2: {"initial": 15, "fu1": 15, "fu2": 0},
     3: {"initial": 15, "fu1": 15, "fu2": 0},
-    4: {"initial": 0, "fu1": 15, "fu2": 15},
-    6: {"initial": 2, "fu1": 0, "fu2": 0},    # Sunday ← ✅ ADD THIS
+    4: {"initial": 0, "fu1": 15, "fu2": 15}
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
-# === Subject Lines ===
 INITIAL_SUBJECTS = [
     "Let’s make your message stick", "Helping your ideas stick visually",
     "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
@@ -70,7 +70,6 @@ FU2_SUBJECTS = [
     "Open to creative pitches?", "Just in case it got buried"
 ]
 
-# === Utils ===
 def read_multiline_ndjson(path):
     records = []
     buffer = ""
@@ -93,7 +92,6 @@ def write_multiline_ndjson(path, records):
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
 
-# === Email Sender ===
 def send_email(to_email, subject, content, in_reply_to=None):
     print(f"[Send] Preparing to send to {to_email} | Subject: {subject}")
     msg = EmailMessage()
@@ -106,15 +104,12 @@ def send_email(to_email, subject, content, in_reply_to=None):
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
-
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
-
     print(f"[Send] Email sent to {to_email}")
     return msg_id
 
-# === IMAP Checker ===
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
@@ -135,15 +130,15 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load and Initialize ===
+# === Load & Initialize ===
 print("[Load] Reading leads file...")
 leads = read_multiline_ndjson(LEADS_FILE)
-
 for lead in leads:
     for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name",
         "message id", "message id 2", "message id 3",
-        "initial date", "follow-up 1 date", "follow-up 2 date", "reply"
+        "initial date", "follow-up 1 date", "follow-up 2 date",
+        "initial time", "follow-up 1 time", "follow-up 2 time", "reply"
     ]:
         lead.setdefault(field, "")
 
@@ -152,7 +147,6 @@ print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
           [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
-
 replied = check_replies([mid for mid, _ in all_ids])
 for lead in leads:
     if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
@@ -180,22 +174,22 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Queue ===
-print("[Queue] Building send queue...")
-counts = {"initial": 0, "fu1": 0, "fu2": 0}
+# === Build Queue (but send only 1) ===
+print("[Queue] Building one-message queue...")
 queue = []
 for lead in leads:
-    if counts["fu2"] < TODAY_PLAN["fu2"] and can_send_followup(lead, 3):
-        queue.append(("fu2", lead)); counts["fu2"] += 1
-    elif counts["fu1"] < TODAY_PLAN["fu1"] and can_send_followup(lead, 2):
-        queue.append(("fu1", lead)); counts["fu1"] += 1
-    elif counts["initial"] < TODAY_PLAN["initial"] and can_send_initial(lead):
-        queue.append(("initial", lead)); counts["initial"] += 1
-    if all(counts[k] >= TODAY_PLAN[k] for k in ["initial", "fu1", "fu2"]):
+    if TODAY_PLAN["fu2"] > 0 and can_send_followup(lead, 3):
+        queue.append(("fu2", lead))
+        break
+    elif TODAY_PLAN["fu1"] > 0 and can_send_followup(lead, 2):
+        queue.append(("fu1", lead))
+        break
+    elif TODAY_PLAN["initial"] > 0 and can_send_initial(lead):
+        queue.append(("initial", lead))
         break
 
-# === Send ===
-print(f"[Process] {len(queue)} messages to send...")
+# === Send One Message ===
+print(f"[Process] {len(queue)} message(s) to send...")
 for kind, lead in queue:
     try:
         if kind == "initial":
@@ -203,20 +197,23 @@ for kind, lead in queue:
             msgid = send_email(lead["email"], subject, lead["email 1"])
             lead["message id"] = msgid
             lead["initial date"] = TODAY.isoformat()
+            lead["initial time"] = NOW_TIME
         elif kind == "fu1":
             subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
+            lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
             subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
+            lead["follow-up 2 time"] = NOW_TIME
     except Exception as e:
         print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
 
-# === Save ===
+# === Save Output ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
