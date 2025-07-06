@@ -1,11 +1,7 @@
 name: Remove Ineligible Leads
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'leads/scraped_leads.ndjson'
-      - 'filter_leads.py'
+  workflow_dispatch:  # ✅ Manual trigger only
 
 concurrency:
   group: lead-pipeline
