@@ -1,12 +1,7 @@
 name: Match Verified Emails to Leads
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'leads/verified.txt'
-      - 'leads/scraped_leads.ndjson'
-      - 'pair_verified_emails.py'
+  workflow_dispatch:  # ✅ Manual trigger only
 
 concurrency:
   group: lead-pipeline
