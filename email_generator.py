@@ -595,8 +595,25 @@ def build_email3(lead):
 # --- NDJSON Helpers --------------------------------------------------------
 
 def load_ndjson(filepath):
+    records = []
+    buffer = ""
     with open(filepath, "r", encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            if not line.strip():
+                if buffer:
+                    try:
+                        records.append(json.loads(buffer))
+                    except json.JSONDecodeError as e:
+                        print(f"❌ JSON decode error:\n{buffer}\n→ {e}")
+                    buffer = ""
+            else:
+                buffer += line
+        if buffer:  # handle last block if no trailing newline
+            try:
+                records.append(json.loads(buffer))
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error at EOF:\n{buffer}\n→ {e}")
+    return records
 
 def save_ndjson(filepath, records):
     with open(filepath, "w", encoding="utf-8") as f:
