@@ -39,8 +39,8 @@ jobs:
           echo "🕒 UTC Time: $(date -u)"
           echo "🕒 WAT Time: $(TZ=Africa/Lagos date)"
 
-      - name: Install Python dependencies
-        run: pip install --upgrade pip
+      - name: Install pip only if needed
+        run: python -m ensurepip --upgrade
 
       - name: Run sender script
         run: python sender.py
