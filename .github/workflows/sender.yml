@@ -2,7 +2,7 @@ name: Send Emails
 
 on:
   schedule:
-    - cron: "*/8 13-18 * * 1-5"  # Every 8 minutes, 2–7 PM WAT (13–18 UTC), Monday–Friday
+    - cron: "*/10 13-18 * * 1-5"  # Every 10 minutes, 2–7 PM WAT (13–18 UTC), Mon–Fri
   workflow_dispatch:             # Manual trigger support
 
 concurrency:
@@ -33,6 +33,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Log UTC & WAT Timestamps
+        run: |
+          echo "🕒 UTC Time: $(date -u)"
+          echo "🕒 WAT Time: $(TZ=Africa/Lagos date)"
 
       - name: Install Python dependencies
         run: pip install --upgrade pip
