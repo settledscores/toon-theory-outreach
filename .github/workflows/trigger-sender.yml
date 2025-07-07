@@ -1,0 +1,39 @@
+name: Trigger Sender Between 2PM–7PM WAT
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # Every 5 minutes UTC
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check current time in WAT
+        id: timecheck
+        run: |
+          export TZ=Africa/Lagos
+          hour=$(date +'%H')
+          dow=$(date +'%u')  # 1 = Monday, 7 = Sunday
+
+          echo "Current WAT hour: $hour"
+          echo "Current day of week: $dow"
+
+          if [ "$dow" -ge 6 ]; then
+            echo "Weekend – skip dispatch."
+            echo "dispatch=false" >> $GITHUB_OUTPUT
+          elif [ "$hour" -ge 14 ] && [ "$hour" -lt 19 ]; then
+            echo "Within 2PM–7PM WAT – dispatch allowed."
+            echo "dispatch=true" >> $GITHUB_OUTPUT
+          else
+            echo "Outside allowed hours – skip dispatch."
+            echo "dispatch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Dispatch sender.yml
+        if: steps.timecheck.outputs.dispatch == 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: trigger-sender
