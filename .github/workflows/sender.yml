@@ -1,8 +1,6 @@
 name: Send Emails
 
 on:
-  schedule:
-    - cron: "*/5 13-18 * * 1-5"  # Every 5 minutes, 2–7 PM WAT (UTC 13–18), Mon–Fri
   workflow_dispatch:             # Allow manual triggering from GitHub UI
 
 concurrency:
