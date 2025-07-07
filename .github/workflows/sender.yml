@@ -2,7 +2,7 @@ name: Send Emails
 
 on:
   schedule:
-    - cron: "*/10 13-18 * * 1-5"  # Every 10 minutes, 2–7 PM WAT (13–18 UTC), Mon–Fri
+    - cron: "*/5 13-18 * * 1-5"  # Every 5 minutes, 2–7 PM WAT (13–18 UTC), Mon–Fri
   workflow_dispatch:             # Manual trigger support
 
 concurrency:
