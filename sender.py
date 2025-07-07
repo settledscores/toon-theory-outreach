@@ -80,8 +80,7 @@ def read_multiline_ndjson(path):
             buffer += line
             if line.strip().endswith("}"):
                 try:
-                    record = json.loads(buffer)
-                    records.append(record)
+                    records.append(json.loads(buffer))
                 except Exception as e:
                     print(f"[Skip] Corrupt block: {e}")
                 buffer = ""
@@ -130,7 +129,7 @@ def check_replies(message_ids):
                     seen.add(mid)
     return seen
 
-# === Load & Initialize ===
+# === Load ===
 print("[Load] Reading leads file...")
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
@@ -142,7 +141,7 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Check Replies ===
+# === Replies ===
 print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -156,7 +155,14 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Eligibility Checks ===
+# === Count Sent Today ===
+sent_today = {
+    "initial": sum(1 for l in leads if l["initial date"] == TODAY.isoformat()),
+    "fu1": sum(1 for l in leads if l["follow-up 1 date"] == TODAY.isoformat()),
+    "fu2": sum(1 for l in leads if l["follow-up 2 date"] == TODAY.isoformat())
+}
+
+# === Eligibility ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email 1") and lead.get("email")
 
@@ -174,21 +180,26 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Build Queue (but send only 1) ===
+# === Queue ===
 print("[Queue] Building one-message queue...")
 queue = []
-for lead in leads:
-    if TODAY_PLAN["fu2"] > 0 and can_send_followup(lead, 3):
-        queue.append(("fu2", lead))
-        break
-    elif TODAY_PLAN["fu1"] > 0 and can_send_followup(lead, 2):
-        queue.append(("fu1", lead))
-        break
-    elif TODAY_PLAN["initial"] > 0 and can_send_initial(lead):
-        queue.append(("initial", lead))
-        break
+if sent_today["fu2"] < TODAY_PLAN["fu2"]:
+    for lead in leads:
+        if can_send_followup(lead, 3):
+            queue.append(("fu2", lead))
+            break
+elif sent_today["fu1"] < TODAY_PLAN["fu1"]:
+    for lead in leads:
+        if can_send_followup(lead, 2):
+            queue.append(("fu1", lead))
+            break
+elif sent_today["initial"] < TODAY_PLAN["initial"]:
+    for lead in leads:
+        if can_send_initial(lead):
+            queue.append(("initial", lead))
+            break
 
-# === Send One Message ===
+# === Send ===
 print(f"[Process] {len(queue)} message(s) to send...")
 for kind, lead in queue:
     try:
@@ -213,7 +224,7 @@ for kind, lead in queue:
     except Exception as e:
         print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
 
-# === Save Output ===
+# === Save ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
