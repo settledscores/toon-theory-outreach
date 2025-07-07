@@ -1,9 +1,9 @@
 name: Send Emails
 
 on:
+  schedule:
+    - cron: "*/5 13-18 * * 1-5"  # Every 5 minutes, 2–7 PM WAT (UTC 13–18), Mon–Fri
   workflow_dispatch:             # Allow manual triggering from GitHub UI
-  repository_dispatch:          # Allow triggering from another workflow
-    types: [trigger-sender]     # Custom event name
 
 concurrency:
   group: lead-pipeline
@@ -26,21 +26,21 @@ jobs:
       SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Python dependencies
+      - name: 📦 Install Python dependencies
         run: pip install --upgrade pip
 
-      - name: Run sender script
+      - name: 🚀 Run sender script
         run: python sender.py
 
-      - name: Commit updated leads (normal)
+      - name: 💾 Commit updated leads (normal)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -49,7 +49,7 @@ jobs:
           git pull --rebase origin main || true
           git push
 
-      - name: Emergency commit in case of crash
+      - name: 🧯 Emergency commit in case of crash
         if: always()
         run: |
           git config user.name "github-actions[bot]"
