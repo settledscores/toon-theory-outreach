@@ -1,10 +1,9 @@
-
 name: Send Emails
 
 on:
   schedule:
-    - cron: "*/8 13-18 * * 1-5"  # Every 8 minutes, 2–7 PM WAT (13–18 UTC), Mon–Fri
-  workflow_dispatch:             # Allow manual run
+    - cron: "*/8 13-18 * * 1-5"  # Every 8 minutes, 2–7 PM WAT (13–18 UTC), Monday–Friday
+  workflow_dispatch:             # Manual trigger support
 
 concurrency:
   group: lead-pipeline
