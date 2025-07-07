@@ -1,9 +1,9 @@
 name: Send Emails
 
 on:
-  schedule:
-    - cron: "*/5 13-18 * * 1-5"  # Every 5 minutes, 2–7 PM WAT (13–18 UTC), Mon–Fri
-  workflow_dispatch:             # Manual trigger support
+  workflow_dispatch:             # Allow manual triggering from GitHub UI
+  repository_dispatch:          # Allow triggering from another workflow
+    types: [trigger-sender]     # Custom event name
 
 concurrency:
   group: lead-pipeline
@@ -34,13 +34,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Log UTC & WAT Timestamps
-        run: |
-          echo "🕒 UTC Time: $(date -u)"
-          echo "🕒 WAT Time: $(TZ=Africa/Lagos date)"
-
-      - name: Install pip only if needed
-        run: python -m ensurepip --upgrade
+      - name: Install Python dependencies
+        run: pip install --upgrade pip
 
       - name: Run sender script
         run: python sender.py
