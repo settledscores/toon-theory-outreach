@@ -1,9 +1,8 @@
 name: Send Emails
 
 on:
-  schedule:
-  workflow_dispatch:                # Allow manual trigger
-  repository_dispatch:             # Allow external triggers (e.g. UptimeRobot via Cloudflare Worker)
+  workflow_dispatch:
+  repository_dispatch:
 
 concurrency:
   group: lead-pipeline
