@@ -4,7 +4,7 @@ import imaplib
 import email
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
@@ -19,11 +19,16 @@ IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = os.environ["SMTP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
 
-LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
+
+# 🚦 Check if current time is within sending window (08:10 to 12:00 WAT)
+if not time(8, 10) <= NOW.time() <= time(12, 0):
+    print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
+    exit(0)
+
 WEEKDAY = TODAY.weekday()
 
 DAILY_PLAN = {
