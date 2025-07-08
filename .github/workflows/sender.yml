@@ -1,7 +1,9 @@
 name: Send Emails
 
 on:
-  workflow_dispatch:             # Allow manual triggering from GitHub UI
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # Allow manual triggering from GitHub UI
 
 concurrency:
   group: lead-pipeline
