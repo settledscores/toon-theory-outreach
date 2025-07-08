@@ -19,13 +19,15 @@ IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = os.environ["SMTP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
 
+LEADS_FILE = "leads/scraped_leads.ndjson"
+
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
 
 # 🚦 Check if current time is within sending window (08:10 to 12:00 WAT)
-if not time(12, 40) <= NOW.time() <= time(14, 0):
+if not time(8, 10) <= NOW.time() <= time(12, 0):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
 
@@ -148,9 +150,7 @@ for lead in leads:
 
 # === Replies ===
 print("[Replies] Updating reply status...")
-all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
-          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
-          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
+all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] +           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] +           [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
 replied = check_replies([mid for mid, _ in all_ids])
 for lead in leads:
     if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
