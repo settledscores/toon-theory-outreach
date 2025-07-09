@@ -109,27 +109,32 @@ Services:
 {services}
 """
 
-def has_disqualifying_line(text):
-    bad_line_patterns = [
-        r"(?i)^here\s+(is|are)\b",
-        r"(?i)^i\s+apologize\b",
-        r"(?i)^sorry\b",
-        r"(?i)^unfortunately\b",
-        r"(?i)^i\s+(am|’m|‘m)\s+(not\s+sure|unable|an\s+ai|a\s+language\s+model)\b",
-        r"(?i)^based\s+on\s+(the\s+)?(description|limited\s+information|input)\b",
-        r"(?i)^(as|i am)\s+(an\s+)?(ai|llm|language\s+model)\b",
-        r"(?i)^i\s+(cannot|can't|can’t)\b",
-        r"(?i)^this\s+(ai|llm|language\s+model)\s+(cannot|can't|can’t|doesn’t)\b"
-    ]
-    for line in text.splitlines():
-        for pattern in bad_line_patterns:
-            if re.match(pattern, line.strip()):
-                return True
-    return False
+bad_line_patterns = [
+    r"(?i)^here\s+(is|are)\b",
+    r"(?i)^i\s+apologize\b",
+    r"(?i)^sorry\b",
+    r"(?i)^unfortunately\b",
+    r"(?i)^i\s+(am|’m|‘m)\s+(not\s+sure|unable|an\s+ai|a\s+language\s+model)\b",
+    r"(?i)^based\s+on\s+(the\s+)?(description|limited\s+information|input)\b",
+    r"(?i)^(as|i am)\s+(an\s+)?(ai|llm|language\s+model)\b",
+    r"(?i)^i\s+(cannot|can't|can’t)\b",
+    r"(?i)^this\s+(ai|llm|language\s+model)\s+(cannot|can't|can’t|doesn’t)\b"
+]
 
 def postprocess_output(text):
     lines = text.splitlines()
-    return " | ".join([line.strip() for line in lines if line.strip()])
+    cleaned = []
+
+    for line in lines:
+        original = line.strip()
+        if not original:
+            continue
+        if any(re.search(pattern, original) for pattern in bad_line_patterns):
+            print(f"⚠️ Disqualified intro line: {original}", flush=True)
+            continue
+        cleaned.append(original)
+
+    return " | ".join(cleaned)
 
 def generate_use_cases_with_retries(prompt, retries=1):
     for attempt in range(retries + 1):
@@ -147,11 +152,12 @@ def generate_use_cases_with_retries(prompt, retries=1):
             signal.alarm(0)
 
             output = response.choices[0].message.content.strip()
-            if has_disqualifying_line(output):
-                print(f"⚠️ Disqualified intro found on attempt {attempt + 1}, regenerating...", flush=True)
-                continue
+            cleaned = postprocess_output(output)
 
-            return output
+            if cleaned:
+                return cleaned
+            else:
+                print(f"⚠️ All lines disqualified on attempt {attempt + 1}, retrying...", flush=True)
 
         except TimeoutError:
             print("❌ Timeout during generation", flush=True)
@@ -190,21 +196,14 @@ def main():
 
         print(f"🔍 Generating use cases for: {name}", flush=True)
         prompt = generate_prompt(truncate_text(services))
-        raw_output = generate_use_cases_with_retries(prompt, retries=2)
+        cleaned_output = generate_use_cases_with_retries(prompt, retries=2)
 
-        if raw_output:
-            print(f"📝 Raw output: {raw_output}", flush=True)
-            cleaned_output = postprocess_output(raw_output)
-            print(f"✨ Cleaned output: {cleaned_output}", flush=True)
-
-            if cleaned_output:
-                record["use cases"] = cleaned_output
-                updated += 1
-                print(f"✅ Added use cases to {name}", flush=True)
-            else:
-                print(f"⚠️ No usable lines in output for {name}", flush=True)
+        if cleaned_output:
+            record["use cases"] = cleaned_output
+            updated += 1
+            print(f"✅ Added use cases to {name}: {cleaned_output}", flush=True)
         else:
-            print(f"❌ Failed to generate use cases for {name}", flush=True)
+            print(f"⚠️ Skipped {name} due to unusable output", flush=True)
 
         results.append(record)
         time.sleep(1.2)
