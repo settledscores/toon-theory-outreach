@@ -42,32 +42,68 @@ def write_ndjson(records, path):
             f.write("\n")
 
 def generate_prompt(services):
-    return f"""Based on the company’s services below, list 3 *practical, clear, and benefit-focused* use cases for an explainer video that could help them communicate better with customers.
+    return f"""
+Based on the company's services below, list 3 *explainer video use cases* that clearly show the value of what they offer.
 
 Each bullet must:
 - Be short (under 20 words)
-- Sound natural and human — no corporate speak or generic phrasing
-- Be specific to the actual service or customer benefit
-- Do NOT start with generic verbs like "Explaining", "Clarifying", or "Walking through"
-- Should sound like one of the examples below
+- Sound natural and human — no corporate speak or vague jargon
+- Be specific to the service or customer benefit
+- Be something you’d *want to see* in a short, animated explainer video
+- Avoid generic fluff like "improving productivity", "streamlining operations", "simplifying processes", etc.
+- Sound like the examples below — benefit-led, visual, concrete
 
-Avoid:
-- Generic phrases like "Streamlining operations", "Boosting productivity", or "Simplifying processes"
-- Corporate clichés like "automating tasks" or "improving cash flow"
-- Anything that could apply to any business
+Format the result as a **single line** with 3 bullets separated by "|" (pipe character).
 
-Format the result as a single line with items separated by "|"
+---
 
-Examples of good use cases:
-- Showing how a Fractional CFO can boost profits in 90 seconds
-- Walking founders through their cash runway without a single spreadsheet
-- Visualizing how mediation saves 4+ months of legal delays
-- Framing estate planning as peace-of-mind, not paperwork
-- Mapping the client journey for your fitness coaching program
-- Turning your offer into a story, not a sales pitch
-- Explaining what a KPI dashboard actually does in 2 minutes
-- Outlining your onboarding steps without those boring emails
-- Pitching your legal-writing service without industry jargon
+### Examples of Good Use Cases:
+
+**Accounting / Finance**
+- Showing how outsourced CFOs double cash visibility in 90 seconds
+- Framing your bookkeeping as clean, easy monthly reports without the extra spreadsheets
+- Explaining how tax prep saves businesses thousands in missed deductions
+
+**Payroll / HR**
+- Showing how your payroll service auto-handles IRS compliance for small teams of 5–50
+- Mapping how outsourced HR avoids 3 months of hiring risk
+- Visualizing HR onboarding with zero paperwork and same-day access
+
+**Legal / Compliance**
+- Turning complex contract terms into 90-second client explainers
+- Showing how mediation saves 4+ months of legal delays
+
+**Consulting / Strategy**
+- Mapping your client onboarding journey in 90 seconds
+- Showing how strategic planning cuts churn by 25%
+- Turning your offer into a story — not a sales pitch
+
+**Coaching / Training**
+- Visualizing how your coaching turns “busy” into “profitable”
+- Framing leadership development as team transformation, not just soft skills
+- Showing how habit coaching boosts client retention by 2x
+
+**Health / Wellness**
+- Mapping the therapy intake process to reduce drop-offs
+- Showing how telehealth makes care feel in-person
+- Visualizing how your sleep program helps reduce burnout in 2 weeks
+
+**Tech / SaaS**
+- Bringing your dashboard features to life with 2-minute visuals
+- Showing how automated alerts save reps from cold deals
+- Walking users through the setup process — no docs required
+- Explaining how a Fractional Analyst actually works without a single spreadsheet
+
+**Logistics / Operations**
+- Visualizing supply chain visibility from factory to front door
+- Mapping the return process for customers in 30 seconds
+- Showing how route optimization saves 10+ hours per week
+
+---
+
+### Keyword-Driven Inference Tips:
+
+Treat the section above as examples — do not reuse them directly.
 
 Services:
 {services}
