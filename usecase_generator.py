@@ -109,10 +109,7 @@ Services:
 {services}
 """
 
-def postprocess_output(text):
-    lines = text.splitlines()
-    cleaned = []
-
+def has_disqualifying_line(text):
     bad_line_patterns = [
         r"(?i)^here\s+(is|are)\b",
         r"(?i)^i\s+apologize\b",
@@ -124,31 +121,45 @@ def postprocess_output(text):
         r"(?i)^i\s+(cannot|can't|can’t)\b",
         r"(?i)^this\s+(ai|llm|language\s+model)\s+(cannot|can't|can’t|doesn’t)\b"
     ]
+    for line in text.splitlines():
+        for pattern in bad_line_patterns:
+            if re.match(pattern, line.strip()):
+                return True
+    return False
 
-    vague_patterns = [
-        r"\bstreamlining\b",
-        r"\bsimplifying\b",
-        r"\bautomating\b",
-        r"\bboosting\s+productivity\b",
-        r"\breducing\s+errors\b",
-        r"\bimproving\s+(efficiency|cash\s*flow)\b",
-        r"\benhancing\s+(collaboration|performance)\b",
-        r"\boptimizing\b",
-        r"\bmanaging\b",
-        r"\bsaving\s+time\b",
-        r"\bfreeing\s+up\b",
-    ]
+def postprocess_output(text):
+    lines = text.splitlines()
+    return " | ".join([line.strip() for line in lines if line.strip()])
 
-    for line in lines:
-        original = line.strip()
-        if not original:
-            continue
-        if any(re.search(p, original, re.IGNORECASE) for p in vague_patterns + bad_line_patterns):
-            print(f"⚠️ Disqualified by rule: {original}", flush=True)
-            continue
-        cleaned.append(original)
+def generate_use_cases_with_retries(prompt, retries=1):
+    for attempt in range(retries + 1):
+        try:
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(API_TIMEOUT_SECONDS)
 
-    return " | ".join(cleaned)
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1000,
+            )
+
+            signal.alarm(0)
+
+            output = response.choices[0].message.content.strip()
+            if has_disqualifying_line(output):
+                print(f"⚠️ Disqualified intro found on attempt {attempt + 1}, regenerating...", flush=True)
+                continue
+
+            return output
+
+        except TimeoutError:
+            print("❌ Timeout during generation", flush=True)
+            return None
+        except Exception as e:
+            print(f"❌ API error: {e}", flush=True)
+            return None
+    return None
 
 def main():
     print("🎬 Generating use cases from services...", flush=True)
@@ -179,34 +190,21 @@ def main():
 
         print(f"🔍 Generating use cases for: {name}", flush=True)
         prompt = generate_prompt(truncate_text(services))
+        raw_output = generate_use_cases_with_retries(prompt, retries=2)
 
-        try:
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(API_TIMEOUT_SECONDS)
-
-            response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=1000,
-            )
-
-            signal.alarm(0)
-
-            raw_output = response.choices[0].message.content.strip()
+        if raw_output:
+            print(f"📝 Raw output: {raw_output}", flush=True)
             cleaned_output = postprocess_output(raw_output)
+            print(f"✨ Cleaned output: {cleaned_output}", flush=True)
 
             if cleaned_output:
                 record["use cases"] = cleaned_output
                 updated += 1
-                print(f"✅ Added use cases to {name}: {cleaned_output}", flush=True)
+                print(f"✅ Added use cases to {name}", flush=True)
             else:
-                print(f"⚠️ Skipped {name} due to low-quality output", flush=True)
-
-        except TimeoutError:
-            print(f"❌ Timeout while processing {name}", flush=True)
-        except Exception as e:
-            print(f"❌ Error generating use cases for {name}: {e}", flush=True)
+                print(f"⚠️ No usable lines in output for {name}", flush=True)
+        else:
+            print(f"❌ Failed to generate use cases for {name}", flush=True)
 
         results.append(record)
         time.sleep(1.2)
