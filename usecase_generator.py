@@ -59,10 +59,30 @@ Services:
 
 def postprocess_output(text):
     lines = text.splitlines()
-    return " | ".join([
-        line.strip() for line in lines
-        if line.strip() and not re.match(r"(?i)^here\s+(is|are)\b", line.strip())
-    ])
+    cleaned_lines = []
+
+    bad_patterns = [
+        r"(?i)^here\s+(is|are)\b", 
+        r"(?i)^i\s+apologize\b", 
+        r"(?i)^sorry\b", 
+        r"(?i)^unfortunately\b", 
+        r"(?i)^i\s+(am|’m)\s+(not\s+sure|unable)\b", 
+        r"(?i)^based\s+on\s+(the\s+)?(description|limited\s+information)\b", 
+        r"(?i)^as\s+(an\s+)?(ai|llm|language\s+model)\b", 
+        r"(?i)^i\s+(cannot|can't)\b",
+        r"(?i)^this\s+(ai|llm)\s+(cannot|doesn’t|can't|can’t)\b"
+    ]
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if any(re.match(pattern, line) for pattern in bad_patterns):
+            print(f"❌ Disqualified line: {line}", flush=True)
+            return None  # Reject the entire record
+        cleaned_lines.append(line)
+
+    return " | ".join(cleaned_lines)
 
 def main():
     print("🎬 Generating use cases from services...", flush=True)
@@ -110,9 +130,13 @@ def main():
 
             raw_output = response.choices[0].message.content.strip()
             cleaned_output = postprocess_output(raw_output)
-            record["use cases"] = cleaned_output
-            updated += 1
-            print(f"✅ Added use cases to {name}", flush=True)
+
+            if cleaned_output:
+                record["use cases"] = cleaned_output
+                updated += 1
+                print(f"✅ Added use cases to {name}", flush=True)
+            else:
+                print(f"⚠️ Skipped {name} due to disqualified content", flush=True)
 
         except TimeoutError:
             print(f"❌ Timeout while processing {name}", flush=True)
