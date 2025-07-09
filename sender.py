@@ -35,7 +35,7 @@ WEEKDAY = TODAY.weekday()
 DAILY_PLAN = {
     0: {"initial": 30, "fu1": 0, "fu2": 0},
     1: {"initial": 30, "fu1": 0, "fu2": 0},
-    2: {"initial": 15, "fu1": 15, "fu2": 0},
+    2: {"initial": 30, "fu1": 0, "fu2": 0},
     3: {"initial": 15, "fu1": 15, "fu2": 0},
     4: {"initial": 0, "fu1": 15, "fu2": 15}
 }
