@@ -26,7 +26,7 @@ NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
 
 # 🚦 Allowed sending window: 11:00 AM to 2:00 PM WAT
-if not time(14, 0) <= NOW.time() <= time(18, 30):
+if not time(14, 0) <= NOW.time() <= time(19, 30):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
 
