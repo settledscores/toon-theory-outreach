@@ -165,4 +165,4 @@ def main():
         os.replace(TEMP_PATH, INPUT_PATH)
         print(f"\n🎯 Done. {updated} record(s) updated in scraped_leads.ndjson\n", flush=True)
     except Exception as e:
-        print(f"❌ Failed to write updated NDJSON: {e}", flush=
+        print(f"❌ Failed to write updated NDJSON: {e}", flush=True)
