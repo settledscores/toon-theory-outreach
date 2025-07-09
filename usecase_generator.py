@@ -51,6 +51,11 @@ Each bullet must:
 - Do NOT start with generic verbs like "Explaining", "Clarifying", or "Walking through"
 - Should sound like one of the examples below
 
+Avoid:
+- Generic phrases like "Streamlining operations", "Boosting productivity", or "Simplifying processes"
+- Corporate clichés like "automating tasks" or "improving cash flow"
+- Anything that could apply to any business
+
 Format the result as a single line with items separated by "|"
 
 Examples of good use cases:
@@ -59,8 +64,8 @@ Examples of good use cases:
 - Visualizing how mediation saves 4+ months of legal delays
 - Framing estate planning as peace-of-mind, not paperwork
 - Mapping the client journey for your fitness coaching program
-- Turning your offer into a story — not a sales pitch
-- Bringing your KPI dashboard to life with 2-minute visuals
+- Turning your offer into a story, not a sales pitch
+- Explaining what a KPI dashboard actually does in 2 minutes
 - Outlining your onboarding steps without those boring emails
 - Pitching your legal-writing service without industry jargon
 
@@ -68,33 +73,49 @@ Services:
 {services}
 """
 
-bad_line_patterns = [
-    r"(?i)^here\s+(is|are)\b",
-    r"(?i)^i\s+apologize\b",
-    r"(?i)^sorry\b",
-    r"(?i)^unfortunately\b",
-    r"(?i)^i\s+(am|’m|‘m)\s+(not\s+sure|unable|an\s+ai|a\s+language\s+model)\b",
-    r"(?i)^based\s+on\s+(the\s+)?(description|limited\s+information|input)\b",
-    r"(?i)^(as|i am)\s+(an\s+)?(ai|llm|language\s+model)\b",
-    r"(?i)^i\s+(cannot|can't|can’t)\b",
-    r"(?i)^this\s+(ai|llm|language\s+model)\s+(cannot|can't|can’t|doesn’t)\b"
-]
-
 def postprocess_output(text):
     lines = text.splitlines()
     cleaned = []
+
+    bad_line_patterns = [
+        r"(?i)^here\s+(is|are)\b",
+        r"(?i)^i\s+apologize\b",
+        r"(?i)^sorry\b",
+        r"(?i)^unfortunately\b",
+        r"(?i)^i\s+(am|’m|‘m)\s+(not\s+sure|unable|an\s+ai|a\s+language\s+model)\b",
+        r"(?i)^based\s+on\s+(the\s+)?(description|limited\s+information|input)\b",
+        r"(?i)^(as|i am)\s+(an\s+)?(ai|llm|language\s+model)\b",
+        r"(?i)^i\s+(cannot|can't|can’t)\b",
+        r"(?i)^this\s+(ai|llm|language\s+model)\s+(cannot|can't|can’t|doesn’t)\b"
+    ]
+
+    vague_patterns = [
+        r"\bstreamlining\b",
+        r"\bsimplifying\b",
+        r"\bautomating\b",
+        r"\bboosting\s+productivity\b",
+        r"\breducing\s+errors\b",
+        r"\bimproving\s+(efficiency|cash\s*flow)\b",
+        r"\benhancing\s+(collaboration|performance)\b",
+        r"\boptimizing\b",
+        r"\bmanaging\b",
+        r"\bsaving\s+time\b",
+        r"\bfreeing\s+up\b",
+    ]
+
     for line in lines:
         original = line.strip()
         if not original:
             continue
-        if any(re.match(p, original) for p in bad_line_patterns):
-            print(f"⚠️ Disqualified by regex: {original}", flush=True)
+        if any(re.search(p, original, re.IGNORECASE) for p in vague_patterns + bad_line_patterns):
+            print(f"⚠️ Disqualified by rule: {original}", flush=True)
             continue
         cleaned.append(original)
+
     return " | ".join(cleaned)
 
 def main():
-    print("🎬 Generating use cases from services...\n", flush=True)
+    print("🎬 Generating use cases from services...", flush=True)
 
     try:
         records = read_multiline_ndjson(INPUT_PATH)
@@ -106,26 +127,22 @@ def main():
     results = []
 
     for i, record in enumerate(records):
-        print(f"\n➡️ Record {i+1}/{len(records)}", flush=True)
+        print(f"\n➡️ Processing record {i+1}/{len(records)}", flush=True)
         services = record.get("services", "").strip()
         name = record.get("business name", "[no name]")
-        website = record.get("website url", "[no website]")
-        use_cases = record.get("use cases", None)
 
         if not services:
             print(f"⚠️ No services for {name}, skipping", flush=True)
             results.append(record)
             continue
 
-        if use_cases is not None and use_cases.strip():
-            print(f"ℹ️ Skipping {name} — already filled: {use_cases!r}", flush=True)
+        if record.get("use cases", "").strip():
+            print(f"ℹ️ Use cases already filled for {name}, skipping", flush=True)
             results.append(record)
             continue
 
-        print(f"🔍 Generating use cases for: {name} ({website})", flush=True)
-
+        print(f"🔍 Generating use cases for: {name}", flush=True)
         prompt = generate_prompt(truncate_text(services))
-        print("\n📝 Prompt:\n" + "-" * 40 + f"\n{prompt}\n" + "-" * 40, flush=True)
 
         try:
             signal.signal(signal.SIGALRM, timeout_handler)
@@ -141,13 +158,14 @@ def main():
             signal.alarm(0)
 
             raw_output = response.choices[0].message.content.strip()
-            print("\n📤 Raw model output:\n" + "-" * 40 + f"\n{raw_output}\n" + "-" * 40, flush=True)
-
             cleaned_output = postprocess_output(raw_output)
-            print(f"\n✅ Cleaned use cases: {cleaned_output}\n", flush=True)
 
-            record["use cases"] = cleaned_output
-            updated += 1
+            if cleaned_output:
+                record["use cases"] = cleaned_output
+                updated += 1
+                print(f"✅ Added use cases to {name}: {cleaned_output}", flush=True)
+            else:
+                print(f"⚠️ Skipped {name} due to low-quality output", flush=True)
 
         except TimeoutError:
             print(f"❌ Timeout while processing {name}", flush=True)
