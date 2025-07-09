@@ -24,19 +24,19 @@ TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
-WEEKDAY = TODAY.weekday()
 
-# ✅ Time window: 11:00 AM to 2:00 PM WAT
+# 🚦 Time Window: 11:00 to 14:00 WAT
 if not time(11, 0) <= NOW.time() <= time(14, 0):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
 
+WEEKDAY = TODAY.weekday()
 DAILY_PLAN = {
-    0: {"initial": 30, "fu1": 0, "fu2": 0},
-    1: {"initial": 30, "fu1": 0, "fu2": 0},
-    2: {"initial": 15, "fu1": 15, "fu2": 0},
-    3: {"initial": 15, "fu1": 15, "fu2": 0},
-    4: {"initial": 0, "fu1": 15, "fu2": 15}
+    0: {"initial": 30, "fu1": 0, "fu2": 0},  # Monday
+    1: {"initial": 30, "fu1": 0, "fu2": 0},  # Tuesday
+    2: {"initial": 15, "fu1": 15, "fu2": 0}, # Wednesday
+    3: {"initial": 15, "fu1": 15, "fu2": 0}, # Thursday
+    4: {"initial": 0, "fu1": 15, "fu2": 15}  # Friday
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
@@ -116,13 +116,12 @@ def send_email(to_email, subject, content, in_reply_to=None):
 
 def check_replies(message_ids):
     seen = set()
-    print("[IMAP] Checking replies...")
-    folders_to_check = ["INBOX", "Spam"]
+    print("[IMAP] Checking replies (INBOX and SPAM)...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        for folder in folders_to_check:
+        for mailbox in ["INBOX", "[Gmail]/Spam", "SPAM", "Junk"]:
             try:
-                imap.select(folder)
+                imap.select(mailbox)
                 typ, data = imap.search(None, "ALL")
                 if typ != "OK":
                     continue
@@ -135,11 +134,11 @@ def check_replies(message_ids):
                     for mid in message_ids:
                         if f"<{mid}>" in headers:
                             seen.add(mid)
-            except Exception as e:
-                print(f"[IMAP] Error in folder '{folder}': {e}")
+            except:
+                continue
     return seen
 
-# === Load Leads ===
+# === Load ===
 print("[Load] Reading leads file...")
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
@@ -151,7 +150,7 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Reply Status ===
+# === Replies ===
 print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -165,14 +164,14 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Count Sent ===
+# === Count Sent Today ===
 sent_today = {
     "initial": sum(1 for l in leads if l["initial date"] == TODAY.isoformat()),
     "fu1": sum(1 for l in leads if l["follow-up 1 date"] == TODAY.isoformat()),
     "fu2": sum(1 for l in leads if l["follow-up 2 date"] == TODAY.isoformat())
 }
 
-# === Eligibility Logic ===
+# === Eligibility ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email 1") and lead.get("email")
 
@@ -190,24 +189,27 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Build Queue ===
-print("[Queue] Building one-message queue...")
+# === Queue ===
+print("[Queue] Building send queue...")
 queue = []
 if sent_today["fu2"] < TODAY_PLAN["fu2"]:
     for lead in leads:
         if can_send_followup(lead, 3):
             queue.append(("fu2", lead))
-            break
-elif sent_today["fu1"] < TODAY_PLAN["fu1"]:
+            if len(queue) >= TODAY_PLAN["fu2"] - sent_today["fu2"]:
+                break
+if sent_today["fu1"] < TODAY_PLAN["fu1"] and not queue:
     for lead in leads:
         if can_send_followup(lead, 2):
             queue.append(("fu1", lead))
-            break
-elif sent_today["initial"] < TODAY_PLAN["initial"]:
+            if len(queue) >= TODAY_PLAN["fu1"] - sent_today["fu1"]:
+                break
+if sent_today["initial"] < TODAY_PLAN["initial"] and not queue:
     for lead in leads:
         if can_send_initial(lead):
             queue.append(("initial", lead))
-            break
+            if len(queue) >= TODAY_PLAN["initial"] - sent_today["initial"]:
+                break
 
 # === Send ===
 print(f"[Process] {len(queue)} message(s) to send...")
