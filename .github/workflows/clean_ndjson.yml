@@ -1,0 +1,20 @@
+name: Clean NDJSON Leads
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  clean-leads:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Run cleanup script
+      run: python clean_ndjson.py
