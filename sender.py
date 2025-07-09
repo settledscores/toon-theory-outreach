@@ -26,7 +26,7 @@ NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
 
 # 🚦 Allowed sending window: 11:00 AM to 2:00 PM WAT
-if not time(11, 0) <= NOW.time() <= time(14, 0):
+if not time(14, 0) <= NOW.time() <= time(18, 30):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
 
@@ -188,7 +188,7 @@ def can_send_followup(lead, step):
     send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
     while send_day.weekday() > 4:
         send_day += timedelta(days=1)
-    return TODAY == send_day
+    return TODAY >= send_day
 
 # === Queue ===
 print("[Queue] Building one-message queue...")
