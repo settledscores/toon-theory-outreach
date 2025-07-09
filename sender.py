@@ -20,18 +20,16 @@ SMTP_SERVER = os.environ["SMTP_SERVER"]
 SMTP_PORT = int(os.environ["SMTP_PORT"])
 
 LEADS_FILE = "leads/scraped_leads.ndjson"
-
 TIMEZONE = ZoneInfo("Africa/Lagos")
 TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
+WEEKDAY = TODAY.weekday()
 
-# 🚦 Check if current time is within sending window (08:10 to 12:00 WAT)
-if not time(8, 10) <= NOW.time() <= time(12, 0):
+# ✅ Time window: 11:00 AM to 2:00 PM WAT
+if not time(11, 0) <= NOW.time() <= time(14, 0):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
-
-WEEKDAY = TODAY.weekday()
 
 DAILY_PLAN = {
     0: {"initial": 30, "fu1": 0, "fu2": 0},
@@ -105,8 +103,8 @@ def send_email(to_email, subject, content, in_reply_to=None):
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
     msg.set_content(content)
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])
-    msg["Message-ID"] = msg_id
+    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
+    msg["Message-ID"] = f"<{msg_id}>"
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
@@ -114,29 +112,34 @@ def send_email(to_email, subject, content, in_reply_to=None):
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
     print(f"[Send] Email sent to {to_email}")
-    return msg_id[1:-1]  # Remove angle brackets for easier matching
+    return msg_id
 
 def check_replies(message_ids):
     seen = set()
     print("[IMAP] Checking replies...")
+    folders_to_check = ["INBOX", "Spam"]
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        imap.select("INBOX")
-        typ, data = imap.search(None, "ALL")
-        if typ != "OK":
-            return seen
-        for num in data[0].split():
-            typ, msg_data = imap.fetch(num, "(RFC822)")
-            if typ != "OK":
-                continue
-            msg = email.message_from_bytes(msg_data[0][1])
-            headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
-            for mid in message_ids:
-                if f"<{mid}>" in headers:
-                    seen.add(mid)
+        for folder in folders_to_check:
+            try:
+                imap.select(folder)
+                typ, data = imap.search(None, "ALL")
+                if typ != "OK":
+                    continue
+                for num in data[0].split():
+                    typ, msg_data = imap.fetch(num, "(RFC822)")
+                    if typ != "OK":
+                        continue
+                    msg = email.message_from_bytes(msg_data[0][1])
+                    headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
+                    for mid in message_ids:
+                        if f"<{mid}>" in headers:
+                            seen.add(mid)
+            except Exception as e:
+                print(f"[IMAP] Error in folder '{folder}': {e}")
     return seen
 
-# === Load ===
+# === Load Leads ===
 print("[Load] Reading leads file...")
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
@@ -148,7 +151,7 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Replies ===
+# === Reply Status ===
 print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -162,25 +165,24 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Count Sent Today ===
+# === Count Sent ===
 sent_today = {
     "initial": sum(1 for l in leads if l["initial date"] == TODAY.isoformat()),
     "fu1": sum(1 for l in leads if l["follow-up 1 date"] == TODAY.isoformat()),
     "fu2": sum(1 for l in leads if l["follow-up 2 date"] == TODAY.isoformat())
 }
 
-# === Eligibility ===
+# === Eligibility Logic ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email 1") and lead.get("email")
 
 def can_send_followup(lead, step):
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
-    keys = {
-        2: ("initial date", "message id", "follow-up 1 date", "email 2"),
-        3: ("follow-up 1 date", "message id 2", "follow-up 2 date", "email 3")
-    }
-    prev_key, msg_id_key, next_key, email_key = keys[step]
+    prev_key = "initial date" if step == 2 else "follow-up 1 date"
+    msg_id_key = "message id" if step == 2 else "message id 2"
+    next_key = f"follow-up {step} date"
+    email_key = f"email {step}"
     if not (lead[prev_key] and lead[msg_id_key] and not lead[next_key] and lead.get(email_key)):
         return False
     send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
@@ -188,7 +190,7 @@ def can_send_followup(lead, step):
         send_day += timedelta(days=1)
     return TODAY == send_day
 
-# === Queue ===
+# === Build Queue ===
 print("[Queue] Building one-message queue...")
 queue = []
 if sent_today["fu2"] < TODAY_PLAN["fu2"]:
