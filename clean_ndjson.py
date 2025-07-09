@@ -5,7 +5,7 @@ import os
 input_path = "leads/scraped_leads.ndjson"
 backup_path = "leads/scraped_leads_backup.ndjson"
 
-# Backup the original file
+# Backup original file
 if os.path.exists(input_path):
     shutil.copyfile(input_path, backup_path)
 else:
@@ -15,30 +15,31 @@ else:
 def read_multiline_json_blocks(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         buffer = []
-        brace_count = 0
+        brace_level = 0
         for line in f:
-            brace_count += line.count("{") - line.count("}")
+            brace_level += line.count('{') - line.count('}')
             buffer.append(line)
-            if brace_count == 0 and buffer:
-                yield "".join(buffer)
+            if brace_level == 0 and buffer:
+                yield ''.join(buffer)
                 buffer = []
 
-output_lines = []
+output_blocks = []
 
-for raw_json in read_multiline_json_blocks(input_path):
+for block in read_multiline_json_blocks(input_path):
     try:
-        entry = json.loads(raw_json)
+        obj = json.loads(block)
     except json.JSONDecodeError as e:
         print(f"Skipping block due to JSON error: {e}")
         continue
 
-    if not entry.get("initial date", "").strip():
+    if not obj.get("initial date", "").strip():
         for field in ["email 1", "email 2", "email 3", "use cases"]:
-            entry.pop(field, None)
+            if field in obj:
+                obj[field] = ""
 
-    output_lines.append(json.dumps(entry, ensure_ascii=False, indent=2))
+    output_blocks.append(json.dumps(obj, indent=2, ensure_ascii=False))
 
 with open(input_path, "w", encoding="utf-8") as f:
-    f.write("\n".join(output_lines) + "\n")
+    f.write("\n".join(output_blocks) + "\n")
 
-print("Cleanup complete.")
+print("✅ Fields wiped (not removed) where 'initial date' is blank.")
