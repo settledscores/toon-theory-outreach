@@ -1,50 +1,35 @@
 import json
-import shutil
 import os
 
-input_path = "leads/scraped_leads.ndjson"
-backup_path = "leads/scraped_leads_backup.ndjson"
+leads_path = "leads/scraped_leads.ndjson"
 
-# Backup the file
-if os.path.exists(input_path):
-    shutil.copyfile(input_path, backup_path)
-else:
-    print(f"❌ File not found: {input_path}")
-    exit(1)
-
-def parse_json_objects(file_path):
-    """
-    Yield individual JSON objects from a file with multiple multi-line JSON entries.
-    """
-    buffer = ""
-    brace_count = 0
+def read_blocks(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            brace_count += line.count("{") - line.count("}")
-            buffer += line
-            if brace_count == 0 and buffer.strip():
-                yield buffer
-                buffer = ""
+        raw = f.read()
+    return [block.strip() for block in raw.split("\n\n") if block.strip()]
 
-output_blocks = []
-
-for block in parse_json_objects(input_path):
+def clean_block(json_str):
     try:
-        obj = json.loads(block)
-    except json.JSONDecodeError as e:
-        print(f"❌ Skipping block due to JSON error: {e}")
-        continue
+        obj = json.loads(json_str)
+        if not obj.get("initial date", "").strip():
+            for key in ["email 1", "email 2", "email 3", "use cases"]:
+                if key in obj:
+                    obj[key] = ""
+        return json.dumps(obj, ensure_ascii=False, indent=2)
+    except json.JSONDecodeError:
+        print("⚠️ Skipping invalid JSON block")
+        return json_str
 
-    # Only wipe fields if initial date is missing or blank
-    if not obj.get("initial date", "").strip():
-        for field in ["email 1", "email 2", "email 3", "use cases"]:
-            if field in obj:
-                obj[field] = ""
+def write_blocks(file_path, blocks):
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("\n\n".join(blocks) + "\n")
 
-    output_blocks.append(json.dumps(obj, ensure_ascii=False, indent=2))
-
-# Write the cleaned output
-with open(input_path, "w", encoding="utf-8") as f:
-    f.write("\n".join(output_blocks) + "\n")
-
-print("✅ Done: Fields wiped if 'initial date' was blank. No blocks deleted.")
+# Process
+if os.path.exists(leads_path):
+    print("🧹 Cleaning scraped_leads.ndjson...")
+    blocks = read_blocks(leads_path)
+    cleaned_blocks = [clean_block(b) for b in blocks]
+    write_blocks(leads_path, cleaned_blocks)
+    print("✅ Done. Emails and use cases wiped where initial date is blank.")
+else:
+    print("❌ leads/scraped_leads.ndjson not found.")
