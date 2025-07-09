@@ -28,19 +28,25 @@ class VariantRotator:
 
 salutations = [
     "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there",
-    "Good day", "Greetings", "Howdy"
+    "Good day", "Greetings"
 ]
 
 signatures = [
-    "Warm regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Cheers,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Take care,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Sincerely,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Best wishes,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Kind regards,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "With appreciation,\nTrent — Founder, Toon Theory\nwww.toontheory.com",
-    "Respectfully,\nTrent — Founder, Toon Theory\nwww.toontheory.com"
+    "Warmly,\nTrent — Founder @ Toon Theory\nhttps://toontheory.com\nWhiteboard videos your customers will actually remember.",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and B2B brands who care about clarity.",
+    "Cheers,\nTrent — Founder at Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress.",
+    "Take care,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
+    "Sincerely,\nTrent — Founder, Toon Theory\nhttps://toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
+    "Best wishes,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
+    "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
+    "With appreciation,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nWhiteboard videos your customers will actually remember.",
+    "Respectfully,\nTrent — Founder at Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and B2B brands who care about clarity.",
+    "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
+    "Regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
+    "With gratitude,\nTrent — Founder at Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
+    "Yours truly,\nTrent — Founder, Toon Theory\nhttps://toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
+    "Faithfully,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
+    "Thanks again,\nTrent — Founder at Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress.",
 ]
 
 # --- Paragraph Templates for Email 1 ---------------------------------------
