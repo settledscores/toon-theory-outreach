@@ -105,8 +105,8 @@ def send_email(to_email, subject, content, in_reply_to=None):
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
     msg.set_content(content)
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
-    msg["Message-ID"] = f"<{msg_id}>"
+    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])
+    msg["Message-ID"] = msg_id
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
@@ -114,7 +114,7 @@ def send_email(to_email, subject, content, in_reply_to=None):
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
     print(f"[Send] Email sent to {to_email}")
-    return msg_id
+    return msg_id[1:-1]  # Remove angle brackets for easier matching
 
 def check_replies(message_ids):
     seen = set()
@@ -150,7 +150,9 @@ for lead in leads:
 
 # === Replies ===
 print("[Replies] Updating reply status...")
-all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] +           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] +           [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
+all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
+          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
+          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
 replied = check_replies([mid for mid, _ in all_ids])
 for lead in leads:
     if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
@@ -174,10 +176,11 @@ def can_send_initial(lead):
 def can_send_followup(lead, step):
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
-    prev_key = "initial date" if step == 2 else "follow-up 1 date"
-    msg_id_key = "message id" if step == 2 else "message id 2"
-    next_key = f"follow-up {step} date"
-    email_key = f"email {step}"
+    keys = {
+        2: ("initial date", "message id", "follow-up 1 date", "email 2"),
+        3: ("follow-up 1 date", "message id 2", "follow-up 2 date", "email 3")
+    }
+    prev_key, msg_id_key, next_key, email_key = keys[step]
     if not (lead[prev_key] and lead[msg_id_key] and not lead[next_key] and lead.get(email_key)):
         return False
     send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
