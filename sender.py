@@ -13,7 +13,6 @@ from zoneinfo import ZoneInfo
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
-
 IMAP_SERVER = os.environ["IMAP_SERVER"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = os.environ["SMTP_SERVER"]
@@ -21,27 +20,17 @@ SMTP_PORT = int(os.environ["SMTP_PORT"])
 
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
-TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
+TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
-
-# 🚦 Allowed sending window: 11:00 AM to 2:00 PM WAT
-if not time(14, 0) <= NOW.time() <= time(19, 30):
-    print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
-    exit(0)
-
 WEEKDAY = TODAY.weekday()
 
-DAILY_PLAN = {
-    0: {"initial": 30, "fu1": 0, "fu2": 0},
-    1: {"initial": 30, "fu1": 0, "fu2": 0},
-    2: {"initial": 30, "fu1": 0, "fu2": 0},
-    3: {"initial": 15, "fu1": 15, "fu2": 0},
-    4: {"initial": 0, "fu1": 15, "fu2": 15}
-}
-TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
+if not time(14, 0) <= NOW.time() <= time(19, 30):
+    print(f"[Skip] Outside allowed window ({NOW.time()} WAT), exiting.")
+    exit(0)
 
-INITIAL_SUBJECTS = [
+# === Subject Pools ===
+initial_subjects = [
     "Let’s make your message stick", "Helping your ideas stick visually",
     "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
     "How about a different approach to your messaging?", "Making your message unforgettable",
@@ -56,7 +45,7 @@ INITIAL_SUBJECTS = [
     "How do you explain what {company} does?"
 ]
 
-FU1_SUBJECTS = [
+fu1_subjects = [
     "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
     "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
     "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
@@ -65,7 +54,7 @@ FU1_SUBJECTS = [
     "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
 ]
 
-FU2_SUBJECTS = [
+fu2_subjects = [
     "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
     "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
     "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
@@ -75,6 +64,18 @@ FU2_SUBJECTS = [
     "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
     "Open to creative pitches?", "Just in case it got buried"
 ]
+
+random.shuffle(initial_subjects)
+random.shuffle(fu1_subjects)
+random.shuffle(fu2_subjects)
+
+# === Helper Functions ===
+def next_subject(pool, **kwargs):
+    if not pool:
+        return None
+    template = pool.pop(0)
+    pool.append(template)
+    return template.format(**kwargs)
 
 def read_multiline_ndjson(path):
     records = []
@@ -104,7 +105,7 @@ def send_email(to_email, subject, content, in_reply_to=None):
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
     msg.set_content(content)
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
+    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[1])[1:-1]
     msg["Message-ID"] = f"<{msg_id}>"
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
@@ -139,8 +140,7 @@ def check_replies(message_ids):
                 continue
     return seen
 
-# === Load ===
-print("[Load] Reading leads file...")
+# === Load & Prepare Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -151,7 +151,6 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Replies ===
 print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -165,73 +164,76 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Count Sent Today ===
-sent_today = {
-    "initial": sum(1 for l in leads if l["initial date"] == TODAY.isoformat()),
-    "fu1": sum(1 for l in leads if l["follow-up 1 date"] == TODAY.isoformat()),
-    "fu2": sum(1 for l in leads if l["follow-up 2 date"] == TODAY.isoformat())
-}
+sent_today = sum(
+    1 for l in leads
+    if l.get("initial date") == TODAY.isoformat() or
+       l.get("follow-up 1 date") == TODAY.isoformat() or
+       l.get("follow-up 2 date") == TODAY.isoformat()
+)
 
-# === Eligibility ===
+# === Logic ===
 def can_send_initial(lead):
-    return not lead["initial date"] and lead.get("email 1") and lead.get("email")
+    return not lead["initial date"] and lead.get("email") and lead.get("email 1") and WEEKDAY != 4
 
 def can_send_followup(lead, step):
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
-    prev_key = "initial date" if step == 2 else "follow-up 1 date"
+    prev_date_key = "initial date" if step == 2 else "follow-up 1 date"
     msg_id_key = "message id" if step == 2 else "message id 2"
-    next_key = f"follow-up {step} date"
-    email_key = f"email {step}"
-    if not (lead[prev_key] and lead[msg_id_key] and not lead[next_key] and lead.get(email_key)):
+    curr_date_key = f"follow-up {step} date"
+    content_key = f"email {step}"
+    if not (lead[prev_date_key] and lead[msg_id_key] and not lead[curr_date_key] and lead.get(content_key)):
         return False
-    send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=3)
-    while send_day.weekday() > 4:
-        send_day += timedelta(days=1)
-    return TODAY >= send_day
+    start_date = datetime.strptime(lead[prev_date_key], "%Y-%m-%d").date()
+    ideal_send_date = start_date + timedelta(days=step)
+    actual_send_date = ideal_send_date
+    rollover_days = 0
+    while actual_send_date.weekday() >= 5:
+        actual_send_date += timedelta(days=1)
+        rollover_days += 1
+    if step == 3 and rollover_days > 0:
+        actual_send_date -= timedelta(days=min(rollover_days, 2))
+        while actual_send_date.weekday() >= 5:
+            actual_send_date += timedelta(days=1)
+    return TODAY >= actual_send_date
 
 # === Queue ===
 print("[Queue] Building one-message queue...")
 queue = []
-if sent_today["fu2"] < TODAY_PLAN["fu2"]:
-    for lead in leads:
-        if can_send_followup(lead, 3):
-            queue.append(("fu2", lead))
-            break
-elif sent_today["fu1"] < TODAY_PLAN["fu1"]:
-    for lead in leads:
-        if can_send_followup(lead, 2):
-            queue.append(("fu1", lead))
-            break
-elif sent_today["initial"] < TODAY_PLAN["initial"]:
-    for lead in leads:
-        if can_send_initial(lead):
-            queue.append(("initial", lead))
-            break
+if sent_today < 30:
+    for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
+        for lead in leads:
+            if label == "initial" and can_send_initial(lead):
+                queue.append(("initial", lead))
+                break
+            elif label == "fu1" and can_send_followup(lead, 2):
+                queue.append(("fu1", lead))
+                break
+            elif label == "fu2" and can_send_followup(lead, 3):
+                queue.append(("fu2", lead))
+                break
 
-# === Abort if multiple somehow get in
 if len(queue) > 1:
     print(f"[Abort] More than one message in queue — refusing to send. Queue length: {len(queue)}")
     exit(1)
 
-# === Send ===
 print(f"[Process] {len(queue)} message(s) to send...")
 for kind, lead in queue:
     try:
         if kind == "initial":
-            subject = random.choice(INITIAL_SUBJECTS).format(company=lead["business name"])
+            subject = next_subject(initial_subjects, company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 1"])
             lead["message id"] = msgid
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
-            subject = random.choice(FU1_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+            subject = next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
-            subject = random.choice(FU2_SUBJECTS).format(name=lead["first name"], company=lead["business name"])
+            subject = next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
@@ -239,7 +241,6 @@ for kind, lead in queue:
     except Exception as e:
         print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
 
-# === Save ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
