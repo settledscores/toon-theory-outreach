@@ -1,8 +1,8 @@
 name: Send Emails
 
 on:
-  workflow_dispatch:
-  repository_dispatch:
+  workflow_dispatch: {}
+  repository_dispatch: {}
 
 concurrency:
   group: lead-pipeline
