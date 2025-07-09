@@ -25,18 +25,19 @@ TODAY = datetime.now(TIMEZONE).date()
 NOW = datetime.now(TIMEZONE)
 NOW_TIME = NOW.strftime("%H:%M")
 
-# 🚦 Time Window: 11:00 to 14:00 WAT
+# 🚦 Allowed sending window: 11:00 AM to 2:00 PM WAT
 if not time(11, 0) <= NOW.time() <= time(14, 0):
     print(f"[Skip] Outside allowed window (NOW: {NOW.time()} WAT), exiting.")
     exit(0)
 
 WEEKDAY = TODAY.weekday()
+
 DAILY_PLAN = {
-    0: {"initial": 30, "fu1": 0, "fu2": 0},  # Monday
-    1: {"initial": 30, "fu1": 0, "fu2": 0},  # Tuesday
-    2: {"initial": 15, "fu1": 15, "fu2": 0}, # Wednesday
-    3: {"initial": 15, "fu1": 15, "fu2": 0}, # Thursday
-    4: {"initial": 0, "fu1": 15, "fu2": 15}  # Friday
+    0: {"initial": 30, "fu1": 0, "fu2": 0},
+    1: {"initial": 30, "fu1": 0, "fu2": 0},
+    2: {"initial": 15, "fu1": 15, "fu2": 0},
+    3: {"initial": 15, "fu1": 15, "fu2": 0},
+    4: {"initial": 0, "fu1": 15, "fu2": 15}
 }
 TODAY_PLAN = DAILY_PLAN.get(WEEKDAY, {"initial": 0, "fu1": 0, "fu2": 0})
 
@@ -116,12 +117,12 @@ def send_email(to_email, subject, content, in_reply_to=None):
 
 def check_replies(message_ids):
     seen = set()
-    print("[IMAP] Checking replies (INBOX and SPAM)...")
+    print("[IMAP] Checking replies in inbox and spam...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        for mailbox in ["INBOX", "[Gmail]/Spam", "SPAM", "Junk"]:
+        for folder in ["INBOX", "SPAM", "Junk", "[Gmail]/Spam"]:
             try:
-                imap.select(mailbox)
+                imap.select(folder)
                 typ, data = imap.search(None, "ALL")
                 if typ != "OK":
                     continue
@@ -190,26 +191,28 @@ def can_send_followup(lead, step):
     return TODAY == send_day
 
 # === Queue ===
-print("[Queue] Building send queue...")
+print("[Queue] Building one-message queue...")
 queue = []
 if sent_today["fu2"] < TODAY_PLAN["fu2"]:
     for lead in leads:
         if can_send_followup(lead, 3):
             queue.append(("fu2", lead))
-            if len(queue) >= TODAY_PLAN["fu2"] - sent_today["fu2"]:
-                break
-if sent_today["fu1"] < TODAY_PLAN["fu1"] and not queue:
+            break
+elif sent_today["fu1"] < TODAY_PLAN["fu1"]:
     for lead in leads:
         if can_send_followup(lead, 2):
             queue.append(("fu1", lead))
-            if len(queue) >= TODAY_PLAN["fu1"] - sent_today["fu1"]:
-                break
-if sent_today["initial"] < TODAY_PLAN["initial"] and not queue:
+            break
+elif sent_today["initial"] < TODAY_PLAN["initial"]:
     for lead in leads:
         if can_send_initial(lead):
             queue.append(("initial", lead))
-            if len(queue) >= TODAY_PLAN["initial"] - sent_today["initial"]:
-                break
+            break
+
+# === Abort if multiple somehow get in
+if len(queue) > 1:
+    print(f"[Abort] More than one message in queue — refusing to send. Queue length: {len(queue)}")
+    exit(1)
 
 # === Send ===
 print(f"[Process] {len(queue)} message(s) to send...")
