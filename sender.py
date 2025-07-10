@@ -69,7 +69,7 @@ random.shuffle(initial_subjects)
 random.shuffle(fu1_subjects)
 random.shuffle(fu2_subjects)
 
-# === Helper Functions ===
+# === Subject Rotation ===
 def next_subject(pool, **kwargs):
     if not pool:
         return None
@@ -77,6 +77,7 @@ def next_subject(pool, **kwargs):
     pool.append(template)
     return template.format(**kwargs)
 
+# === File Helpers ===
 def read_multiline_ndjson(path):
     records = []
     buffer = ""
@@ -98,6 +99,7 @@ def write_multiline_ndjson(path, records):
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
 
+# === Email Functions ===
 def send_email(to_email, subject, content, in_reply_to=None):
     print(f"[Send] Preparing to send to {to_email} | Subject: {subject}")
     msg = EmailMessage()
@@ -140,7 +142,7 @@ def check_replies(message_ids):
                 continue
     return seen
 
-# === Load & Prepare Leads ===
+# === Load & Prep Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -151,6 +153,7 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
+# === Update Replies ===
 print("[Replies] Updating reply status...")
 all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
           [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
@@ -164,6 +167,7 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
+# === Count Sent Today ===
 sent_today = sum(
     1 for l in leads
     if l.get("initial date") == TODAY.isoformat() or
@@ -171,7 +175,7 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
-# === Logic ===
+# === Send Eligibility ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1") and WEEKDAY != 4
 
@@ -197,26 +201,25 @@ def can_send_followup(lead, step):
             actual_send_date += timedelta(days=1)
     return TODAY >= actual_send_date
 
-# === Queue ===
+# === Build Queue ===
 print("[Queue] Building one-message queue...")
 queue = []
 if sent_today < 30:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
         for lead in leads:
             if label == "initial" and can_send_initial(lead):
-                queue.append(("initial", lead))
+                queue = [("initial", lead)]
                 break
             elif label == "fu1" and can_send_followup(lead, 2):
-                queue.append(("fu1", lead))
+                queue = [("fu1", lead)]
                 break
             elif label == "fu2" and can_send_followup(lead, 3):
-                queue.append(("fu2", lead))
+                queue = [("fu2", lead)]
                 break
+        if queue:
+            break
 
-if len(queue) > 1:
-    print(f"[Abort] More than one message in queue — refusing to send. Queue length: {len(queue)}")
-    exit(1)
-
+# === Send Message ===
 print(f"[Process] {len(queue)} message(s) to send...")
 for kind, lead in queue:
     try:
@@ -241,6 +244,7 @@ for kind, lead in queue:
     except Exception as e:
         print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
 
+# === Save Output ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
