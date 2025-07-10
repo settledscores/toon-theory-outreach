@@ -25,7 +25,7 @@ TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 
-if not time(14, 0) <= NOW.time() <= time(20, 30):
+if not time(14, 0) <= NOW.time() <= time(19, 30):
     print(f"[Skip] Outside allowed window ({NOW.time()} WAT), exiting.")
     exit(0)
 
