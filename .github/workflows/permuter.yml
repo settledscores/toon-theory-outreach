@@ -26,12 +26,12 @@ jobs:
       - name: 🧠 Run permuter.py
         run: python permuter.py
 
-      - name: 📤 Commit permutations.txt if changed
+      - name: 📤 Commit second.txt and new.ndjson if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leads/permutations.txt
-          git diff --cached --quiet || git commit -m "📧 Auto-generate permutations.txt from scraped_leads.ndjson [bot]"
+          git add leads/second.txt leads/new.ndjson
+          git diff --cached --quiet || git commit -m "📧 Auto-generate second.txt and clean new.ndjson [bot]"
           git pull --rebase origin main || true
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
 
@@ -40,7 +40,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leads/permutations.txt
-          git diff --cached --quiet || git commit -m "🧯 Emergency save of permutations.txt after crash [bot]"
+          git add leads/second.txt leads/new.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency save of second.txt and new.ndjson after crash [bot]"
           git pull --rebase origin main || true
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
