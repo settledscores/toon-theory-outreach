@@ -38,7 +38,7 @@ initial_subjects = [
     "Visual stories make better first impressions", "Helping businesses explain what makes them different",
     "Cut through noise with visual storytelling", "Explainers that make people pay attention",
     "What if you could show it instead of tell it?", "Here’s an idea worth testing",
-    "Explaining complex stuff with simple visuals", "Is your message reaching it's full potential?",
+    "Explaining complex stuff with simple visuals", "Is your message reaching its full potential?",
     "A story-first idea for {company}", "Cut through mess and set your message free",
     "Idea: use animation to make your message hit harder",
     "This might help supercharge your next big project at {company}",
@@ -166,6 +166,12 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
+def compute_send_date(start_date_str, offset_days):
+    d = datetime.strptime(start_date_str, "%Y-%m-%d").date() + timedelta(days=offset_days)
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    return d
+
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1") and WEEKDAY != 4
 
@@ -189,11 +195,8 @@ def can_send_followup(lead, step):
     if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
         return False
 
-    send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=step)
-    while send_day.weekday() >= 5:
-        send_day += timedelta(days=1)
-
-    return TODAY >= send_day
+    scheduled_date = compute_send_date(lead[prev_key], step)
+    return TODAY >= scheduled_date
 
 queue = []
 if sent_today < 30:
@@ -222,19 +225,13 @@ for kind, lead in queue:
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
-            if lead["subject"]:
-                subject = f"Re: {lead['subject']}"
-            else:
-                subject = next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
+            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
-            if lead["subject"]:
-                subject = f"Re: {lead['subject']}"
-            else:
-                subject = next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
+            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
