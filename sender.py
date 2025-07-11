@@ -45,29 +45,7 @@ initial_subjects = [
     "How do you explain what {company} does?"
 ]
 
-fu1_subjects = [
-    "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
-    "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
-    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
-    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
-    "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
-    "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
-]
-
-fu2_subjects = [
-    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
-    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
-    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
-    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
-    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
-    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
-    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
-    "Open to creative pitches?", "Just in case it got buried"
-]
-
 random.shuffle(initial_subjects)
-random.shuffle(fu1_subjects)
-random.shuffle(fu2_subjects)
 
 # === Subject Rotation ===
 def next_subject(pool, **kwargs):
@@ -147,7 +125,7 @@ leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name",
-        "message id", "message id 2", "message id 3",
+        "message id", "message id 2", "message id 3", "subject",
         "initial date", "follow-up 1 date", "follow-up 2 date",
         "initial time", "follow-up 1 time", "follow-up 2 time", "reply"
     ]:
@@ -241,16 +219,17 @@ for kind, lead in queue:
             subject = next_subject(initial_subjects, company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 1"])
             lead["message id"] = msgid
+            lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
-            subject = next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
+            subject = f"Re: {lead['subject']}"
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
-            subject = next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
+            subject = f"Re: {lead['subject']}"
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
