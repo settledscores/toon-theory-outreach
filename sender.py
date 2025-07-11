@@ -45,9 +45,30 @@ initial_subjects = [
     "How do you explain what {company} does?"
 ]
 
-random.shuffle(initial_subjects)
+fu1_subjects = [
+    "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
+    "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
+    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
+    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
+    "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
+    "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
+]
 
-# === Subject Rotation ===
+fu2_subjects = [
+    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
+    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
+    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
+    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
+    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
+    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
+    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
+    "Open to creative pitches?", "Just in case it got buried"
+]
+
+random.shuffle(initial_subjects)
+random.shuffle(fu1_subjects)
+random.shuffle(fu2_subjects)
+
 def next_subject(pool, **kwargs):
     if not pool:
         return None
@@ -55,7 +76,6 @@ def next_subject(pool, **kwargs):
     pool.append(template)
     return template.format(**kwargs)
 
-# === File Helpers ===
 def read_multiline_ndjson(path):
     records = []
     buffer = ""
@@ -67,8 +87,8 @@ def read_multiline_ndjson(path):
             if line.strip().endswith("}"):
                 try:
                     records.append(json.loads(buffer))
-                except Exception as e:
-                    print(f"[Skip] Corrupt block: {e}")
+                except:
+                    pass
                 buffer = ""
     return records
 
@@ -77,9 +97,8 @@ def write_multiline_ndjson(path, records):
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
 
-# === Email Functions ===
 def send_email(to_email, subject, content, in_reply_to=None):
-    print(f"[Send] Preparing to send to {to_email} | Subject: {subject}")
+    print(f"[Send] {to_email} | {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
@@ -93,24 +112,18 @@ def send_email(to_email, subject, content, in_reply_to=None):
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
-    print(f"[Send] Email sent to {to_email}")
     return msg_id
 
 def check_replies(message_ids):
     seen = set()
-    print("[IMAP] Checking replies in inbox and spam...")
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         for folder in ["INBOX", "SPAM", "Junk", "[Gmail]/Spam"]:
             try:
                 imap.select(folder)
                 typ, data = imap.search(None, "ALL")
-                if typ != "OK":
-                    continue
                 for num in data[0].split():
                     typ, msg_data = imap.fetch(num, "(RFC822)")
-                    if typ != "OK":
-                        continue
                     msg = email.message_from_bytes(msg_data[0][1])
                     headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
                     for mid in message_ids:
@@ -120,7 +133,6 @@ def check_replies(message_ids):
                 continue
     return seen
 
-# === Load & Prep Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -131,21 +143,22 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Update Replies ===
-print("[Replies] Updating reply status...")
-all_ids = [(lead["message id"], "after initial") for lead in leads if lead["message id"]] + \
-          [(lead["message id 2"], "after FU1") for lead in leads if lead["message id 2"]] + \
-          [(lead["message id 3"], "after FU2") for lead in leads if lead["message id 3"]]
-replied = check_replies([mid for mid, _ in all_ids])
+# === Update replies ===
+all_ids = [lead["message id"] for lead in leads if lead["message id"]] + \
+          [lead["message id 2"] for lead in leads if lead["message id 2"]] + \
+          [lead["message id 3"] for lead in leads if lead["message id 3"]]
+replied = check_replies(all_ids)
 for lead in leads:
-    if lead["reply"] not in ["after initial", "after FU1", "after FU2"]:
-        for k, label in [("message id", "after initial"), ("message id 2", "after FU1"), ("message id 3", "after FU2")]:
-            if lead[k] and lead[k] in replied:
-                lead["reply"] = label
-    if not lead["reply"]:
+    if lead["reply"] == "no reply":
+        if lead["message id 3"] in replied:
+            lead["reply"] = "after FU2"
+        elif lead["message id 2"] in replied:
+            lead["reply"] = "after FU1"
+        elif lead["message id"] in replied:
+            lead["reply"] = "after initial"
+    elif not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Count Sent Today ===
 sent_today = sum(
     1 for l in leads
     if l.get("initial date") == TODAY.isoformat() or
@@ -153,7 +166,6 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
-# === Send Eligibility ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1") and WEEKDAY != 4
 
@@ -162,39 +174,27 @@ def can_send_followup(lead, step):
         return False
 
     if step == 2:
-        prev_date_key = "initial date"
-        msg_id_key = "message id"
-        curr_date_key = "follow-up 1 date"
+        prev_key = "initial date"
+        msg_key = "message id"
+        curr_key = "follow-up 1 date"
         content_key = "email 2"
     elif step == 3:
-        prev_date_key = "follow-up 1 date"
-        msg_id_key = "message id 2"
-        curr_date_key = "follow-up 2 date"
+        prev_key = "follow-up 1 date"
+        msg_key = "message id 2"
+        curr_key = "follow-up 2 date"
         content_key = "email 3"
     else:
         return False
 
-    if not (lead[prev_date_key] and lead[msg_id_key] and not lead[curr_date_key] and lead.get(content_key)):
+    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
         return False
 
-    start_date = datetime.strptime(lead[prev_date_key], "%Y-%m-%d").date()
-    ideal_send_date = start_date + timedelta(days=step)
-    actual_send_date = ideal_send_date
+    send_day = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=step)
+    while send_day.weekday() >= 5:
+        send_day += timedelta(days=1)
 
-    rollover_days = 0
-    while actual_send_date.weekday() >= 5:
-        actual_send_date += timedelta(days=1)
-        rollover_days += 1
+    return TODAY >= send_day
 
-    if step == 3 and rollover_days > 0:
-        actual_send_date -= timedelta(days=min(rollover_days, 2))
-        while actual_send_date.weekday() >= 5:
-            actual_send_date += timedelta(days=1)
-
-    return TODAY >= actual_send_date
-
-# === Build Queue ===
-print("[Queue] Building one-message queue...")
 queue = []
 if sent_today < 30:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
@@ -211,7 +211,6 @@ if sent_today < 30:
         if queue:
             break
 
-# === Send Message ===
 print(f"[Process] {len(queue)} message(s) to send...")
 for kind, lead in queue:
     try:
@@ -223,21 +222,26 @@ for kind, lead in queue:
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
-            subject = f"Re: {lead['subject']}"
+            if lead["subject"]:
+                subject = f"Re: {lead['subject']}"
+            else:
+                subject = next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
-            subject = f"Re: {lead['subject']}"
+            if lead["subject"]:
+                subject = f"Re: {lead['subject']}"
+            else:
+                subject = next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
             msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
     except Exception as e:
-        print(f"[Error] Failed to send to {lead.get('email', 'UNKNOWN')}: {e}")
+        print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
 
-# === Save Output ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
