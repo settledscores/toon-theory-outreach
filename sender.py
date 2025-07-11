@@ -195,7 +195,7 @@ def can_send_followup(lead, step):
     if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
         return False
 
-    scheduled_date = compute_send_date(lead[prev_key], step)
+    scheduled_date = compute_send_date(lead[prev_key], 3 if step == 2 else 4)
     return TODAY >= scheduled_date
 
 queue = []
