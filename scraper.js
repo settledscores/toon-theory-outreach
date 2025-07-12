@@ -20,7 +20,7 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const businessSuffixes = [/\b(inc|llc|ltd|corp|co|company|pllc|pc|pa|incorporated|limited|llp|plc)\.?$/i];
-const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|cpa|mba|phd|md|ceo|cto|cmo|founder|president)\b/gi];
+const nameSuffixes = [/\b(jr|sr|i{1,3}|iv|v|esq|esquire|cpa|mba|jd|j\.d\.|phd|m\.d\.|md|cfa|cfe|cma|cfp|llb|ll\.b\.|llm|ll\.m\.|rn|np|pa|pmp|pe|p\.eng|cis|cissp|aia|shrm[-\s]?(cp|scp)|phr|sphr|gphr|ra|dds|dmd|do|dc|rd|ot|pt|lmft|lcsw|lpc|lmhc|pcc|acc|mcc|six\s?sigma|ceo|cto|cmo|chro|ret\.?|gen\.?|col\.?|maj\.?|capt?\.?|lt\.?|usa|usaf|usmc|usn|uscg|comp?tia|aws|hon|rev|fr|rabbi|imam|president|founder)\b\.?/gi];
 
 const allLeads = new Map();
 
@@ -34,7 +34,7 @@ async function loadExistingLeads() {
       const url = record['website url'];
       if (url) allLeads.set(url, record);
     } catch {
-      console.warn('⚠️ Skipping invalid NDJSON block');
+      console.warn('⚠ Skipping invalid NDJSON block');
     }
   }
   console.log(`🔁 Loaded ${allLeads.size} existing leads`);
@@ -111,7 +111,7 @@ async function scrapeProfile(page, url) {
     const split = cleanAndSplitName(data.principalContact, data.businessName);
 
     if (!split || !data.website || !data.businessName) {
-      console.log('⚠️ Incomplete profile. Skipping.');
+      console.log('⚠ Incomplete profile. Skipping.');
       return null;
     }
 
@@ -175,7 +175,6 @@ async function saveAllLeads() {
   for (const baseUrl of SEARCH_URLS) {
     let count = 0;
     let pageNum = 1;
-    let consecutiveEmptyPages = 0;
 
     while (count < 50) {
       const paginatedUrl = `${baseUrl}&page=${pageNum}`;
@@ -184,7 +183,7 @@ async function saveAllLeads() {
 
       const linksExist = await page.$('a[href*="/profile/"]');
       if (!linksExist) {
-        console.log('⚠️ No profiles found on this page, stopping pagination.');
+        console.log('⚠ No profiles found on this page, stopping pagination.');
         break;
       }
 
@@ -197,7 +196,7 @@ async function saveAllLeads() {
       );
 
       if (profileLinks.length === 0) {
-        console.log('⚠️ No profile links on this page.');
+        console.log(`⚠ No profile links on page ${pageNum}.`);
         break;
       }
 
@@ -205,7 +204,6 @@ async function saveAllLeads() {
 
       for (const link of profileLinks) {
         if (count >= 50) break;
-
         const rec = await scrapeProfile(page, link);
         const added = rec && storeNewLead(rec);
 
@@ -214,7 +212,7 @@ async function saveAllLeads() {
           newLeadsThisPage++;
           console.log(`✅ Added: ${rec['business name']}`);
         } else if (rec && !added) {
-          console.log(`⏭️ Duplicate: ${rec['business name']}`);
+          console.log(`⏭ Duplicate: ${rec['business name']}`);
         }
 
         const pause = rec && added ? randomBetween(5000, 12000) : 2000;
@@ -235,5 +233,5 @@ async function saveAllLeads() {
 
   await browser.close();
   await saveAllLeads();
-  console.log(`✅ Scraping complete.`);
+  console.log('✅ Scraping complete.');
 })();
