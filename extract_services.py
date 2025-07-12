@@ -31,27 +31,35 @@ def is_ambiguous(text):
 
 def generate_prompt(text):
     examples = """
+Below are examples of raw, messy web copy and their cleaned one-sentence summaries of services:
+
 Example 1:
-Web copy: “We help business owners with tax planning, payroll support, and bookkeeping.”
-→ This business offers tax planning, payroll support, and bookkeeping.
+Web copy:
+"Certified Public Accountants - Huebner, Dooley & McGinness, P.S. Learn more. Accounting Services. We guide our clients through tax planning and preparation decisions. Our forensic accounting services can be used in litigation, investigations. Estate and Trust Planning. We help you reach your financial goals and maintain independence. Certified Public Accountants serving the Pacific Northwest."
+
+→ This business offers tax planning, forensic accounting, estate and trust planning, and financial advisory services.
 
 Example 2:
-Web copy: “Our team provides DEI coaching, HR advisory, and employee mediation services to small organizations.”
-→ This business offers DEI coaching, HR advisory, and employee mediation.
+Web copy:
+"Business consulting for small businesses, including strategy sessions, marketing audits, and operations optimization. We specialize in helping startups find product-market fit, organize teams, and improve execution."
+
+→ This business offers business strategy, marketing audits, and operations consulting for startups and small businesses.
 
 Example 3:
-Web copy: “We guide nonprofits through campaign compliance, grant reporting, and financial management.”
-→ This business offers campaign compliance, grant reporting, and financial management.
+Web copy:
+"Human Resources services including payroll support, onboarding systems, compliance documentation, and hiring workflows. Our HR experts help you stay ahead of state and federal labor laws."
 
-Example 4:
-Web copy: “From startup strategy to long-term CFO partnerships, we help companies grow and scale.”
-→ This business offers startup strategy and CFO partnerships.
+→ This business offers HR compliance, payroll support, and employee onboarding services.
 
-Now extract a one-sentence summary of services from the following messy business web copy:
+---
+
+Now write a one-sentence summary of services for the following messy business web copy:
 
 {text}
-"""
-    return examples.strip()
+
+→
+""".strip()
+    return examples
 
 def postprocess_output(text):
     sentence = text.strip().split(".")[0].strip()
