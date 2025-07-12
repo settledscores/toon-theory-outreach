@@ -19,27 +19,50 @@ def timeout_handler(signum, frame):
 def truncate_text(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
-def generate_prompt(text):
-    return f"""Extract only the actual services provided by the company from the text below.
+def is_ambiguous(text):
+    # Check for gibberish or marketing boilerplate
+    if len(text.split()) < 30:
+        return True
+    if text.lower().count("incubator") > 2 or text.lower().count("member portal") > 2:
+        return True
+    if re.search(r"(lorem ipsum|under construction|click here|find a business)", text.lower()):
+        return True
+    return False
 
-- No explanations, summaries, or assistant language.
-- No intros like “Here are...”, “This company offers...”, or “The core services include...”.
-- No bullet headers or section titles.
-- Just return the raw list of service lines, one per line, with no extra wording or formatting.
+def generate_prompt(text):
+    examples = """
+Example 1:
+Web copy: “We help business owners with tax planning, payroll support, and bookkeeping.”
+→ This business offers tax planning, payroll support, and bookkeeping.
+
+Example 2:
+Web copy: “Our team provides DEI coaching, HR advisory, and employee mediation services to small organizations.”
+→ This business offers DEI coaching, HR advisory, and employee mediation.
+
+Example 3:
+Web copy: “We guide nonprofits through campaign compliance, grant reporting, and financial management.”
+→ This business offers campaign compliance, grant reporting, and financial management.
+
+Example 4:
+Web copy: “From startup strategy to long-term CFO partnerships, we help companies grow and scale.”
+→ This business offers startup strategy and CFO partnerships.
+
+Now extract a one-sentence summary of services from the following messy business web copy:
 
 {text}
 """
+    return examples.strip()
 
 def postprocess_output(text):
-    lines = text.splitlines()
-    clean_lines = []
-    for line in lines:
-        line = line.strip()
-        if re.match(r"(?i)^(here\s+(is|are)|the\s+company|this\s+company|core\s+services|services\s+include|they\s+offer)", line):
-            continue
-        if line:
-            clean_lines.append(line)
-    return " | ".join(clean_lines)
+    # Grab first sentence and normalize
+    sentence = text.strip().split(".")[0].strip()
+    if not sentence:
+        return ""
+    if sentence.lower().startswith("this business offers"):
+        return sentence + "."
+    if sentence.lower().startswith("offers") or sentence.lower().startswith("provides"):
+        return "This business " + sentence + "."
+    return "This business offers " + sentence + "."
 
 def read_multiline_ndjson(path):
     buffer, records = "", []
@@ -90,6 +113,11 @@ def main():
             results.append(record)
             continue
 
+        if is_ambiguous(full_text):
+            print("⚠️ Web copy too vague or repetitive, skipping", flush=True)
+            results.append(record)
+            continue
+
         print(f"🔍 Extracting services for: {website}", flush=True)
         prompt = generate_prompt(truncate_text(full_text))
 
@@ -108,9 +136,15 @@ def main():
 
             raw_output = response.choices[0].message.content.strip()
             cleaned_output = postprocess_output(raw_output)
+
+            if len(cleaned_output.split()) <= 5 or "offers" not in cleaned_output:
+                print("⚠️ Output too vague, skipping update", flush=True)
+                results.append(record)
+                continue
+
             record["services"] = cleaned_output
             updated += 1
-            print("✅ Services field updated", flush=True)
+            print(f"✅ Services field updated → {cleaned_output}", flush=True)
 
         except TimeoutError as te:
             print(f"❌ API call timed out: {te}", flush=True)
