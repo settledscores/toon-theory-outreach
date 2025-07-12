@@ -23,11 +23,10 @@ TIMEZONE = ZoneInfo("Africa/Lagos")
 NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
-WEEKDAY = TODAY.weekday()
 
-if not time(14, 0) <= NOW.time() <= time(19, 30):
-    print(f"[Skip] Outside allowed window ({NOW.time()} WAT), exiting.")
-    exit(0)
+BASE_START_TIME = time(13, 0)  # 1:00 PM
+END_TIME = time(19, 0)         # 7:00 PM
+FINAL_END_TIME = time(20, 30)  # hard cutoff
 
 # === Subject Pools ===
 initial_subjects = [
@@ -77,32 +76,28 @@ def next_subject(pool, **kwargs):
     return template.format(**kwargs)
 
 def read_multiline_ndjson(path):
-    records = []
-    buffer = ""
+    records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if not line.strip():
-                continue
+            if not line.strip(): continue
             buffer += line
             if line.strip().endswith("}"):
-                try:
-                    records.append(json.loads(buffer))
-                except:
-                    pass
+                try: records.append(json.loads(buffer))
+                except: pass
                 buffer = ""
     return records
 
 def write_multiline_ndjson(path, records):
     with open(path, "w", encoding="utf-8") as f:
-        for record in records:
-            f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
-def send_email(to_email, subject, content, in_reply_to=None):
-    print(f"[Send] {to_email} | {subject}")
+def send_email(to, subject, content, in_reply_to=None):
+    print(f"[Send] {to} | {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
-    msg["To"] = to_email
+    msg["To"] = to
     msg.set_content(content)
     msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
     msg["Message-ID"] = f"<{msg_id}>"
@@ -129,10 +124,10 @@ def check_replies(message_ids):
                     for mid in message_ids:
                         if f"<{mid}>" in headers:
                             seen.add(mid)
-            except:
-                continue
+            except: continue
     return seen
 
+# === Load and normalize leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -144,9 +139,9 @@ for lead in leads:
         lead.setdefault(field, "")
 
 # === Update replies ===
-all_ids = [lead["message id"] for lead in leads if lead["message id"]] + \
-          [lead["message id 2"] for lead in leads if lead["message id 2"]] + \
-          [lead["message id 3"] for lead in leads if lead["message id 3"]]
+all_ids = [l["message id"] for l in leads if l["message id"]] + \
+          [l["message id 2"] for l in leads if l["message id 2"]] + \
+          [l["message id 3"] for l in leads if l["message id 3"]]
 replied = check_replies(all_ids)
 for lead in leads:
     if lead["reply"] == "no reply":
@@ -159,6 +154,46 @@ for lead in leads:
     elif not lead["reply"]:
         lead["reply"] = "no reply"
 
+# === Eligibility and Quota ===
+def can_send_initial(lead):
+    return not lead["initial date"] and lead.get("email") and lead.get("email 1")
+
+def can_send_followup(lead, step):
+    if lead["reply"] != "no reply" or not lead.get("email"):
+        return False
+    if step == 2:
+        prev_key, msg_key, curr_key, content_key = "initial date", "message id", "follow-up 1 date", "email 2"
+    elif step == 3:
+        prev_key, msg_key, curr_key, content_key = "follow-up 1 date", "message id 2", "follow-up 2 date", "email 3"
+    else:
+        return False
+    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
+        return False
+    due_date = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=(3 if step == 2 else 4))
+    while due_date.weekday() >= 5:
+        due_date += timedelta(days=1)
+    return TODAY >= due_date
+
+def backlog_count(leads):
+    return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
+
+def initials_sent_in_last_weekdays(n):
+    weekdays = []
+    i = 1
+    while len(weekdays) < n:
+        date = TODAY - timedelta(days=i)
+        if date.weekday() < 5:
+            weekdays.append(date.isoformat())
+        i += 1
+    return sum(1 for l in leads if l.get("initial date") in weekdays)
+
+BASE_QUOTA = 50
+backlogs = backlog_count(leads)
+recent_initials = initials_sent_in_last_weekdays(3)
+extra_quota = min(20, backlogs)
+if recent_initials < 20:
+    extra_quota += 20
+DAILY_QUOTA = BASE_QUOTA + extra_quota
 sent_today = sum(
     1 for l in leads
     if l.get("initial date") == TODAY.isoformat() or
@@ -166,40 +201,20 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
-def compute_send_date(start_date_str, offset_days):
-    d = datetime.strptime(start_date_str, "%Y-%m-%d").date() + timedelta(days=offset_days)
-    while d.weekday() >= 5:
-        d += timedelta(days=1)
-    return d
+# === Dynamic Eligibility Window ===
+total_minutes_needed = DAILY_QUOTA * 7
+ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
+ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=max(0, (DAILY_QUOTA - BASE_QUOTA) * 7))
+window_start = ideal_start.time()
+window_end = min(ideal_end.time(), FINAL_END_TIME)
 
-def can_send_initial(lead):
-    return not lead["initial date"] and lead.get("email") and lead.get("email 1") and WEEKDAY != 4
+if not window_start <= NOW.time() <= window_end:
+    print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {window_start}–{window_end}")
+    exit(0)
 
-def can_send_followup(lead, step):
-    if lead["reply"] != "no reply" or not lead.get("email"):
-        return False
-
-    if step == 2:
-        prev_key = "initial date"
-        msg_key = "message id"
-        curr_key = "follow-up 1 date"
-        content_key = "email 2"
-    elif step == 3:
-        prev_key = "follow-up 1 date"
-        msg_key = "message id 2"
-        curr_key = "follow-up 2 date"
-        content_key = "email 3"
-    else:
-        return False
-
-    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
-        return False
-
-    scheduled_date = compute_send_date(lead[prev_key], 3 if step == 2 else 4)
-    return TODAY >= scheduled_date
-
+# === Send Queue ===
 queue = []
-if sent_today < 30:
+if sent_today < DAILY_QUOTA:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
         for lead in leads:
             if label == "initial" and can_send_initial(lead):
@@ -214,7 +229,12 @@ if sent_today < 30:
         if queue:
             break
 
+print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
+print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
+print(f"[Quota] Sent Today: {sent_today}")
 print(f"[Process] {len(queue)} message(s) to send...")
+
+# === Send Email ===
 for kind, lead in queue:
     try:
         if kind == "initial":
