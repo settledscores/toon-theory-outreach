@@ -2,9 +2,8 @@ import os
 import json
 import re
 
-VERIFIED_TXT = "leads/second.txt"
-INPUT_NDJSON = "leads/new.ndjson"  # Input now comes directly from here
-OUTPUT_NDJSON = "leads/new.ndjson"  # Output overwrites the same file
+VERIFIED_TXT = "leads/verified.txt"
+SCRAPED_NDJSON = "leads/scraped_leads.ndjson"
 
 def extract_domain_from_email(email):
     return email.split('@')[-1].strip().lower()
@@ -54,28 +53,18 @@ def main():
     }
 
     updated = 0
-    kept = 0
-    records = read_ndjson_multiline(INPUT_NDJSON)
-    output = []
+    results = read_ndjson_multiline(SCRAPED_NDJSON)
 
-    for record in records:
+    for record in results:
         website_url = record.get("website url", "")
         website_domain = extract_domain_from_url(website_url)
 
-        if website_domain in verified_map:
-            if not record.get("email"):
-                record["email"] = verified_map[website_domain]
-                updated += 1
-            output.append(record)
-            kept += 1
-        else:
-            print(f"🗑️ Removed block — domain '{website_domain}' not in verified list")
+        if not record.get("email") and website_domain in verified_map:
+            record["email"] = verified_map[website_domain]
+            updated += 1
 
-    write_ndjson_multiline(OUTPUT_NDJSON, output)
-
-    print(f"✅ {updated} emails paired")
-    print(f"📦 {kept} total records kept")
-    print(f"📝 Output written to {OUTPUT_NDJSON}")
+    write_ndjson_multiline(SCRAPED_NDJSON, results)
+    print(f"✅ {updated} emails paired and updated in {SCRAPED_NDJSON}")
 
 if __name__ == "__main__":
     main()
