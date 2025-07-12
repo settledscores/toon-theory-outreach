@@ -2,9 +2,9 @@ import os
 import json
 from urllib.parse import urlparse
 
-INPUT_PATH = "leads/new.ndjson"
-OUTPUT_PATH = "leads/second.txt"
-VERIFIED_PATH = "leads/verified.txt"
+INPUT_PATH = "leads/scraped_leads.ndjson"
+PERMS_PATH = "leads/permutations.txt"
+EMAILS_PATH = "leads/emails.txt"
 
 def extract_domain(url):
     try:
@@ -15,25 +15,24 @@ def extract_domain(url):
         return ""
 
 def generate_permutations(first, last, domain):
-    first, last = first.lower(), last.lower()
+    first = first.lower()
+    last = last.lower()
     return [
-        f"{first[0]}.{last}@{domain}",
-        f"{first}.{last[0]}@{domain}",
-        f"{last}.{first}@{domain}",
-        f"{last}@{domain}",
-        f"{last}{first[0]}@{domain}",
-        f"{first[0]}{last}@{domain}",
-        f"{first}{last[0]}@{domain}",
-        f"{first[0]}{last[0]}@{domain}"
+        f"{first}@{domain}",
+        f"{first}.{last}@{domain}",
+        f"{first}{last}@{domain}"
     ]
 
-def load_verified_domains(path):
+def load_domains_from_perms_and_emails(*paths):
     domains = set()
-    if os.path.exists(path):
+    for path in paths:
+        if not os.path.exists(path):
+            continue
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 if "@" in line:
-                    domains.add(line.strip().split("@")[-1].lower())
+                    domain = line.strip().split("@")[-1].lower()
+                    domains.add(domain)
     return domains
 
 def load_multiline_ndjson(path):
@@ -45,81 +44,88 @@ def load_multiline_ndjson(path):
             buffer += line
             if line.strip().endswith("}"):
                 try:
-                    yield buffer.strip(), json.loads(buffer)
+                    yield json.loads(buffer)
                 except Exception as e:
                     print(f"❌ Skipping invalid JSON block: {e}")
                 buffer = ""
 
 def main():
-    print("📥 Loading leads...")
+    print("📥 Loading scraped leads...")
     if not os.path.exists(INPUT_PATH):
         print(f"❌ Input file not found: {INPUT_PATH}")
         return
 
-    verified_domains = load_verified_domains(VERIFIED_PATH)
+    print("📄 Checking previously used domains (permutations + verified emails)...")
+    used_domains = load_domains_from_perms_and_emails(PERMS_PATH, EMAILS_PATH)
     new_permutations = set()
-    valid_blocks = []
 
-    stats = {
-        "total": 0,
-        "skipped_email": 0,
-        "skipped_missing_fields": 0,
-        "skipped_verified_domain": 0,
-        "generated": 0
-    }
+    skipped_with_email = 0
+    skipped_missing_fields = 0
+    skipped_existing_domain = 0
+    total_processed = 0
+    new_generated = 0
 
-    for raw_block, record in load_multiline_ndjson(INPUT_PATH):
-        stats["total"] += 1
-
+    for record in load_multiline_ndjson(INPUT_PATH):
         if not isinstance(record, dict):
             continue
 
+        total_processed += 1
+
+        company = record.get("company name", "Unknown Company").strip()
+        first = record.get("first name", "").strip()
+        display_name = first or "Unnamed"
+        label = f"{display_name} of {company}"
+
         if record.get("email", "").strip():
-            stats["skipped_email"] += 1
+            print(f"⏭️ Skipped {label} (already has email)")
+            skipped_with_email += 1
             continue
 
         if not record.get("web copy", "").strip():
-            stats["skipped_missing_fields"] += 1
+            print(f"⏭️ Skipped {label} (missing web copy)")
+            skipped_missing_fields += 1
             continue
 
-        first = record.get("first name", "").strip()
         last = record.get("last name", "").strip()
         website = record.get("website url", "").strip()
 
         if not (first and last and website):
-            stats["skipped_missing_fields"] += 1
+            print(f"⏭️ Skipped {label} (missing name or website)")
+            skipped_missing_fields += 1
             continue
 
         domain = extract_domain(website)
         if not domain:
-            stats["skipped_missing_fields"] += 1
+            print(f"⏭️ Skipped {label} (could not extract domain)")
+            skipped_missing_fields += 1
             continue
 
-        if domain in verified_domains:
-            stats["skipped_verified_domain"] += 1
+        if domain in used_domains:
+            print(f"⏭️ Skipped {label} (domain already used: {domain})")
+            skipped_existing_domain += 1
             continue
 
         perms = generate_permutations(first, last, domain)
         new_permutations.update(perms)
-        valid_blocks.append(raw_block)
-        stats["generated"] += len(perms)
-
-    # Overwrite new.ndjson with only valid blocks
-    with open(INPUT_PATH, "w", encoding="utf-8") as f:
-        if valid_blocks:
-            f.write("\n".join(valid_blocks) + "\n")
-
-    # Write new permutations
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        f.write("\n".join(sorted(new_permutations)) + "\n")
+        used_domains.add(domain)
+        new_generated += len(perms)
 
     print("\n📊 Stats:")
-    for k, v in stats.items():
-        print(f"   {k.replace('_', ' ').title()}: {v}")
+    print(f"   Total leads processed: {total_processed}")
+    print(f"   Skipped (already had email): {skipped_with_email}")
+    print(f"   Skipped (missing fields): {skipped_missing_fields}")
+    print(f"   Skipped (domain already seen): {skipped_existing_domain}")
+    print(f"   Permutations generated: {new_generated}")
 
-    print(f"\n✅ Saved {len(new_permutations)} permutations to {OUTPUT_PATH}")
-    print(f"✅ Cleaned {INPUT_PATH} of invalid/verified leads")
+    if not new_permutations:
+        print("⚠️ No new permutations generated.")
+        return
+
+    os.makedirs(os.path.dirname(PERMS_PATH), exist_ok=True)
+    with open(PERMS_PATH, "w", encoding="utf-8") as f:
+        f.write("\n".join(sorted(new_permutations)) + "\n")
+
+    print(f"\n✅ Overwritten {PERMS_PATH} with {new_generated} new permutations")
 
 if __name__ == "__main__":
     main()
