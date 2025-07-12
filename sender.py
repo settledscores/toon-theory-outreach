@@ -23,10 +23,16 @@ TIMEZONE = ZoneInfo("Africa/Lagos")
 NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
+WEEKDAY = TODAY.weekday()
 
 BASE_START_TIME = time(13, 0)  # 1:00 PM
 END_TIME = time(19, 0)         # 7:00 PM
-FINAL_END_TIME = time(20, 30)  # hard cutoff
+FINAL_END_TIME = time(20, 30)  # 8:30 PM absolute limit
+
+# === Block weekend sends ===
+if WEEKDAY >= 5:
+    print(f"[Skip] Today is weekend ({TODAY}), no emails should be sent.")
+    exit(0)
 
 # === Subject Pools ===
 initial_subjects = [
@@ -177,19 +183,21 @@ def can_send_followup(lead, step):
 def backlog_count(leads):
     return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
 
-def initials_sent_in_last_weekdays(n):
-    weekdays = []
-    i = 1
-    while len(weekdays) < n:
-        date = TODAY - timedelta(days=i)
-        if date.weekday() < 5:
-            weekdays.append(date.isoformat())
-        i += 1
-    return sum(1 for l in leads if l.get("initial date") in weekdays)
+def initials_sent_in_last_days(n):
+    count = 0
+    day = TODAY - timedelta(days=1)
+    checked = 0
+    while checked < n:
+        if day.weekday() < 5:
+            if any(l.get("initial date") == day.isoformat() for l in leads):
+                count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
+            checked += 1
+        day -= timedelta(days=1)
+    return count
 
 BASE_QUOTA = 50
 backlogs = backlog_count(leads)
-recent_initials = initials_sent_in_last_weekdays(3)
+recent_initials = initials_sent_in_last_days(3)
 extra_quota = min(20, backlogs)
 if recent_initials < 20:
     extra_quota += 20
@@ -204,7 +212,8 @@ sent_today = sum(
 # === Dynamic Eligibility Window ===
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
-ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=max(0, (DAILY_QUOTA - BASE_QUOTA) * 7))
+ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
+
 window_start = ideal_start.time()
 window_end = min(ideal_end.time(), FINAL_END_TIME)
 
