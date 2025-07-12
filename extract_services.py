@@ -20,12 +20,12 @@ def truncate_text(text, limit=MAX_INPUT_LENGTH):
     return text[:limit]
 
 def is_ambiguous(text):
-    # Check for gibberish or marketing boilerplate
+    # Flag content that is too short or marketing-heavy
     if len(text.split()) < 30:
         return True
     if text.lower().count("incubator") > 2 or text.lower().count("member portal") > 2:
         return True
-    if re.search(r"(lorem ipsum|under construction|click here|find a business)", text.lower()):
+    if re.search(r"(lorem ipsum|under construction|click here|find a business|faq|contact us)", text.lower()):
         return True
     return False
 
@@ -54,7 +54,6 @@ Now extract a one-sentence summary of services from the following messy business
     return examples.strip()
 
 def postprocess_output(text):
-    # Grab first sentence and normalize
     sentence = text.strip().split(".")[0].strip()
     if not sentence:
         return ""
@@ -98,7 +97,7 @@ def main():
     results = []
 
     for i, record in enumerate(records):
-        print(f"➡️ Processing record {i+1}/{len(records)}", flush=True)
+        print(f"\n➡️ Processing record {i+1}/{len(records)}", flush=True)
         full_text = record.get("web copy", "")
         services_text = record.get("services", "")
         website = record.get("website url", "[no website]")
@@ -137,7 +136,10 @@ def main():
             raw_output = response.choices[0].message.content.strip()
             cleaned_output = postprocess_output(raw_output)
 
-            if len(cleaned_output.split()) <= 5 or "offers" not in cleaned_output:
+            print(f"🧠 Raw LLM output → {raw_output}", flush=True)
+            print(f"🧾 Final cleaned output → {cleaned_output}", flush=True)
+
+            if len(cleaned_output.split()) <= 5 or "offers" not in cleaned_output.lower():
                 print("⚠️ Output too vague, skipping update", flush=True)
                 results.append(record)
                 continue
