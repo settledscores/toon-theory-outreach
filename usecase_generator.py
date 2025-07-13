@@ -1,3 +1,4 @@
+
 import os
 import re
 import json
@@ -61,12 +62,12 @@ Format the result as a **single line** with 3 bullets separated by "|" (pipe cha
 
 **Accounting / Finance**
 - Showing how outsourced CFOs double cash visibility in 90 seconds
-- Framing your bookkeeping as clean, easy monthly reports without the extra spreadsheets
+- Defining your bookkeeping as clean, easy monthly reports without the extra spreadsheets
 - Explaining how tax prep saves businesses thousands in missed deductions
 
 **Payroll / HR**
-- Showing how your payroll service auto-handles IRS compliance for small teams of 5–50
-- Mapping how outsourced HR avoids 3 months of hiring risk
+- Showing how your payroll service auto-handles IRS compliance for small office teams
+- Explaining how outsourced HR avoids 3 months of hiring risk
 - Visualizing HR onboarding with zero paperwork and same-day access
 
 **Legal / Compliance**
@@ -74,13 +75,13 @@ Format the result as a **single line** with 3 bullets separated by "|" (pipe cha
 - Showing how mediation saves 4+ months of legal delays
 
 **Consulting / Strategy**
-- Mapping your client onboarding journey in 90 seconds
+- Explaining your client onboarding journey in 90 seconds
 - Showing how strategic planning cuts churn by 25%
 - Turning your offer into a story — not a sales pitch
 
 **Coaching / Training**
-- Visualizing how your coaching turns “busy” into “profitable”
-- Framing leadership development as team transformation, not just soft skills
+- Explaining how your coaching turns “busy” into “profitable”
+- Defining leadership development as team transformation, not just soft skills
 - Showing how habit coaching boosts client retention by 2x
 
 **Health / Wellness**
@@ -89,13 +90,13 @@ Format the result as a **single line** with 3 bullets separated by "|" (pipe cha
 - Visualizing how your sleep program helps reduce burnout in 2 weeks
 
 **Tech / SaaS**
-- Bringing your dashboard features to life with 2-minute visuals
+- Explaining your dashboard features with a 90-second video
 - Showing how automated alerts save reps from cold deals
 - Walking users through the setup process — no docs required
 - Explaining how a Fractional Analyst actually works without a single spreadsheet
 
 **Logistics / Operations**
-- Visualizing supply chain visibility from factory to front door
+- Explaining supply chain visibility from factory to front door
 - Mapping the return process for customers in 30 seconds
 - Showing how route optimization saves 10+ hours per week
 
