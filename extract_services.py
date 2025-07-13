@@ -59,7 +59,7 @@ Now write a one-sentence summary of services for the following messy business we
 
 →
 """.strip()
-    return examples
+    return examples.format(text=text)
 
 def postprocess_output(text):
     sentence = text.strip().split(".")[0].strip()
