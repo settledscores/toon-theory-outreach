@@ -120,11 +120,6 @@ def main():
             results.append(record)
             continue
 
-        if is_ambiguous(full_text):
-            print("⚠️ Web copy too vague or repetitive, skipping", flush=True)
-            results.append(record)
-            continue
-
         print(f"🔍 Extracting services for: {website}", flush=True)
         prompt = generate_prompt(truncate_text(full_text))
 
