@@ -1,36 +1,46 @@
+# cleanup_emails.py
+
 import json
 import os
 
-leads_path = os.path.join("leads", "scraped_leads.ndjson")
+LEADS_PATH = os.path.join("leads", "scraped_leads.ndjson")
 
-def clean_leads(path):
-    if not os.path.exists(path):
-        print(f"❌ File not found: {path}")
-        return
-
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    blocks = [b.strip() for b in content.strip().split("\n\n") if b.strip()]
-    cleaned_blocks = []
-
+def load_pretty_ndjson(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw = f.read()
+    blocks = [b.strip() for b in raw.split("\n\n") if b.strip()]
+    leads = []
     for block in blocks:
         try:
-            record = json.loads(block)
-
-            if not record.get("initial date", "").strip():
-                record.pop("email 1", None)
-                record.pop("email 2", None)
-                record.pop("email 3", None)
-
-            cleaned_blocks.append(json.dumps(record, indent=2))
+            leads.append(json.loads(block))
         except json.JSONDecodeError:
             print("⚠ Skipping invalid JSON block")
+    return leads
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n\n".join(cleaned_blocks) + "\n")
+def save_pretty_ndjson(filepath, records):
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n\n".join(json.dumps(r, indent=2) for r in records))
+        f.write("\n")
 
-    print(f"✅ Cleaned {len(cleaned_blocks)} leads and saved to {path}")
+def clean_emails(leads):
+    modified = 0
+    for lead in leads:
+        if not lead.get("initial date", "").strip():
+            for field in ["email 1", "email 2", "email 3"]:
+                if lead.get(field):
+                    lead[field] = ""
+                    modified += 1
+    return modified
+
+def main():
+    if not os.path.exists(LEADS_PATH):
+        print("❌ leads/scraped_leads.ndjson not found")
+        return
+
+    leads = load_pretty_ndjson(LEADS_PATH)
+    modified = clean_emails(leads)
+    save_pretty_ndjson(LEADS_PATH, leads)
+    print(f"✅ Cleaned {modified} fields and saved to {LEADS_PATH}")
 
 if __name__ == "__main__":
-    clean_leads(leads_path)
+    main()
