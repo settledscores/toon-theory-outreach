@@ -36,18 +36,16 @@ if WEEKDAY >= 5:
 
 # === Subject Pools ===
 initial_subjects = [
-    "Let’s make your message stick", "Helping your ideas stick visually",
-    "Turn complex into simple (in 90 seconds)", "Your story deserves to be told differently",
-    "How about a different approach to your messaging?", "Making your message unforgettable",
-    "Bring your message to life — visually", "Your pitch deserves more than plain text",
-    "Visual stories make better first impressions", "Helping businesses explain what makes them different",
-    "Cut through noise with visual storytelling", "Explainers that make people pay attention",
-    "What if you could show it instead of tell it?", "Here’s an idea worth testing",
-    "Explaining complex stuff with simple visuals", "Is your message reaching its full potential?",
-    "A story-first idea for {company}", "Cut through mess and set your message free",
-    "Idea: use animation to make your message hit harder",
-    "This might help supercharge your next big project at {company}",
-    "How do you explain what {company} does?"
+    "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
+    "This might sound odd, but useful", "Not sure if this will land, but here goes",
+    "You might like what I’ve been sketching", "This idea’s been stuck in my head",
+    "Bet you haven’t tried this approach yet", "What if your next pitch was drawn?",
+    "This has worked weirdly well for others", "A small idea that might punch above its weight",
+    "Something about {company} got me thinking", "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
+    "Thought of you while doodling", "This one might be a stretch, but could work",
+    "Felt like this might be your kind of thing", "Kind of random, but hear me out",
+    "If you're up for an odd idea", "Not a pitch, just something I had to share",
+    "This one’s a bit out there", "Saw what you’re doing, had to send this"
 ]
 
 fu1_subjects = [
