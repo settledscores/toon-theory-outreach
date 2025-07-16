@@ -28,87 +28,123 @@ class VariantRotator:
 
 salutations = [
     "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there",
-    "Good day", "Greetings"
+    "Good day"
 ]
 
-signatures = [
-    "Warmly,\nTrent — Founder @ Toon Theory\nhttps://toontheory.com\nWhiteboard videos your customers will actually remember.",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and B2B brands who care about clarity.",
-    "Cheers,\nTrent — Founder at Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Take care,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "Sincerely,\nTrent — Founder, Toon Theory\nhttps://toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Best wishes,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
-    "With appreciation,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nWhiteboard videos your customers will actually remember.",
-    "Respectfully,\nTrent — Founder at Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and B2B brands who care about clarity.",
-    "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "With gratitude,\nTrent — Founder at Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Yours truly,\nTrent — Founder, Toon Theory\nhttps://toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Faithfully,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Thanks again,\nTrent — Founder at Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress.",
+openers = [
+    "Hi {name}, I read about {company} a couple days back, so I figured I’d finally say hi.",
+    "Hello {name}, I know inboxes are crowded so I’ll cut to the chase.",
+    "Hi there {name}, Reaching out with a quick idea that might be up your alley.",
+    "Hey there {name}, You might be the wrong person for this, but maybe not.",
+    "Hi {name}, Dropping in with something that might be useful (or at least mildly interesting.)",
+    "Hello {name}, Noticed some of the work you’re doing and thought it was worth getting in touch.",
+    "Hi {name}, No fluff here, just a small idea I wanted to toss your way.",
+    "Hi {name}, You can ignore this if it’s way off, but it might be a fit.",
+    "Hey there {name}, I’ll keep this super quick; had an idea for {company}.",
+    "Hey {name}, If this email is one of 200 you've gotten today, I’ll make mine short.",
+    "Hi there {name}, I’ve got a weird idea that might actually help.",
+    "Hey {name}, I’ve been in your shoes before, and this might save you some time.",
+    "Hi {name}, Not pitching anything, just wanted to throw an idea your way.",
+    "Hey there {name}, This might sound random, but it’s relevant; promise.",
+    "Hello there {name}, Totally okay if this isn’t your thing, just sharing an idea.",
+    "Hey {name}, If you hate cold emails, I’m with you; I’ll be brief.",
+    "Hi {name}, Hoping to trade a tiny bit of your attention for a quick sketch of an idea.",
+    "Hey {name}, I don’t send these often, just when I think it’s worth it."
 ]
 
-# --- Paragraph Templates for Email 1 ---------------------------------------
-
-paragraph1_templates = [
-    "Hi {name},\n\nI came across {company} recently and wanted to reach out directly.",
-    "Hello {name},\n\nI just saw {company} and thought you might be the right person to speak with.",
-    "Hey {name},\n\nI came across {company} recently and thought I’d drop you a quick note.",
-    "Hi {name},\n\nI stumbled on {company} the other day and wanted to get in touch.",
-    "Hi {name},\n\nI stumbled across {company} and thought I’d reach out.",
-    "Hi {name},\n\nI came across {company} recently and thought there could be an opportunity to collaborate."
+paragraph_1_variants = [
+    "I’m Trent. I run a small studio called Toon Theory. We draw videos by hand; it’s a fun way to show people what you do.",
+    "I’m Trent. I started Toon Theory because sometimes words don’t cut it, a quick sketch can go a long way.",
+    "I’m Trent and I run an animation studio called Toon Theory, we make short, hand-drawn videos. Not flashy, just clear and kind of charming.",
+    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams share what they’re putting out there.",
+    "I’m Trent. I run Toon Theory, it’s just a few of us drawing stories for people who don’t love PowerPoints.",
+    "I’m Trent. I make short videos at a studio called Toon Theory. Think whiteboard sketches with a background voice, simple and watchable.",
+    "I’m Trent and I’m the guy behind Toon Theory. We help people show what they mean without making it a whole production snag.",
+    "I’m Trent. Toon Theory is my animation shop, mostly whiteboard videos with a human feel. Not too polished, not too stiff.",
+    "I’m Trent and I started Toon Theory to make videos that feel like they were drawn by someone real, because they are.",
+    "I’m Trent and I run Toon Theory. We sketch short videos for people who want to say big things without writing an essay.",
+    "I’m Trent. Toon Theory is my little animation outfit. We work with voice, sketch, and story; that’s it.",
+    "I’m Trent. I make videos at Toon Theory, mostly hand-drawn stuff that people don’t mind watching.",
+    "I’m Trent. I started Toon Theory a while back. We draw things for people who need to explain what they’re up to.",
+    "I’m Trent and I run an animation studio called Toon Theory. We don’t do fancy, just videos that feel real and personal.",
+    "I’m Trent. Toon Theory is my studio, we draw little stories for people with big things to say.",
+    "I’m Trent. Toon Theory is a small studio I run. We turn people’s thoughts into moving doodles."
 ]
 
-paragraph2_variants = [
-    "I'm Trent, and I run Toon Theory; an animation studio based in the UK. We make whiteboard videos that break down complex ideas with simple, hand-drawn visuals. It’s perfect for B2B, thought leadership, and data-driven education.",
-    "I'm Trent. I run Toon Theory, a whiteboard animation studio in the UK. We make simple, animated explainer videos that help people understand dense ideas. They're great for B2B services, thought leadership, and data-driven education.",
-    "I'm Trent, and I run Toon Theory; an animation studio based in the UK. We use hand-drawn animations to help businesses get their message across. It's a simple way to cut through noise, especially in B2B, thought leadership, and data-driven education."
+paragraph_2_variants = [
+    "If {company}'s services branch into different areas, a whiteboard video can help show how it all ties together. We handle script, voice, and visuals; all in-house.",
+    "If {company} has multi-layered service offerings, a video can help connect the dots faster than words alone. We write, draw, and narrate the whole thing so you don't even have to move a muscle.",
+    "{company} probably wears a few hats. A short explainer can help show how they all fit under one roof. We do the heavy lifting; script, voice, and illustration so you don't have to lift a finger.",
+    "When {company}'s offer spans multiple areas, people sometimes need a guide to see how it all fits. These videos do that. You approve; we handle the rest.",
+    "It’s hard to write copy for bundled or multi-layered service offerings; and we get that. At {company}, these videos can let you *show* people instead. No scriptwriting or heavy lifting needed on your end.",
+    "We’ve worked with teams like {company} who offer multiple services that work best together. A short whiteboard-style video can show that without making people think too hard.",
+    "When business like {company} offer more than one service, clarity gets tricky. A whiteboard video can walk people through it; kind of like a mini tour.",
+    "If it ever feels like the work at {company} is easier to show than tell, that’s where we come in. We make short explainer videos that do the talking for you.",
+    "Services like those at {company} don’t always click in a single headline. We build short videos to walk people through the ‘why it matters’ part; full creative done for you.",
+    "{company} probably has a lot going on behind the scenes. A quick video can pull it all together in a way that feels approachable, not overwhelming.",
+    "We’ve helped other multi-layered service businesses show how everything connects. Same could work for {company}; all we’d need is a bit of your input upfront, while we do the rest of the heavy lifting.",
+    "If there’s a lot to explain at {company} but you don’t want to overload folks with text, video might be a lighter way to go. We’ll draw it out; fully done-for-you.",
+    "Trying to explain too much at once is tough. If that ever happens at {company}, this kind of explainer helps lay it out clearly without losing people. We handle all production in-house so all you have to do is hit play.",
+    "When it’s hard to describe what {company} does without going on a tangent, a short video can anchor the message. That’s what we build; and I think it could help.",
+    "{company} sounds like one of those teams with a lot of valuable offerings. A short video could help people see the whole picture at once. We take care of it all; illustrations, voice, script; and it's fully in-house."
 ]
 
-paragraph3_additional_variants = [
-    "For {company}, I think there could be a great opportunity to use visual storytelling to help more people “get it” faster. Our animations are fully done-for-you: script, illustrations, voice, and storyboard; so you can use them for:\n\n",
-    "I think {company} could really benefit from using visual storytelling to explain things faster and make them stick. We take care of everything: scripting, illustration, voiceover and storyboarding; so you can use the final video for:\n\n",
-    "{company} has a strong foundation, and a short animated video could be a powerful way to bring your message to life. We’ll take care of the full creative lift: script, voice, and illustrations, so you can use it for:\n\n"
+paragraph_3_variants = [
+    "These videos are pretty low-lift; most folks use them across their homepage, email, or even onboarding.",
+    "They’re short, hand-drawn, and easy to reuse anywhere you need to explain what you do.",
+    "They’re not fancy or high-budget; just a simple way to say something once and use it everywhere.",
+    "Clients end up dropping these into proposals, landing pages, even training. Super versatile.",
+    "They’re quick to watch and easy to share; kind of like a visual elevator pitch you can repurpose.",
+    "Most teams keep reusing them; on websites, in follow-ups, or even onboarding flows.",
+    "It’s not studio-glossy stuff; just helpful and reusable in lots of spots.",
+    "People usually end up using these in more places than they expected; website, email, intros, that kind of thing.",
+    "They tend to stick around; folks re-use them in demos, sales decks, or even hiring.",
+    "Nothing flashy; just something that helps people catch on faster, and reuse again and again.",
+    "Teams often plug them into their homepage, newsletters, or even client onboarding kits.",
+    "They’re built once, but tend to get reused in all kinds of conversations.",
+    "It’s not the kind of video you watch once and forget; most clients use them on repeat.",
+    "They slot in wherever you need a quick ‘here’s what we do’; homepage, sales call, whatever.",
+    "Most folks use them as evergreen explainers; handy whenever someone asks ‘so what do you do?’",
+    "They’re simple enough to live on your homepage but clear enough for email intros and decks too.",
+    "It’s a single piece of content, but it usually earns its keep across different touchpoints.",
+    "Once you’ve got one, you can drop it into all sorts of places where words fall short.",
+    "They’re short, visual, and surprisingly sticky; people keep watching and rewatching.",
+    "These things tend to travel well; from landing pages to pitches and everything in between."
 ]
 
-paragraph4b_variants = [
-    "These videos often help businesses increase engagement by up to 60%, double conversion rates, and boost message retention by up to 80%.",
-    "These animations don’t just explain, they convert; Many of our past clients see a big lift in engagement, trust, and sales.",
-    "Clients often tell us these pieces help reduce bloat, increase clarity, and lead to more meaningful conversions.",
-    "Whether it’s more signups, better retention, or faster understanding, these animations know how to hit hard. And they move the needle where it counts."
+paragraph_4_variants = [
+    "If you’re open to it, I could put together a quick sketch or sample script; just something to see if the tone feels right.",
+    "Happy to mock up a small piece; maybe a 10-second snippet; to give you a sense of how this could sound.",
+    "Could sketch something out if you’re curious; nothing polished, just a rough idea to react to.",
+    "If you want to see what this might look like in your world, I could draft a short example.",
+    "No pressure at all; I can put together a tiny demo if it helps spark ideas.",
+    "Totally optional, but I’d be glad to send over a first-pass sketch. Just to play around with.",
+    "If you’re game, I could draft a tiny voice-over or outline to show how this might work for you.",
+    "Always happy to put pen to paper. I could sketch something simple out; no strings.",
+    "Let me know if you’d like to see how this could sound for {company}; happy to whip up a short draft.",
+    "I could mock something up if you want to see how it might land in your tone of voice.",
+    "If it helps to see it in action, I can send over a tiny preview; even just a first line or two.",
+    "Just say the word if you’d like a tiny prototype; I keep things super scrappy at first.",
+    "I could take a stab at a quick draft; no expectations, just to get a sense of the vibe.",
+    "Happy to play with a short version if you want to see what it might feel like in practice.",
+    "If you're even a little curious, I can sketch a 10-second version just to test the waters.",
+    "I’d be happy to map out a quick intro or 10 second snippet if you want to see what it could look like.",
+    "Let me know if you want a quick visual mock; no deck, no pitch, just a sketch.",
+    "This might be easier to show than tell; happy to put a sample together if you’re up for it.",
+    "If it sounds halfway interesting, I’d be glad to draw something up; just a loose draft to react to."
 ]
 
-paragraph5_variants = [
-    "If you’re open to it, I’d love to share a quick demo built around something {company} offers. Just a sketch or script; no pressure, no pitch; just curious to see what it might sound like in your voice.",
-    "I could pull together a quick sketch or sample script based on one of {company}’s core offerings. Just a lightweight preview, no expectations; just to show what’s possible.",
-    "I'd be happy to draft a ten-second demo around something core to your brand. Totally low-lift, just keen to explore what this could look like with {company}'s voice behind it.",
-    "Would you be open to seeing a quick script or ten-second sketch built with {company} in mind? No expectations; just interested in showing you what’s possible.",
-    "If you're open to a quick preview, I could whip up a ten-second mock or short script tailored to something core at {company}; No pressure, no cost, purely exploratory.",
-    "I'd be more than happy to whip up a quick snippet; a short script or sketch; that speaks to what {company} does best. No commitments at all, just a chance to show you what's possible.",
-    "I’d be glad to pull together a short demo; maybe a script or quick sketch; based on what {company} does best. No pressure, just a chance to preview what it might look and sound like.",
-    "If you're curious, I could draft a ten-second teaser or sketch based on what {company} offers. Nothing formal. Just something you can react to, no strings or expectations.",
-    "I’d love to put together a quick concept; maybe a script or a short teaser; around one of your key offerings. No strings, just a preview of what's possible with {company}'s voice behind it.",
-    "How about a quick sample built around {company}'s strengths? Ten seconds or so, no strings, no commitments. Just a feeler to see what resonates.",
-    "Could I sketch something out for you? A short demo or script idea based on what {company} offers. No pitch; just something for you to react to."
-]
-
-paragraph6_variants = [
-    "Thanks for putting something refreshing out there.",
-    "Thanks for leading with both heart and strategy.",
-    "Keep doing what you do, it's making an impact."
-]
-
-paragraph7_cta_variants = [
-    "You’ll find a link to our site in my signature if you’d like to see a few examples. And if anything clicks, I’d love to hear your thoughts.",
-    "If it feels like a fit, you can reply any time. There’s also a link in my signature in case you want to browse a few previous projects.",
-    "If you're open to chatting more, just hit reply. And if you're curious, there’s a site link in my signature with a few past examples.",
-    "If you’re curious about what this might look like, just reach out. There’s a link in my signature with a few examples you can check out, too.",
-    "I’d be happy to chat if you’re interested. Just reply anytime, and feel free to check out some of our work through the link in my signature.",
-    "Let me know if you'd like to take this further. You can check out some of our work through the link in my signature as well.",
-    "Always open to a quick chat if this feels worth exploring. In the meantime, you can view a few past projects via the link in my signature.",
-    "Reply anytime if you'd like to talk more about this. There’s also a link below with some samples of what we’ve done before.",
-    "Just reach out if you’d like to continue the conversation. You’ll find a few previous projects linked in the signature below."
+paragraph_5_variants = [
+    "Reply anytime if you're even a little interested; and feel free to check out some previous work in my signature. Just reply 'NO' if you'd prefer not to hear from me again.",
+    "If this sparks even a bit of curiosity, you can reply whenever. I also added a few past projects in my signature. Totally fine to reply 'NO' if you'd rather not get future emails.",
+    "You can reply whenever if this seems worth exploring. There’s some past work in my signature below. Or just send 'NO' if this isn’t your thing.",
+    "No rush; reply if you're even slightly interested. You can take a peek at what we’ve done before in my signature. Also say 'NO' if you don't want me to reach out again.",
+    "If you're curious at all, feel free to reply. There’s some previous work listed in my signature. And if this isn’t for you, just reply 'NO'.",
+    "You’re welcome to reach out if this interests you. A few examples are included in my signature; and if not your thing, a simple 'NO' will take you off my list.",
+    "Reply anytime if it feels like something you’d want to chat more about. You’ll see some past examples of our work in my signature. Totally fine to reply 'NO' if not.",
+    "If any part of this felt interesting, you can always reply. Some previous projects are listed in the signature. Or reply 'NO' and I won’t send anything else.",
+    "Happy to hear from you if this caught your eye. You’ll find some examples down below if you’d like to browse; or just reply 'NO' if you’d rather not get follow-ups.",
+    "You’re free to ignore this, but if you're at all interested, reply anytime. A few past projects are mentioned below in my signature. Just say 'NO' if you'd prefer no future messages."
 ]
 
 # --- Email 2 Templates ------------------------------------------------------
@@ -122,7 +158,7 @@ These videos are especially helpful when you’re trying to explain something te
 
 If it helps, I’d be happy to put together a short script or quick teaser to show what this could look like.
 
-Feel free to reply if you’d like to explore it. You’ll find examples of our work in my signature.
+Feel free to reply if you’d like to explore it. You’ll find examples of our work in my signature. If it’s not a fit, feel free to reply with a quick “NO” and I won’t reach out again.
 
 {signature}""",
 
@@ -134,7 +170,7 @@ For {company}, this could mean increased understanding and stronger engagement, 
 
 If you're still open to that quick sketch or demo, I’d be happy to create one based on something you’re working on.
 
-There’s a link to our past projects in my signature if you’d like to browse.
+There are some past projects in my signature if you’d like to browse. And of course, just reply “NO” if you’d rather not hear from me again.
 
 {signature}""",
 
@@ -146,7 +182,7 @@ If you’d be open to a 10-second snippet or a short script tailored to one of y
 
 It’s no obligation, just a way to explore what this could look like in your context.
 
-You’ll find some of our past work linked in my signature.
+You’ll find some of our past work in my signature. If this isn't something you're interested in, replying with “NO” will do the trick.
 
 {signature}""",
 
@@ -158,7 +194,7 @@ It’s something that’s worked well for businesses trying to explain detailed 
 
 Happy to create a short, customized sample if you’d like a clearer sense of how this could look.
 
-Reply anytime;  there’s also a link to our previous work below.
+Reply anytime; there’s also some of our previous work mentioned below. Or just reply “NO” if you'd prefer not to receive future messages.
 
 {signature}""",
 
@@ -170,7 +206,7 @@ If it’s helpful, I can pull together a short visual sketch or sample script ba
 
 No pressure; just a creative starting point for you to consider.
 
-You’ll find some of our work linked in my signature.
+You’ll find some of our work in my signature. If it’s not for you, feel free to just reply “NO” and I’ll close the loop here.
 
 {signature}""",
 
@@ -182,17 +218,17 @@ It’s often a great fit for simplifying dense content, making internal updates 
 
 For {company}, I’d be glad to sketch a quick visual or draft a short script so you can see what this might look like in practice.
 
-Reply when you can, or check out some examples in the signature below.
+Reply when you can, or check out some examples in the signature below. If you’re not interested, a quick “NO” will ensure no follow-ups.
 
 {signature}""",
 
     """{salutation} {name},
 
-Quick follow-up in case now’s a better time. My last email was about how visual storytelling could support {company}'s messaging for doubled impact.
+Quick follow-up in case now’s a better time. My last note was about how visual storytelling could support {company}'s messaging for doubled impact.
 
 If you're curious, I could create a ten-second teaser or a rough script so you can get a sense of what’s possible.
 
-Just reply if you’d like to explore. There’s a link to some of our previous work in the signature below.
+Just reply if you’d like to explore. There are some previous work samples in the signature below. If not, no worries at all — just send “NO”.
 
 {signature}""",
 
@@ -204,7 +240,7 @@ These kinds of animations are used to clarify big-picture strategies, improve tr
 
 If {company} has something complex or critical to explain, I’d love to put together a sample to show what it might look like.
 
-Reply when ready, and check out some past examples linked below.
+Reply when ready, and check out some past examples mentioned below. Or simply reply “NO” if you'd like to opt out.
 
 {signature}""",
 
@@ -216,7 +252,7 @@ Whiteboard storytelling might be a surprisingly effective way for {company} to s
 
 If you’re still open to it, I can send a short demo such as a sample script or 10-second sketch, just to give you a feel.
 
-Let me know, or feel free to check out some of our past work in the signature.
+Let me know, or feel free to check out some of our past work in the signature. And if you’re not interested, just reply “NO”.
 
 {signature}""",
 
@@ -228,7 +264,7 @@ I understand if now’s not ideal, but I still think there’s value in explorin
 
 It could be a great fit for onboarding, product overviews, or thought leadership; and I’d be happy to show you a no-cost sample.
 
-You can reply any time, or check out some of our past work linked in my signature.
+You can reply any time, or check out some of our past work in my signature. Or just send a quick “NO” if you’re not looking to explore this.
 
 {signature}""",
 
@@ -238,7 +274,7 @@ I wanted to circle back following my last email about using whiteboard animation
 
 If you’re open to it, I’d love to put together that quick sketch or script I mentioned earlier; something tailored specifically to one of your key offerings or a new product launch, perhaps.
 
-Feel free to reply anytime. And just in case you missed it, some of our past projects are linked in my signature.
+Feel free to reply anytime. And just in case you missed it, some of our past projects are in my signature. If this isn’t your thing, replying “NO” is all it takes.
 
 {signature}""",
 
@@ -250,7 +286,7 @@ Our videos are designed to help businesses like yours increase engagement, boost
 
 If you'd like, I can create a short demo or script as a no-pressure way to see how this could work for your team.
 
-You’ll find examples of our work linked in my signature. Let me know if you’d like to see something specific.
+You’ll find examples of our work in my signature. Let me know if you’d like to see something specific, or just reply “NO” if not.
 
 {signature}""",
 
@@ -262,7 +298,7 @@ Many of our clients find these videos help explain their offerings faster and mo
 
 If it’s helpful, I’d be happy to draft a quick concept or short sample that fits your brand voice and messaging.
 
-You can reply anytime, and our portfolio is linked below if you want to get a feel for what we do.
+You can reply anytime, and our portfolio is in the signature if you want to get a feel for what we do. If not interested, replying “NO” will stop future messages.
 
 {signature}""",
 
@@ -272,7 +308,7 @@ I wanted to check back in and remind you about the offer I shared earlier; a 10 
 
 It’s a simple, no-strings way to explore how animation can support your {company}'s messaging and help your audience understand your value offerings more clearly.
 
-Feel free to reply if you want to see this, or browse some of our previous projects linked in my signature.
+Feel free to reply if you want to see this, or browse some of our previous projects in my signature. Just reply “NO” if you’d rather I not follow up again.
 
 {signature}""",
 
@@ -284,7 +320,7 @@ This type of video storytelling often boosts engagement and helps simplify compl
 
 If you’re curious, I’d be glad to draft a short teaser or script for you to review.
 
-Please reply anytime, and there’s a link to our work in my signature if you want to take a look.
+Please reply anytime. Not interested? A quick “NO” is fine.
 
 {signature}""",
 
@@ -296,17 +332,17 @@ Whether it’s for pitching, explaining products, or internal training, these vi
 
 If you’re open to it, I can prepare a quick sketch or script sample tailored to your brand; no pressure at all.
 
-You’ll find examples of our previous work linked below. Let me know if you’d like to explore the fit.
+You’ll find examples of our previous work mentioned below. Let me know if you’d like to explore the fit, or reply “NO” if you’d rather pass.
 
 {signature}""",
 
     """{salutation} {name},
 
-Hope this finds you well. I’m following up on my previous email offering a quick, no-commitment demo to show how whiteboard animation might work for {company}.
+Hope this finds you well. I’m following up on my previous note offering a quick, no-commitment demo to show how whiteboard animation might work for {company}.
 
 These animations are a great way to explain services or products in an engaging, easy-to-understand format.
 
-If you’d like me to put something together, just let me know. You’ll find some past examples linked below too.
+If you’d like me to put something together, just let me know. Some past examples are listed below too. Otherwise, feel free to reply “NO” if you’re not interested.
 
 {signature}""",
 
@@ -318,12 +354,12 @@ This approach often helps businesses increase engagement, simplify communication
 
 If you’re curious, I’d be happy to draft a quick demo or script for you to review at your convenience.
 
-You can reply any time, and there’s a link to our previous work in my signature.
+You can reply any time. If it’s not something you want to pursue, replying “NO” is totally fine.
 
 {signature}"""
 ]
 
-# --- Email 3 Templates ------------------------------------------------------
+# ---EMAIL 3 TEMPLATES---------------------------------------------------------------------------
 
 email3_templates = [
     """{salutation} {name},
@@ -332,7 +368,7 @@ Just circling back in case the timing makes more sense now. I still believe whit
 
 If you would like to test the waters, I am happy to sketch something out to show what it might look like.
 
-You will find past examples linked in my signature. Feel free to reply if you would like to explore this.
+You will find past examples in my signature. Feel free to reply if you would like to explore this.
 
 {signature}""",
 
@@ -342,7 +378,7 @@ I am still happy to share a quick sketch or demo if it is helpful. Many of our c
 
 If {company} has anything you are trying to simplify, I would love to help you explore it. Just reply if you want me to send something over.
 
-You will also find examples of past work linked in my signature below.
+You will also find examples of past work in my signature below.
 
 {signature}""",
 
@@ -352,7 +388,7 @@ Thought I would check in one last time.
 
 If you are still curious what an animated whiteboard explainer might look like for {company}, I would be glad to share something rough, a short teaser, or a script to get the ball rolling.
 
-You can find our work in the link below. Reply anytime if you are interested.
+You can find our work in my signature. Reply anytime if you are interested.
 
 {signature}""",
 
@@ -372,17 +408,17 @@ If you are still considering creative ways to showcase {company}'s value offerin
 
 I would be happy to send over a short visual teaser to get the ideas flowing.
 
-No pressure, just a creative option to keep in mind. Reply anytime or take a peek at some of our previous work. The link is in my signature.
+No pressure, just a creative option to keep in mind. Reply anytime or take a peek at some of our previous work. It is in my signature.
 
 {signature}""",
-    
+
     """{salutation} {name},
 
 Circling back once more before I close the loop.
 
 If there is anything at {company} you have been meaning to simplify, such as those boring quarterly reports your team never reads, then whiteboard animation could help bring that to life.
 
-I would be happy to sketch something if you want to see what that might look like. You can reply anytime or check out some of our previous work on our website, linked in my signature.
+I would be happy to sketch something if you want to see what that might look like. You can reply anytime or check out some of our previous work in my signature.
 
 {signature}""",
 
@@ -390,7 +426,7 @@ I would be happy to sketch something if you want to see what that might look lik
 
 Reaching out one last time before I close the loop. If you are still exploring creative ways to showcase what {company} offers, this could be a great fit.
 
-I would be glad to put together a simple teaser or sketch if you are curious. Reply at your convenience or check out some of our past projects. The link is in my signature.
+I would be glad to put together a simple teaser or sketch if you are curious. Reply at your convenience or check out some of our past projects. You will find them in my signature.
 
 {signature}""",
 
@@ -398,7 +434,7 @@ I would be glad to put together a simple teaser or sketch if you are curious. Re
 
 I hope your week is going well. I am wrapping up some projects and wanted to reach out again before I close things out.
 
-If you would still like to explore using whiteboard videos to support {company}'s messaging, I would love to help. Simply reply or take a peek at some of our previous work on our website, which is linked in my signature.
+If you would still like to explore using whiteboard videos to support {company}'s messaging, I would love to help. Simply reply or take a peek at some of our previous work. It is in my signature.
 
 {signature}""",
 
@@ -406,7 +442,7 @@ If you would still like to explore using whiteboard videos to support {company}'
 
 A quick follow-up before I close out my list. If now is not the right time, no worries at all.
 
-But if you are a little curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. The link is in my signature.
+But if you are a little curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. They are in my signature.
 
 {signature}""",
 
@@ -414,7 +450,7 @@ But if you are a little curious about how whiteboard animation might help {compa
 
 Just one last follow-up in case you missed my previous notes. I would still be happy to sketch a teaser for {company} if you are curious to see what whiteboard animation can do.
 
-It could help simplify one of your key offerings or assist with your latest project launch. If you are a little curious, just hit reply or check out some of our past work, which is already linked in my signature.
+It could help simplify one of your key offerings or assist with your latest project launch. If you are a little curious, just hit reply or check out some of our past work in my signature.
 
 {signature}""",
 
@@ -424,7 +460,7 @@ I just wanted to check in again and see if the idea of using whiteboard animatio
 
 If you'd like, I can put together a simple draft or a short sample video to show how this could work for you.
 
-You can also find examples of our previous work linked in my signature. Please don’t hesitate to reply if you want to explore this.
+You can also find examples of our previous work in my signature. Please don’t hesitate to reply if you want to explore this.
 
 {signature}""",
 
@@ -434,7 +470,7 @@ Following up once more because I think animation could really help {company} com
 
 I’d be happy to sketch out a quick teaser or draft a script that suits your brand and goals.
 
-Feel free to reply if you’d like to see what this might look like. You’ll find links to our past projects in my signature.
+Feel free to reply if you’d like to see what this might look like. You’ll find our past projects in my signature.
 
 {signature}""",
 
@@ -446,13 +482,13 @@ Even a short, simple animation can make complex ideas easier to understand and m
 
 If that sounds interesting, I’d be glad to prepare a brief sketch or a script to share with you.
 
-Please reply anytime. Past examples are linked in my signature.
+Please reply anytime. Past examples are in my signature.
 
 {signature}""",
 
     """{salutation} {name},
 
-Just wanted to reconnect in case my previous notes got buried. If you have any questions or thoughts about using whiteboard animation at {company}, I'd be more than happy to answer them..
+Just wanted to reconnect in case my previous notes got buried. If you have any questions or thoughts about using whiteboard animation at {company}, I'd be more than happy to answer them.
 
 It’s a creative way to explain your value offerings, and it can really help with marketing, training, or internal communications.
 
@@ -470,7 +506,7 @@ Animation can make even the most complicated topics accessible and engaging, whi
 
 If you’re open to it, I’d love to draft a short visual concept for you to review.
 
-Feel free to reply anytime, and you can see examples of our work linked below.
+Feel free to reply anytime, and you can see examples of our work in my signature.
 
 {signature}""",
 
@@ -482,7 +518,7 @@ Whether it’s for sales, marketing, onboarding, or internal messaging, animatio
 
 If you’re curious, I’d be happy to create a short sample or script that fits your goals.
 
-Please reply whenever you’re ready. Past projects are linked in my signature.
+Please reply whenever you’re ready. Past projects are in my signature.
 
 {signature}""",
 
@@ -494,7 +530,7 @@ It’s an engaging way to capture attention and explain what makes your business
 
 If it sounds useful, I’d be glad to prepare a quick teaser or script to show you what’s possible.
 
-You can reply anytime, and a link to our portfolio is in my signature.
+You can reply anytime, and our portfolio is in my signature.
 
 {signature}""",
 
@@ -506,7 +542,7 @@ Many teams find that even short animations help simplify their message and make 
 
 If you’d like, I can put together a brief teaser or script to help you explore this option.
 
-Please feel free to reply at any time. Examples of our work are linked in my signature.
+Please feel free to reply at any time. Examples of our work are in my signature.
 
 {signature}""",
 
@@ -518,7 +554,7 @@ It’s a creative way to bring your ideas to life and connect with your audience
 
 If you’re interested, I’d be happy to share a quick demo or script tailored to your needs.
 
-You’ll find past examples linked in my signature. Reply whenever you’re ready.
+You’ll find past examples in my signature. Reply whenever you’re ready.
 
 {signature}""",
 
@@ -530,60 +566,24 @@ We’ve helped many businesses explain their offerings clearly and creatively th
 
 If you’d like, I can draft a quick sample to show how this might work for you.
 
-Please don’t hesitate to reply. Our past projects are linked below.
+Please don’t hesitate to reply. Our past projects are in my signature.
 
-{signature}""",
+{signature}"""
 ]
 
 # --- Rotators --------------------------------------------------------------
 
 rotators = {
-    "p1": VariantRotator(paragraph1_templates),
-    "p2": VariantRotator(paragraph2_variants),
-    "p3": VariantRotator(paragraph3_additional_variants),
-    "p4": VariantRotator(paragraph4b_variants),
-    "p5": VariantRotator(paragraph5_variants),
-    "p6": VariantRotator(paragraph6_variants),
-    "p7": VariantRotator(paragraph7_cta_variants),
+    "o": VariantRotator(openers),
+    "p1": VariantRotator(paragraph_1_variants),
+    "p2": VariantRotator(paragraph_2_variants),
+    "p3": VariantRotator(paragraph_3_variants),
+    "p4": VariantRotator(paragraph_4_variants),
+    "p5": VariantRotator(paragraph_5_variants),
     "sig": VariantRotator(signatures),
     "e2": VariantRotator(email2_templates),
     "e3": VariantRotator(email3_templates),
 }
-
-# --- Utilities -------------------------------------------------------------
-
-def parse_use_cases(raw):
-    items = [item.strip() for item in str(raw or "").split("|") if item.strip()]
-    return random.sample(items, min(3, len(items)))
-
-def build_email1(lead):
-    name = lead.get("first name", "there")
-    company = lead.get("business name", "your company")
-    use_cases = "\n".join(f"• {uc}" for uc in parse_use_cases(lead.get("use cases", "")))
-    return (
-        f"{rotators['p1'].next().format(name=name, company=company)}\n\n"
-        f"{rotators['p2'].next()}\n\n"
-        f"{rotators['p3'].next().format(company=company)}{use_cases}\n\n"
-        f"{rotators['p4'].next()}\n\n"
-        f"{rotators['p5'].next().format(company=company)}\n\n"
-        f"{rotators['p7'].next()}\n\n"
-        f"{rotators['p6'].next()}\n\n"
-        f"{rotators['sig'].next()}"
-    )
-
-def build_email2(lead):
-    name = lead.get("first name", "there")
-    company = lead.get("business name", "your company")
-    salutation = random.choice(salutations)
-    signature = rotators["sig"].next()
-    return rotators["e2"].next().format(salutation=salutation, name=name, company=company, signature=signature)
-
-def build_email3(lead):
-    name = lead.get("first name", "there")
-    company = lead.get("business name", "your company")
-    salutation = random.choice(salutations)
-    signature = rotators["sig"].next()
-    return rotators["e3"].next().format(salutation=salutation, name=name, company=company, signature=signature)
 
 # --- NDJSON Helpers --------------------------------------------------------
 
@@ -601,7 +601,7 @@ def load_ndjson(filepath):
                     buffer = ""
             else:
                 buffer += line
-        if buffer:  # handle last block if no trailing newline
+        if buffer:
             try:
                 records.append(json.loads(buffer))
             except json.JSONDecodeError as e:
@@ -613,6 +613,35 @@ def save_ndjson(filepath, records):
         for record in records:
             f.write(json.dumps(record, ensure_ascii=False, indent=2) + "\n")
 
+# --- Email Builders --------------------------------------------------------
+
+def build_email1(lead):
+    name = lead.get("first name", "there")
+    company = lead.get("business name", "your company")
+    return (
+        f"{rotators['o'].next().format(name=name, company=company)}\n\n"
+        f"{rotators['p1'].next()}\n\n"
+        f"{rotators['p2'].next().format(company=company)}\n\n"
+        f"{rotators['p3'].next()}\n\n"
+        f"{rotators['p4'].next().format(company=company)}\n\n"
+        f"{rotators['p5'].next()}\n\n"
+        f"{rotators['sig'].next()}"
+    )
+
+def build_email2(lead):
+    name = lead.get("first name", "there")
+    company = lead.get("business name", "your company")
+    salutation = random.choice(["Hey", "Hi", "Hello"])
+    signature = rotators["sig"].next()
+    return rotators["e2"].next().format(salutation=salutation, name=name, company=company, signature=signature)
+
+def build_email3(lead):
+    name = lead.get("first name", "there")
+    company = lead.get("business name", "your company")
+    salutation = random.choice(["Hey", "Hi", "Hello"])
+    signature = rotators["sig"].next()
+    return rotators["e3"].next().format(salutation=salutation, name=name, company=company, signature=signature)
+
 # --- Main ------------------------------------------------------------------
 
 def main():
@@ -620,10 +649,6 @@ def main():
     updated1 = updated2 = updated3 = 0
 
     for lead in leads:
-        use_cases = lead.get("use cases", "").strip()
-        if not use_cases:
-            continue  # ❌ Skip this lead if no use cases
-
         if not lead.get("email 1", "").strip():
             lead["email 1"] = build_email1(lead)
             updated1 += 1
