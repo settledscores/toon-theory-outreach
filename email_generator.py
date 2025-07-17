@@ -43,7 +43,6 @@ openers = [
     "Hey there {name}, I’ll keep this super quick; had an idea for {company}.",
     "Hey {name}, If this email is one of 200 you've gotten today, I’ll make mine short.",
     "Hi there {name}, I’ve got a weird idea that might actually help.",
-    "Hey {name}, I’ve been in your shoes before, and this might save you some time.",
     "Hi {name}, Not pitching anything, just wanted to throw an idea your way.",
     "Hey there {name}, This might sound random, but it’s relevant; promise.",
     "Hello there {name}, Totally okay if this isn’t your thing, just sharing an idea.",
@@ -54,39 +53,41 @@ openers = [
 
 paragraph_1_variants = [
     "I’m Trent. I run a small studio called Toon Theory. We draw videos by hand; it’s a fun way to show people what you do.",
-    "I’m Trent. I started Toon Theory because sometimes words don’t cut it, a quick sketch can go a long way.",
+    "I’m Trent. I started Toon Theory because sometimes words don’t cut it, a quick video can go a long way.",
     "I’m Trent and I run an animation studio called Toon Theory, we make short, hand-drawn videos. Not flashy, just clear and kind of charming.",
-    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams share what they’re putting out there.",
+    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams share the important work they’re putting out there.",
     "I’m Trent. I run Toon Theory, it’s just a few of us drawing stories for people who don’t love PowerPoints.",
     "I’m Trent. I make short videos at a studio called Toon Theory. Think whiteboard sketches with a background voice, simple and watchable.",
     "I’m Trent and I’m the guy behind Toon Theory. We help people show what they mean without making it a whole production snag.",
     "I’m Trent. Toon Theory is my animation shop, mostly whiteboard videos with a human feel. Not too polished, not too stiff.",
-    "I’m Trent and I started Toon Theory to make videos that feel like they were drawn by someone real, because they are.",
     "I’m Trent and I run Toon Theory. We sketch short videos for people who want to say big things without writing an essay.",
-    "I’m Trent. Toon Theory is my little animation outfit. We work with voice, sketch, and story; that’s it.",
+    "I’m Trent. Toon Theory is my little animation outfit. We work with voice, illustrations, and stories; that’s it.",
     "I’m Trent. I make videos at Toon Theory, mostly hand-drawn stuff that people don’t mind watching.",
-    "I’m Trent. I started Toon Theory a while back. We draw things for people who need to explain what they’re up to.",
+    "I’m Trent. I started Toon Theory a while back. We draw things for businesses who need to explain what they’re up to.",
     "I’m Trent and I run an animation studio called Toon Theory. We don’t do fancy, just videos that feel real and personal.",
-    "I’m Trent. Toon Theory is my studio, we draw little stories for people with big things to say.",
-    "I’m Trent. Toon Theory is a small studio I run. We turn people’s thoughts into moving doodles."
+    "I’m Trent. Toon Theory is my studio, we draw little stories for businesses with big things to say.",
+    "I’m Trent. Toon Theory is a small studio I run. We turn people’s thoughts into moving illustrations."
 ]
 
 paragraph_2_variants = [
-    "If {company}'s services branch into different areas, a whiteboard video can help show how it all ties together. We handle script, voice, and visuals; all in-house.",
-    "If {company} has multi-layered service offerings, a video can help connect the dots faster than words alone. We write, draw, and narrate the whole thing so you don't even have to move a muscle.",
-    "{company} probably wears a few hats. A short explainer can help show how they all fit under one roof. We do the heavy lifting; script, voice, and illustration so you don't have to lift a finger.",
-    "When {company}'s offer spans multiple areas, people sometimes need a guide to see how it all fits. These videos do that. You approve; we handle the rest.",
-    "It’s hard to write copy for bundled or multi-layered service offerings; and we get that. At {company}, these videos can let you *show* people instead. No scriptwriting or heavy lifting needed on your end.",
-    "We’ve worked with teams like {company} who offer multiple services that work best together. A short whiteboard-style video can show that without making people think too hard.",
-    "When business like {company} offer more than one service, clarity gets tricky. A whiteboard video can walk people through it; kind of like a mini tour.",
-    "If it ever feels like the work at {company} is easier to show than tell, that’s where we come in. We make short explainer videos that do the talking for you.",
-    "Services like those at {company} don’t always click in a single headline. We build short videos to walk people through the ‘why it matters’ part; full creative done for you.",
-    "{company} probably has a lot going on behind the scenes. A quick video can pull it all together in a way that feels approachable, not overwhelming.",
-    "We’ve helped other multi-layered service businesses show how everything connects. Same could work for {company}; all we’d need is a bit of your input upfront, while we do the rest of the heavy lifting.",
-    "If there’s a lot to explain at {company} but you don’t want to overload folks with text, video might be a lighter way to go. We’ll draw it out; fully done-for-you.",
-    "Trying to explain too much at once is tough. If that ever happens at {company}, this kind of explainer helps lay it out clearly without losing people. We handle all production in-house so all you have to do is hit play.",
-    "When it’s hard to describe what {company} does without going on a tangent, a short video can anchor the message. That’s what we build; and I think it could help.",
-    "{company} sounds like one of those teams with a lot of valuable offerings. A short video could help people see the whole picture at once. We take care of it all; illustrations, voice, script; and it's fully in-house."
+    "I know {service2}, {service3}, and even {service1} can be a mouthful for teams like {company} to get across. We build short videos that make it easier to understand without extra effort from your side.",
+    "Since {company}'s work includes things like {service2} or {service1}, an explainer video can help show how it all fits. We handle script, voice, and illustrations so you don’t have to.",
+    "From {service1} to {service3}, {company} probably wears a few hats. A short explainer can help show how they all fit under one roof. We take the messy bits and shape them into something clear and visual.",
+    "{company} offers more than just {service2}, right? When your work spans areas like {service2} and {service1}, an explainer video can help connect the dots fast. We keep it simple and do all the creative in-house.",
+    "For businesses juggling {service1}, {service3}, and other multi-layered services, explainer videos are a way to simplify the pitch. We manage the full process start to finish so you can focus elsewhere.",
+    "It’s hard to sum up {service1} and {service2} without losing people halfway. This kind of short video keeps things clear, casual, and focused; ideal for businesses offering bundled services like {company}.",
+    "When you do both {service2} and {service3}, words alone don’t always cut it. That’s where we come in. We make sketch-style videos that do the heavy lifting for {company}. Everything’s handled end to end.",
+    "{company} probably has a mix of services; maybe {service3} or {service1}. Instead of text, we make short explainer videos that walk people through it visually. No extra work needed from your team.",
+    "We’ve helped other firms working in {service1}, {service2}, and related areas explain what they do in two minutes flat. We could do the same for {company}. All you’d need to do is give us a quick thumbs up at each step.",
+    "Even just explaining {service2} on its own can be tricky. When you fold in {service3}, it gets harder. These videos break it down so it actually lands. We handle everything from story to delivery.",
+    "Trying to explain {service2}, let alone {service3}, in an email or pitch deck? We’ve helped teams like {company} do it with an explainer video instead. You approve the direction; we handle the rest.",
+    "Most folks don’t understand {service1} unless they already need it. A short explainer can make that click faster; for services like {service1}, {service2}, or whatever else you offer. We do all the heavy lifting behind the scenes.",
+    "We’ve worked with teams that blend {service2} and {service1} in ways that don’t always fit a headline. These videos help tell the full story for brands like {company}. You won’t need to lift a finger.",
+    "Explaining something like {service3} can be hard enough. But when {company} also does {service1} or {service2}, you really need a different way to tell the same story over and over again. We’ll build something clean, visual, and customized.",
+    "If you’ve ever had to explain {service1} and {service2} in the same sentence, you already know how tricky it is. We make it visual, easy, and skimmable. We’ll handle the rest while you stay focused on the work.",
+    "You handle {service2}, {service3}, and probably a lot more. We turn all that into a 90-second explainer that’s light, simple, and built from scratch for {company}. Everything’s done in-house, with nothing outsourced.",
+    "Since {company} works across {service3} and {service1}, it might help to show, not tell, how it works. We build short videos that do just that, end to end. No writing or production headaches on your end.",
+    "Whether it’s {service1}, {service2}, or both, these videos help walk people through it without losing them. We’ve done it for others; would be glad to show how it might work for {company}. You can stay hands-off while we make it happen."
 ]
 
 paragraph_3_variants = [
@@ -96,7 +97,7 @@ paragraph_3_variants = [
     "Clients end up dropping these into proposals, landing pages, even training. Super versatile.",
     "They’re quick to watch and easy to share; kind of like a visual elevator pitch you can repurpose.",
     "Most teams keep reusing them; on websites, in follow-ups, or even onboarding flows.",
-    "It’s not studio-glossy stuff; just helpful and reusable in lots of spots.",
+    "It’s not studio-glossy stuff; just helpful and reusable in lots of places like your homepage or your newsletters.",
     "People usually end up using these in more places than they expected; website, email, intros, that kind of thing.",
     "They tend to stick around; folks re-use them in demos, sales decks, or even hiring.",
     "Nothing flashy; just something that helps people catch on faster, and reuse again and again.",
@@ -108,36 +109,34 @@ paragraph_3_variants = [
     "They’re simple enough to live on your homepage but clear enough for email intros and decks too.",
     "It’s a single piece of content, but it usually earns its keep across different touchpoints.",
     "Once you’ve got one, you can drop it into all sorts of places where words fall short.",
-    "They’re short, visual, and surprisingly sticky; people keep watching and rewatching.",
+    "They’re short, visual, and surprisingly sticky; people keep watching and re-watching.",
     "These things tend to travel well; from landing pages to pitches and everything in between."
 ]
 
 paragraph_4_variants = [
     "If you’re open to it, I could put together a quick sketch or sample script; just something to see if the tone feels right.",
-    "Happy to mock up a small piece; maybe a 10-second snippet; to give you a sense of how this could sound.",
-    "Could sketch something out if you’re curious; nothing polished, just a rough idea to react to.",
-    "If you want to see what this might look like in your world, I could draft a short example.",
+    "I'd be happy to mock up a small piece; maybe a 10-second snippet; to give you a sense of how this could sound.",
+    "I could sketch something out if you’re curious; nothing polished, just a rough idea to react to.",
+    "If you want to see what this might look like for {company}, I could whip up a quick snippet, say 10 seconds. Absolutely no strings",
     "No pressure at all; I can put together a tiny demo if it helps spark ideas.",
     "Totally optional, but I’d be glad to send over a first-pass sketch. Just to play around with.",
-    "If you’re game, I could draft a tiny voice-over or outline to show how this might work for you.",
+    "If you’re into it, I could draft a small script or storyboard to show how this might work for you.",
     "Always happy to put pen to paper. I could sketch something simple out; no strings.",
-    "Let me know if you’d like to see how this could sound for {company}; happy to whip up a short draft.",
-    "I could mock something up if you want to see how it might land in your tone of voice.",
-    "If it helps to see it in action, I can send over a tiny preview; even just a first line or two.",
-    "Just say the word if you’d like a tiny prototype; I keep things super scrappy at first.",
-    "I could take a stab at a quick draft; no expectations, just to get a sense of the vibe.",
-    "Happy to play with a short version if you want to see what it might feel like in practice.",
-    "If you're even a little curious, I can sketch a 10-second version just to test the waters.",
-    "I’d be happy to map out a quick intro or 10 second snippet if you want to see what it could look like.",
+    "Let me know if you’d like to see how this could sound for {company}; happy to whip up a quick teaser, 10 seconds or so.",
+    "I could mock something up if you want to see how it might look like with your brand's voice behind it.",
+    "If it helps to see it in action, I can send over a tiny preview; even just a first line or two. No strings",
+    "Happy to send over a short teaser if you want to see what it might feel like in practice.",
+    "If you're even a little curious, I can sketch a 10-second snippet just for you to test the waters.",
+    "I’d be happy to whip out a quick script or 10 second snippet if you want to see what it could look like for {compny}.",
     "Let me know if you want a quick visual mock; no deck, no pitch, just a sketch.",
-    "This might be easier to show than tell; happy to put a sample together if you’re up for it.",
+    "This might be easier to show than tell; happy to put a no-cost sample together if you’re up for it.",
     "If it sounds halfway interesting, I’d be glad to draw something up; just a loose draft to react to."
 ]
 
 paragraph_5_variants = [
     "Reply anytime if you're even a little interested; and feel free to check out some previous work in my signature. Just reply 'NO' if you'd prefer not to hear from me again.",
     "If this sparks even a bit of curiosity, you can reply whenever. I also added a few past projects in my signature. Totally fine to reply 'NO' if you'd rather not get future emails.",
-    "You can reply whenever if this seems worth exploring. There’s some past work in my signature below. Or just send 'NO' if this isn’t your thing.",
+    "You can reply whenever if this seems worth exploring. There’s some past work in my signature too. Or just send 'NO' if this isn’t your thing.",
     "No rush; reply if you're even slightly interested. You can take a peek at what we’ve done before in my signature. Also say 'NO' if you don't want me to reach out again.",
     "If you're curious at all, feel free to reply. There’s some previous work listed in my signature. And if this isn’t for you, just reply 'NO'.",
     "You’re welcome to reach out if this interests you. A few examples are included in my signature; and if not your thing, a simple 'NO' will take you off my list.",
@@ -155,14 +154,13 @@ signatures = [
     "Sincerely,\nTrent — Founder, Toon Theory\ntoontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
     "Best wishes,\nTrent — Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
     "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
-    "With appreciation,\nTrent — Toon Theory\ntoontheory.com\nWhiteboard videos your customers will actually remember.",
     "Respectfully,\nTrent — Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
     "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
     "Regards,\nTrent — Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
     "With gratitude,\nTrent — Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
     "Yours truly,\nTrent — Founder, Toon Theory\ntoontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
     "Faithfully,\nTrent — Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Thanks again,\nTrent — Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress."
+    "Thanks,\nTrent — Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress."
 ]
 
 # --- Email 2 Templates ------------------------------------------------------
@@ -682,3 +680,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
