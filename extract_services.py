@@ -3,10 +3,10 @@ import re
 import json
 import signal
 from dotenv import load_dotenv
-from openai import OpenAI
+from groq import Groq
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("GROQ_API_KEY"))
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
