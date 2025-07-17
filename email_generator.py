@@ -635,16 +635,18 @@ def build_email1(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
 
-    # Parse pipe-delimited services and strip
+    # Parse pipe-delimited services
     services_raw = lead.get("services", "")
     services = [s.strip() for s in services_raw.split("|") if s.strip()]
 
-    # Randomly pick 1–3 services and shuffle order
-    selected_services = random.sample(services, k=min(len(services), random.choice([1, 2, 3])))
-    while len(selected_services) < 3:
-        selected_services.append("")
+    # Gracefully skip if no valid services
+    if not services:
+        return ""
 
-    service1, service2, service3 = selected_services + [""] * (3 - len(selected_services))
+    # Pick 1–3 randomly and pad
+    selected = random.sample(services, k=min(len(services), random.choice([1, 2, 3])))
+    selected += [""] * (3 - len(selected))
+    service1, service2, service3 = selected[:3]
 
     return (
         f"{rotators['o'].next().format(name=name, company=company)}\n\n"
@@ -678,8 +680,10 @@ def main():
 
     for lead in leads:
         if not lead.get("email 1", "").strip():
-            lead["email 1"] = build_email1(lead)
-            updated1 += 1
+            email1 = build_email1(lead)
+            if email1:
+                lead["email 1"] = email1
+                updated1 += 1
         if not lead.get("email 2", "").strip():
             lead["email 2"] = build_email2(lead)
             updated2 += 1
@@ -692,3 +696,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
