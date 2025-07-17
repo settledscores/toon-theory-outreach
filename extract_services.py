@@ -10,17 +10,16 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
-MAX_INPUT_LENGTH = 14000
+MAX_WEB_COPY_LENGTH = 1500
 API_TIMEOUT_SECONDS = 60
 
 def timeout_handler(signum, frame):
     raise TimeoutError("API call timed out")
 
-def truncate_text(text, limit=MAX_INPUT_LENGTH):
+def truncate_web_copy(text, limit=MAX_WEB_COPY_LENGTH):
     return text[:limit]
 
 def is_ambiguous(text):
-    # Flag content that is too short or marketing-heavy
     if len(text.split()) < 30:
         return True
     if text.lower().count("incubator") > 2 or text.lower().count("member portal") > 2:
@@ -29,47 +28,83 @@ def is_ambiguous(text):
         return True
     return False
 
-def generate_prompt(text):
-    examples = """
-Below are examples of raw, messy web copy and their cleaned one-sentence summaries of services:
+def generate_prompt(web_copy):
+    prompt = f"""
+Your task is to extract and return exactly three distinct business services mentioned in the messy web copy below.
+
+⚠️ Formatting Rules (MUST follow):
+- All service names must be lowercase unless it's a common industry abbreviation like CPA, HR, SaaS, AI, etc.
+- Each service must be only 1 or 2 words (no long phrases).
+- Output format: service1 | service2 | service3
+- No introductions, assistant text, explanations, or extra commentary.
+- Do not include phrases like "this business offers" or "here are".
+- The output must be a single line — exactly three services, pipe-separated with spaces.
+
+❌ If the output violates these rules, it will be rejected.
+
+---
+
+Below are examples of raw, messy web copy and their cleaned three-service outputs:
 
 Example 1:
 Web copy:
 "Certified Public Accountants - Huebner, Dooley & McGinness, P.S. Learn more. Accounting Services. We guide our clients through tax planning and preparation decisions. Our forensic accounting services can be used in litigation, investigations. Estate and Trust Planning. We help you reach your financial goals and maintain independence. Certified Public Accountants serving the Pacific Northwest."
 
-→ This business offers tax planning, forensic accounting, estate and trust planning, and financial advisory services.
+→ tax planning | forensic accounting | financial advisory
 
 Example 2:
 Web copy:
 "Business consulting for small businesses, including strategy sessions, marketing audits, and operations optimization. We specialize in helping startups find product-market fit, organize teams, and improve execution."
 
-→ This business offers business strategy, marketing audits, and operations consulting for startups and small businesses.
+→ business strategy | marketing audits | operations consulting
 
 Example 3:
 Web copy:
 "Human Resources services including payroll support, onboarding systems, compliance documentation, and hiring workflows. Our HR experts help you stay ahead of state and federal labor laws."
 
-→ This business offers HR compliance, payroll support, and employee onboarding services.
+→ HR compliance | payroll support | employee onboarding
 
 ---
 
-Now write a one-sentence summary of services for the following messy business web copy:
+Now extract the services from the web copy below.
 
-{text}
-
-→
+Web copy:
+{web_copy}
 """.strip()
-    return examples.format(text=text)
+    return prompt
 
-def postprocess_output(text):
-    sentence = text.strip().split(".")[0].strip()
-    if not sentence:
-        return ""
-    if sentence.lower().startswith("this business offers"):
-        return sentence + "."
-    if sentence.lower().startswith("offers") or sentence.lower().startswith("provides"):
-        return "This business " + sentence + "."
-    return "This business offers " + sentence + "."
+bad_response_patterns = [
+    r"(?i)\bthis\s+business\s+(offers|provides)",
+    r"(?i)\bhere\s+(here are|is)\b",
+    r"(?i)\bi\s+(cannot|as an|can’t|can't)\b",
+    r"(?i)\bi\s+(apologize|sorry|regret)\b",
+    r"(?i)\bthe\s+(services|offerings)\s+are\b",
+    r"(?i)\bbased\s+on\s+(the\s+)?(input|description|information)\b"
+]
+
+def extract_services(raw_text):
+    cleaned = raw_text.strip()
+
+    # Disqualify if assistant language is found
+    for pattern in bad_response_patterns:
+        if re.search(pattern, cleaned):
+            print(f"⚠️ Assistant-style text detected, skipping: {cleaned}", flush=True)
+            return None
+
+    parts = [s.strip() for s in cleaned.split("|")]
+    if len(parts) != 3:
+        print(f"⚠️ Not exactly 3 services: {cleaned}", flush=True)
+        return None
+
+    for part in parts:
+        if not part or len(part.split()) > 2:
+            print(f"⚠️ Invalid service: {part}", flush=True)
+            return None
+        if not re.fullmatch(r"[a-z0-9\s]+|[A-Z]{2,4}", part):  # Accept lowercase or uppercase acronyms
+            print(f"⚠️ Fails lowercase rule: {part}", flush=True)
+            return None
+
+    return " | ".join(parts)
 
 def read_multiline_ndjson(path):
     buffer, records = "", []
@@ -120,8 +155,14 @@ def main():
             results.append(record)
             continue
 
+        if is_ambiguous(full_text):
+            print("⚠️ Web copy flagged as ambiguous or low quality, skipping", flush=True)
+            results.append(record)
+            continue
+
+        truncated = truncate_web_copy(full_text)
+        prompt = generate_prompt(truncated)
         print(f"🔍 Extracting services for: {website}", flush=True)
-        prompt = generate_prompt(truncate_text(full_text))
 
         try:
             signal.signal(signal.SIGALRM, timeout_handler)
@@ -130,26 +171,24 @@ def main():
             response = client.chat.completions.create(
                 model="llama3-70b-8192",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=1000,
+                temperature=0.2,
+                max_tokens=100,
             )
 
             signal.alarm(0)
 
             raw_output = response.choices[0].message.content.strip()
-            cleaned_output = postprocess_output(raw_output)
-
             print(f"🧠 Raw LLM output → {raw_output}", flush=True)
-            print(f"🧾 Final cleaned output → {cleaned_output}", flush=True)
 
-            if len(cleaned_output.split()) <= 5 or "offers" not in cleaned_output.lower():
-                print("⚠️ Output too vague, skipping update", flush=True)
+            parsed = extract_services(raw_output)
+            if not parsed:
+                print("⚠️ Skipping record due to bad output", flush=True)
                 results.append(record)
                 continue
 
-            record["services"] = cleaned_output
+            record["services"] = parsed
             updated += 1
-            print(f"✅ Services field updated → {cleaned_output}", flush=True)
+            print(f"✅ Services field updated → {parsed}", flush=True)
 
         except TimeoutError as te:
             print(f"❌ API call timed out: {te}", flush=True)
