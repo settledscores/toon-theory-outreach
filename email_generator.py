@@ -634,10 +634,22 @@ def save_ndjson(filepath, records):
 def build_email1(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
+
+    # Parse pipe-delimited services and strip
+    services_raw = lead.get("services", "")
+    services = [s.strip() for s in services_raw.split("|") if s.strip()]
+
+    # Randomly pick 1–3 services and shuffle order
+    selected_services = random.sample(services, k=min(len(services), random.choice([1, 2, 3])))
+    while len(selected_services) < 3:
+        selected_services.append("")
+
+    service1, service2, service3 = selected_services + [""] * (3 - len(selected_services))
+
     return (
         f"{rotators['o'].next().format(name=name, company=company)}\n\n"
         f"{rotators['p1'].next()}\n\n"
-        f"{rotators['p2'].next().format(company=company)}\n\n"
+        f"{rotators['p2'].next().format(company=company, service1=service1, service2=service2, service3=service3)}\n\n"
         f"{rotators['p3'].next()}\n\n"
         f"{rotators['p4'].next().format(company=company)}\n\n"
         f"{rotators['p5'].next()}\n\n"
@@ -680,4 +692,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
