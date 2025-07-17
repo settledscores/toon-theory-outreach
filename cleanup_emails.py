@@ -22,11 +22,11 @@ def save_pretty_ndjson(filepath, records):
         f.write("\n\n".join(json.dumps(r, indent=2) for r in records))
         f.write("\n")
 
-def clean_emails(leads):
+def clean_fields_if_no_initial_date(leads):
     modified = 0
     for lead in leads:
         if not lead.get("initial date", "").strip():
-            for field in ["email 1", "email 2", "email 3"]:
+            for field in ["email 1", "email 2", "email 3", "services"]:
                 if lead.get(field):
                     lead[field] = ""
                     modified += 1
@@ -38,7 +38,7 @@ def main():
         return
 
     leads = load_pretty_ndjson(LEADS_PATH)
-    modified = clean_emails(leads)
+    modified = clean_fields_if_no_initial_date(leads)
     save_pretty_ndjson(LEADS_PATH, leads)
     print(f"✅ Cleaned {modified} fields and saved to {LEADS_PATH}")
 
