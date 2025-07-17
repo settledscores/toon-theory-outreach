@@ -27,7 +27,7 @@ def clean_fields_if_no_initial_date(leads):
     for lead in leads:
         if not lead.get("initial date", "").strip():
             for field in ["email 1", "email 2", "email 3", "services"]:
-                if lead.get(field):
+                if field in lead:
                     lead[field] = ""
                     modified += 1
     return modified
