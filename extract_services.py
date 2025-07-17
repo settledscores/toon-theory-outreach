@@ -1,3 +1,5 @@
+# groq_services.py
+
 import os
 import re
 import json
@@ -6,7 +8,7 @@ from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
 TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
@@ -34,7 +36,7 @@ def is_ambiguous(text):
     return False
 
 def generate_prompt(web_copy):
-    prompt = f"""
+    return f"""
 Your task is to extract and return exactly three distinct business services mentioned in the messy web copy below.
 
 ⚠️ Formatting Rules (MUST follow):
@@ -42,7 +44,7 @@ Your task is to extract and return exactly three distinct business services ment
 - Each service must be 1 to 3 words long.
 - Output format: service1 | service2 | service3
 - No introductions, assistant text, explanations, or extra commentary.
-- Do not include phrases like \"this business offers\" or \"here are\".
+- Do not include phrases like "this business offers" or "here are".
 - The output must be a single line — exactly three services, pipe-separated with spaces.
 
 ❌ If the output violates these rules, it will be rejected.
@@ -53,19 +55,19 @@ Below are examples of raw, messy web copy and their cleaned three-service output
 
 Example 1:
 Web copy:
-\"Certified Public Accountants - Huebner, Dooley & McGinness, P.S. Learn more. Accounting Services. We guide our clients through tax planning and preparation decisions. Our forensic accounting services can be used in litigation, investigations. Estate and Trust Planning. We help you reach your financial goals and maintain independence. Certified Public Accountants serving the Pacific Northwest.\"
+"Certified Public Accountants - Huebner, Dooley & McGinness, P.S. Learn more. Accounting Services. We guide our clients through tax planning and preparation decisions. Our forensic accounting services can be used in litigation, investigations. Estate and Trust Planning. We help you reach your financial goals and maintain independence. Certified Public Accountants serving the Pacific Northwest."
 
 → tax planning | forensic accounting | financial advisory
 
 Example 2:
 Web copy:
-\"Business consulting for small businesses, including strategy sessions, marketing audits, and operations optimization. We specialize in helping startups find product-market fit, organize teams, and improve execution.\"
+"Business consulting for small businesses, including strategy sessions, marketing audits, and operations optimization. We specialize in helping startups find product-market fit, organize teams, and improve execution."
 
 → business strategy | marketing audits | operations consulting
 
 Example 3:
 Web copy:
-\"Human Resources services including payroll support, onboarding systems, compliance documentation, and hiring workflows. Our HR experts help you stay ahead of state and federal labor laws.\"
+"Human Resources services including payroll support, onboarding systems, compliance documentation, and hiring workflows. Our HR experts help you stay ahead of state and federal labor laws."
 
 → HR compliance | payroll support | income tax planning
 
@@ -76,7 +78,6 @@ Now extract the services from the web copy below.
 Web copy:
 {web_copy}
 """.strip()
-    return prompt
 
 def extract_services(raw_text):
     cleaned = raw_text.strip()
@@ -164,7 +165,7 @@ def main():
             signal.alarm(API_TIMEOUT_SECONDS)
 
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="llama3-70b-8192",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=100,
