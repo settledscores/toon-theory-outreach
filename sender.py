@@ -96,7 +96,7 @@ def write_multiline_ndjson(path, records):
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
-def send_email(to, subject, content, in_reply_to=None):
+def send_email(to, subject, content, in_reply_to=None, references=None):
     print(f"[Send] {to} | {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -107,7 +107,8 @@ def send_email(to, subject, content, in_reply_to=None):
     msg["Message-ID"] = f"<{msg_id}>"
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
-        msg["References"] = in_reply_to
+    if references:
+        msg["References"] = references
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
@@ -138,7 +139,10 @@ for lead in leads:
         "email", "email 1", "email 2", "email 3", "business name", "first name",
         "message id", "message id 2", "message id 3", "subject",
         "initial date", "follow-up 1 date", "follow-up 2 date",
-        "initial time", "follow-up 1 time", "follow-up 2 time", "reply"
+        "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
+        # Add the four new fields with empty defaults
+        "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
+        "references 1", "references 2", "references 3",
     ]:
         lead.setdefault(field, "")
 
@@ -187,8 +191,7 @@ def initials_sent_in_last_days(n):
     checked = 0
     while checked < n:
         if day.weekday() < 5:
-            if any(l.get("initial date") == day.isoformat() for l in leads):
-                count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
+            count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
             checked += 1
         day -= timedelta(days=1)
     return count
@@ -251,18 +254,37 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
+            # Clear threading fields for initial
+            lead["in-reply-to 1"] = ""
+            lead["references 1"] = ""
+            lead["in-reply-to 2"] = ""
+            lead["references 2"] = ""
+            lead["in-reply-to 3"] = ""
+            lead["references 3"] = ""
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
+            # Use initial message ID for threading headers
+            in_reply_to_val = f"<{lead['message id 2']}>"
+            references_val = f"<{lead['message id 2']}>"
+            msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
+            # Update threading fields for FU1
+            lead["in-reply-to 2"] = in_reply_to_val
+            lead["references 2"] = references_val
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
+            # Use initial and FU1 message IDs for references
+            in_reply_to_val = f"<{lead['message id']}>"
+            references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
+            msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
+            # Update threading fields for FU2
+            lead["in-reply-to 3"] = in_reply_to_val
+            lead["references 3"] = references_val
     except Exception as e:
         print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
 
