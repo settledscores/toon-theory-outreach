@@ -264,8 +264,8 @@ for kind, lead in queue:
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
             # Use initial message ID for threading headers
-            in_reply_to_val = f"<{lead['message id 2']}>"
-            references_val = f"<{lead['message id 2']}>"
+            in_reply_to_val = f"<{lead['message id']}>"
+            references_val = f"<{lead['message id']}>"
             msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
