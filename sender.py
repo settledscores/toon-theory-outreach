@@ -26,7 +26,7 @@ NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 
 BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(19, 0)         # 7:00 PM
+END_TIME = time(20, 0)         # 8:30 PM
 FINAL_END_TIME = time(20, 30)  # 8:30 PM absolute limit
 
 # === Block weekend sends ===
