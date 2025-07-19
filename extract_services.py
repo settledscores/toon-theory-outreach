@@ -13,12 +13,6 @@ TEMP_PATH = "leads/scraped_leads.tmp.ndjson"
 MAX_INPUT_LENGTH = 14000
 API_TIMEOUT_SECONDS = 60
 
-# Known abbreviations to preserve casing
-ABBREVIATIONS = {
-    "DEI", "HR", "SaaS", "AI", "CPA", "IRS", "SEO", "UX", "UI",
-    "API", "B2B", "B2C", "R&D", "LMS", "ERP", "IT", "KPI", "FAQ"
-}
-
 def timeout_handler(signum, frame):
     raise TimeoutError("API call timed out")
 
@@ -32,13 +26,23 @@ def generate_prompt(text):
 - No intros like “Here are...”, “This company offers...”, or “The core services include...”.
 - No bullet headers or section titles.
 - Just return the raw list of service lines, one per line, with no extra wording or formatting.
+- Ensure that all the content generated is in lowercase form, any output that is not in lowercase will be voided. this rule applies across the board except in specialized cases such as industry abbreviations, for example HR, B2B, SaaS, DEI, API, SEO, UX, UI, AI, IRS, etc. this abbreviations can capitalize as necessary.
+- All output should be 1 to 3 words max, avoid verbose and irrelevant context. For example, instead of saying 'Implementation of HR, Payroll, Performance and Human Capital Management systems' you can say 'payroll processing', 'HCM implementation' or 'HR consultation'
+- Each service line should be short: no more than 3 words per line.
+- Return a maximum of 3 lines.
+
+here is an example of good input and output
+
+input:
+"HR & Payroll Implementation and Optimization for Small and Mid-size Organizations info@hr1systems.com Better Implement, Better Tech! We care about your business and description: Which is why our philosophy is Our Features Powerful, Tailored Solutions for Your HR and Payroll Needs Our features are designed to streamline your operations, ensure..."
+
+good output:
+payroll processing
+HR consultation
+HCM implementation
 
 {text}
 """
-
-def normalize_phrase(phrase):
-    words = phrase.split()
-    return " ".join([word if word.upper() in ABBREVIATIONS else word.lower() for word in words])
 
 def postprocess_output(text):
     lines = text.splitlines()
@@ -48,8 +52,7 @@ def postprocess_output(text):
         if re.match(r"(?i)^(here\s+(is|are)|the\s+company|this\s+company|core\s+services|services\s+include|they\s+offer)", line):
             continue
         if line:
-            normalized = normalize_phrase(line)
-            clean_phrases.append(normalized)
+            clean_phrases.append(line.lower())
     clean_phrases = [p for p in clean_phrases if 1 <= len(p.split()) <= 5]
     return " | ".join(clean_phrases[:3])
 
