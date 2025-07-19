@@ -10,7 +10,7 @@ from urllib.parse import urljoin, urlparse
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
-MAX_PAGES = 15
+MAX_PAGES = 10
 MAX_TEXT_LENGTH = 10000
 MIN_WORDS_THRESHOLD = 50
 
@@ -30,7 +30,23 @@ def extract_visible_text(html):
 
 def normalize_url(url):
     url = url.strip().rstrip("/")
-    return url if url.startswith("http") else f"https://{url}"
+    if not url.startswith("http"):
+        return f"https://{url}"
+    return url
+
+def fetch_with_retries(url):
+    """Attempt HTTPS first, then HTTP fallback, with basic retry handling."""
+    schemes = ["https", "http"]
+    parsed = urlparse(url)
+    for scheme in schemes:
+        test_url = parsed._replace(scheme=scheme).geturl()
+        try:
+            res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
+            if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
+                return res
+        except Exception as e:
+            print(f"⚠️ Failed fetch via {scheme.upper()}: {e}")
+    return None
 
 def crawl_site(base_url, max_pages=MAX_PAGES):
     visited = set()
@@ -43,30 +59,20 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
         if url in visited:
             continue
 
-        try:
-            res = requests.get(url, headers=HEADERS, timeout=10, verify=False)
-        except requests.exceptions.SSLError:
-            fallback_url = url.replace("https://", "http://", 1)
-            print(f"⚠️ SSL error. Retrying with HTTP: {fallback_url}")
-            try:
-                res = requests.get(fallback_url, headers=HEADERS, timeout=10, verify=False)
-            except Exception as e:
-                print(f"❌ HTTP fallback failed: {e}")
-                continue
-        except Exception as e:
-            print(f"⚠️ Failed to fetch {url}: {e}")
+        res = fetch_with_retries(url)
+        if not res:
             continue
 
-        if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
-            visited.add(url)
-            soup = BeautifulSoup(res.text, "html.parser")
-            visible_text = extract_visible_text(res.text)
-            all_text += visible_text + " "
+        visited.add(url)
+        soup = BeautifulSoup(res.text, "html.parser")
+        visible_text = extract_visible_text(res.text)
+        all_text += visible_text + " "
 
-            for link in soup.find_all("a", href=True):
-                href = urljoin(url, link["href"])
-                if urlparse(href).netloc == domain and href not in visited:
-                    to_visit.append(href)
+        for link in soup.find_all("a", href=True):
+            href = urljoin(url, link["href"])
+            parsed_href = urlparse(href)
+            if parsed_href.netloc == domain and href not in visited and href not in to_visit:
+                to_visit.append(href)
 
     return clean_text(all_text)
 
@@ -134,7 +140,7 @@ def main():
         lead["web copy"] = str(char_count)
         updated.append(lead)
         changed = True
-        print(f"✅ Scraped web content for {urlparse(norm_url).netloc} ({char_count} chars)")
+        print(f"✅ Scraped {urlparse(norm_url).netloc} ({char_count} chars from {len(content.split())} words)")
 
     if changed:
         write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
