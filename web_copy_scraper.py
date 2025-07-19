@@ -121,16 +121,20 @@ def main():
         print(f"🌐 Crawling #{i}: {norm_url}")
 
         content = crawl_site(norm_url)
-        if len(content.split()) < MIN_WORDS_THRESHOLD:
+        word_count = len(content.split())
+
+        if word_count < MIN_WORDS_THRESHOLD:
             print("⚠️ Skipping — not enough content.")
+            lead["web copy"] = ""
             updated.append(lead)
             continue
 
         trimmed = content[:MAX_TEXT_LENGTH]
-        lead["web copy"] = trimmed
+        char_count = len(trimmed)
+        lead["web copy"] = str(char_count)
         updated.append(lead)
         changed = True
-        print(f"✅ Scraped web content for {urlparse(norm_url).netloc}")
+        print(f"✅ Scraped web content for {urlparse(norm_url).netloc} ({char_count} chars)")
 
     if changed:
         write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
