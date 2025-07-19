@@ -70,24 +70,17 @@ paragraph_1_variants = [
 ]
 
 paragraph_2_variants = [
-    "I know {service2}, {service3}, and even {service1} can be a mouthful for teams like {company} to get across. We build short videos that make it easier to understand without extra effort from your side.",
-    "Since {company}'s work includes things like {service2} or {service1}, an explainer video can help show how it all fits. We handle script, voice, and illustrations so you don’t have to.",
-    "From {service1} to {service3}, {company} probably wears a few hats. A short explainer can help show how they all fit under one roof. We take the messy bits and shape them into something clear and visual.",
-    "{company} offers more than just {service2}, right? When your work spans areas like {service2} and {service1}, an explainer video can help connect the dots fast. We keep it simple and do all the creative in-house.",
-    "For businesses juggling {service1}, {service3}, and other multi-layered services, explainer videos are a way to simplify the pitch. We manage the full process start to finish so you can focus elsewhere.",
-    "It’s hard to sum up {service1} and {service2} without losing people halfway. This kind of short video keeps things clear, casual, and focused; ideal for businesses offering bundled services like {company}.",
-    "When you do both {service2} and {service3}, words alone don’t always cut it. That’s where we come in. We make sketch-style videos that do the heavy lifting for {company}. Everything’s handled end to end.",
-    "{company} probably has a mix of services; maybe {service3} or {service1}. Instead of text, we make short explainer videos that walk people through it visually. No extra work needed from your team.",
-    "We’ve helped other firms working in {service1}, {service2}, and related areas explain what they do in two minutes flat. We could do the same for {company}. All you’d need to do is give us a quick thumbs up at each step.",
-    "Even just explaining {service2} on its own can be tricky. When you fold in {service3}, it gets harder. These videos break it down so it actually lands. We handle everything from story to delivery.",
-    "Trying to explain {service2}, let alone {service3}, in an email or pitch deck? We’ve helped teams like {company} do it with an explainer video instead. You approve the direction; we handle the rest.",
-    "Most folks don’t understand {service1} unless they already need it. A short explainer can make that click faster; for services like {service1}, {service2}, or whatever else you offer. We do all the heavy lifting behind the scenes.",
-    "We’ve worked with teams that blend {service2} and {service1} in ways that don’t always fit a headline. These videos help tell the full story for brands like {company}. You won’t need to lift a finger.",
-    "Explaining something like {service3} can be hard enough. But when {company} also does {service1} or {service2}, you really need a different way to tell the same story over and over again. We’ll build something clean, visual, and customized.",
-    "If you’ve ever had to explain {service1} and {service2} in the same sentence, you already know how tricky it is. We make it visual, easy, and skimmable. We’ll handle the rest while you stay focused on the work.",
-    "You handle {service2}, {service3}, and probably a lot more. We turn all that into a 90-second explainer that’s light, simple, and built from scratch for {company}. Everything’s done in-house, with nothing outsourced.",
-    "Since {company} works across {service3} and {service1}, it might help to show, not tell, how it works. We build short videos that do just that, end to end. No writing or production headaches on your end.",
-    "Whether it’s {service1}, {service2}, or both, these videos help walk people through it without losing them. We’ve done it for others; would be glad to show how it might work for {company}. You can stay hands-off while we make it happen."
+    "Explaining everything you do at {company} can feel like too many tabs open at once. We make videos that help people get it quickly; and we handle all the heavy lifting behind the scenes so you don't have to move a muscle.",
+    "We’ve worked with teams like {company} who have a lot going on: layered offers, custom solutions, you name it. Our videos help connect the dots without adding more work to your plate. That's because we do it all in-house, with minimal effort on your end.",
+    "It’s one thing to consistently put out great work; it’s another to make it make sense fast. We build short videos that do just that, start to finish, no extra lift for your team.",
+    "We’ve helped others businesses like {company} untangle the hard-to-summarize parts of their work. These videos let you show how all the dots connect; and we handle every part of the process so you don't even have to lift a finger.",
+    "Some businesses like {company} try to explain how it all connects through decks, web content or emails. We turn it into something you can send or share in under two minutes. No writing or editing needed from your side.",
+    "For businesses like {company}, we've seen how tough it can be to explain bundled, multi-layered services. That’s what our videos are built for. You give us the greenlight, we’ll take it from there. Scripting, illustrations, voiceovers: it's all in one package.",
+    "If it takes three paragraphs to explain what you do at {company}, then it’s probably time for a video. We build those from scratch: clean, clear, and with zero effort on your end.",
+    "A lot of businesses like {company} struggle with the *'how do we explain this?'* problem. That’s where we come in. One short video often does the trick, and the best part is that we handle all the moving parts with zero effort on your end.",
+    "Even smart prospects can tune out if things aren’t quite framed right. These videos fix that. You just tell us you’re in, and we build the rest around your core offerings at {company}.",
+    "If explaining the work you do at {company} takes more than a minute, then you're probably doing it wrong and even *losing* customers. A video can help, and we’ll take care of every piece of it so you don’t have to."
+    "If you've ever tried to put {company}'s work into words and ended up with a huge wall of text, you're not alone. We help simplify it with short, clear explainers; and we handle every step in-house, so you can just hit play.",
 ]
 
 paragraph_3_variants = [
