@@ -180,7 +180,6 @@ def can_send_followup(lead, step):
 
     prev_dt_str = f"{lead[prev_date_key]} {lead[prev_time_key]}"
     prev_dt = datetime.strptime(prev_dt_str, "%Y-%m-%d %H:%M")
-
     due_dt = prev_dt + timedelta(minutes=5)
 
     return datetime.now(TIMEZONE) >= due_dt
