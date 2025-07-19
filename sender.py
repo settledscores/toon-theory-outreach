@@ -29,10 +29,7 @@ BASE_START_TIME = time(13, 0)  # 1:00 PM
 END_TIME = time(21, 0)         # 8:30 PM
 FINAL_END_TIME = time(21, 0)  # 8:30 PM absolute limit
 
-# === Block weekend sends ===
-if WEEKDAY >= 5:
-    print(f"[Skip] Today is weekend ({TODAY}), no emails should be sent.")
-    exit(0)
+# === Weekend send block removed ===
 
 # === Subject Pools ===
 initial_subjects = [
@@ -170,17 +167,23 @@ def can_send_followup(lead, step):
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
     if step == 2:
-        prev_key, msg_key, curr_key, content_key = "initial date", "message id", "follow-up 1 date", "email 2"
+        prev_date_key, prev_time_key = "initial date", "initial time"
+        msg_key, curr_date_key, content_key = "message id", "follow-up 1 date", "email 2"
     elif step == 3:
-        prev_key, msg_key, curr_key, content_key = "follow-up 1 date", "message id 2", "follow-up 2 date", "email 3"
+        prev_date_key, prev_time_key = "follow-up 1 date", "follow-up 1 time"
+        msg_key, curr_date_key, content_key = "message id 2", "follow-up 2 date", "email 3"
     else:
         return False
-    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
+
+    if not (lead.get(prev_date_key) and lead.get(prev_time_key) and lead.get(msg_key) and not lead.get(curr_date_key) and lead.get(content_key)):
         return False
-    due_date = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=(3 if step == 2 else 4))
-    while due_date.weekday() >= 5:
-        due_date += timedelta(days=1)
-    return TODAY >= due_date
+
+    prev_dt_str = f"{lead[prev_date_key]} {lead[prev_time_key]}"
+    prev_dt = datetime.strptime(prev_dt_str, "%Y-%m-%d %H:%M")
+
+    due_dt = prev_dt + timedelta(minutes=5)
+
+    return datetime.now(TIMEZONE) >= due_dt
 
 def backlog_count(leads):
     return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
@@ -190,9 +193,9 @@ def initials_sent_in_last_days(n):
     day = TODAY - timedelta(days=1)
     checked = 0
     while checked < n:
-        if day.weekday() < 5:
-            count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
-            checked += 1
+        # No weekend skip
+        count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
+        checked += 1
         day -= timedelta(days=1)
     return count
 
