@@ -8,16 +8,28 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_country=CAN&find_entity=60172-000&find_id=1214_3100-800&find_latlng=49.282689%2C-123.123713&find_loc=Vancouver%2C%20BC&find_text=Business%20Consultants&find_type=Category&page=1&touched=2',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Toronto%2C+ON&find_country=CAN',
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Vancouver%2C+BC&find_country=CAN',
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=Toronto%2C+ON&find_country=CAN',
+  // Business Consultants
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Victoria%2C+BC&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Edmonton%2C+AB&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Regina%2C+SK&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Halifax%2C+NS&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=&find_type=&find_loc=Charlottetown%2C+PE&find_country=CAN',
+
+  // Accounting
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=Victoria%2C+BC&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=Edmonton%2C+AB&find_country=CAN',
+
+  // Legal Services
   'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Vancouver%2C+BC&find_country=CAN',
   'https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=Toronto%2C+ON&find_country=CAN',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Toronto%2C+ON&find_country=CAN',
+
+  // Human Resources
+  'https://www.bbb.org/search?find_country=CAN&find_entity=60451-000&find_id=1855_4900-700&find_latlng=43.711056%2C-79.397868&find_loc=Toronto%2C%20ON&find_text=Human%20Resources&find_type=Category&page=1&touched=2',
   'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Vancouver%2C+BC&find_country=CAN',
-  'https://www.bbb.org/search?find_text=tax+consulting&find_entity=60858-000&find_type=Category&find_loc=Vancouver%2C+BC&find_country=CAN',
-  'https://www.bbb.org/search?find_text=tax+consulting&find_entity=&find_type=&find_loc=Toronto%2C+ON&find_country=CAN'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Victoria%2C+BC&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Edmonton%2C+AB&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Regina%2C+SK&find_country=CAN',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Halifax%2C+NS&find_country=CAN'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
