@@ -21,9 +21,6 @@ jobs:
       FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
       IMAP_PORT: ${{ secrets.IMAP_PORT }}
       IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-
       ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
       ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
       ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
@@ -40,7 +37,7 @@ jobs:
 
       - name: 📦 Install Python dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install requests
 
       - name: 🚀 Run sender script
