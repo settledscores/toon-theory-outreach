@@ -1,14 +1,15 @@
 import os
 import json
-import imaplib
-import email
 import random
 import requests
+import imaplib
+import email
 from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 
-# === Config from env ===
+# === Config - load env vars once ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
+EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
 IMAP_SERVER = os.environ["IMAP_SERVER"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
@@ -25,10 +26,10 @@ TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 
 BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(21, 0)         # 9:00 PM max
-FINAL_END_TIME = time(21, 0)   # absolute cutoff 9:00 PM
+END_TIME = time(21, 0)         # 9:00 PM max end
+FINAL_END_TIME = time(21, 0)   # 9:00 PM absolute limit
 
-# === Subject Pools (unchanged) ===
+# === Subject Pools ===
 initial_subjects = [
     "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
     "This might sound odd, but useful", "Not sure if this will land, but here goes",
@@ -83,7 +84,7 @@ def read_multiline_ndjson(path):
             if line.strip().endswith("}"):
                 try:
                     records.append(json.loads(buffer))
-                except Exception:
+                except json.JSONDecodeError:
                     pass
                 buffer = ""
     return records
@@ -93,112 +94,94 @@ def write_multiline_ndjson(path, records):
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
-# === OAuth2 Access Token Retrieval ===
-def get_access_token():
+def get_zoho_access_token(
+    client_id: str,
+    client_secret: str,
+    refresh_token: str
+) -> str:
     url = "https://accounts.zoho.com/oauth/v2/token"
     params = {
-        "refresh_token": ZOHO_REFRESH_TOKEN,
-        "client_id": ZOHO_CLIENT_ID,
-        "client_secret": ZOHO_CLIENT_SECRET,
-        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "refresh_token"
     }
-    response = requests.post(url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    return data["access_token"]
+    resp = requests.post(url, params=params)
+    resp.raise_for_status()
+    token = resp.json().get("access_token")
+    if not token:
+        raise RuntimeError("Failed to get Zoho access token")
+    return token
 
-# === Send email via Zoho API ===
-def send_email_zoho(to_addresses, subject, content, in_reply_to=None, references=None):
-    """
-    Sends email via Zoho Mail API.
-    `to_addresses`: list of recipient emails
-    Returns actual Zoho-assigned messageId from response.
-    """
-    access_token = get_access_token()
-    url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
+def send_email_zoho(
+    access_token: str,
+    account_id: str,
+    from_address: str,
+    to_addresses: list[str],
+    subject: str,
+    content: str,
+    in_reply_to: str = None,
+    references: list[str] = None,
+) -> str:
+    url = f"https://mail.zoho.com/api/accounts/{account_id}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
         "Content-Type": "application/json"
     }
     payload = {
-        "fromAddress": FROM_EMAIL,
-        "toAddress": to_addresses if isinstance(to_addresses, list) else [to_addresses],
+        "fromAddress": from_address,
+        "toAddress": to_addresses,
         "subject": subject,
         "content": content,
     }
     if in_reply_to:
         payload["inReplyTo"] = in_reply_to
     if references:
-        if isinstance(references, list):
-            payload["references"] = references
-        else:
-            # If string with multiple message-ids, split by space
-            payload["references"] = references.split()
+        payload["references"] = references
 
     resp = requests.post(url, headers=headers, json=payload)
     resp.raise_for_status()
-    resp_data = resp.json()
-    # Example response: { "data": { "messageId": "<some_id@zmail.com>" }, "status": "success" }
-    message_id = resp_data.get("data", {}).get("messageId")
+    data = resp.json().get("data", {})
+    message_id = data.get("messageId")
     if not message_id:
-        raise RuntimeError(f"No messageId in Zoho API response: {resp_data}")
+        raise RuntimeError("No messageId returned from Zoho API")
     return message_id
 
-# === Check replies using IMAP (unchanged) ===
-def check_replies(message_ids):
+def check_replies(
+    message_ids: list[str],
+    email_address: str,
+    email_password: str,
+    imap_server: str,
+    imap_port: int,
+) -> set[str]:
     seen = set()
-    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
-        imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    with imaplib.IMAP4_SSL(imap_server, imap_port) as imap:
+        imap.login(email_address, email_password)
+        # Check multiple folders to catch replies in spam etc
         for folder in ["INBOX", "SPAM", "Junk", "[Gmail]/Spam"]:
             try:
                 imap.select(folder)
                 typ, data = imap.search(None, "ALL")
+                if typ != "OK":
+                    continue
                 for num in data[0].split():
                     typ, msg_data = imap.fetch(num, "(RFC822)")
+                    if typ != "OK":
+                        continue
                     msg = email.message_from_bytes(msg_data[0][1])
                     headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
                     for mid in message_ids:
+                        # mid stored without angle brackets, but headers have them
                         if f"<{mid}>" in headers:
                             seen.add(mid)
             except Exception:
                 continue
     return seen
 
-# === Load leads and normalize fields ===
-leads = read_multiline_ndjson(LEADS_FILE)
-for lead in leads:
-    for field in [
-        "email", "email 1", "email 2", "email 3", "business name", "first name",
-        "message id", "message id 2", "message id 3", "subject",
-        "initial date", "follow-up 1 date", "follow-up 2 date",
-        "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
-        # Threading fields
-        "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
-        "references 1", "references 2", "references 3",
-    ]:
-        lead.setdefault(field, "")
-
-# === Update replies status ===
-all_ids = [l["message id"] for l in leads if l["message id"]] + \
-          [l["message id 2"] for l in leads if l["message id 2"]] + \
-          [l["message id 3"] for l in leads if l["message id 3"]]
-replied = check_replies(all_ids)
-for lead in leads:
-    if lead["reply"] == "no reply":
-        if lead["message id 3"] in replied:
-            lead["reply"] = "after FU2"
-        elif lead["message id 2"] in replied:
-            lead["reply"] = "after FU1"
-        elif lead["message id"] in replied:
-            lead["reply"] = "after initial"
-    elif not lead["reply"]:
-        lead["reply"] = "no reply"
-
-# === Eligibility ===
-def can_send_initial(lead):
+def can_send_initial(lead: dict) -> bool:
     return not lead["initial date"] and lead.get("email") and lead.get("email 1")
 
-def can_send_followup(lead, step):
+def can_send_followup(lead: dict, step: int) -> bool:
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
     if step == 2:
@@ -219,10 +202,10 @@ def can_send_followup(lead, step):
 
     return datetime.now(TIMEZONE) >= due_dt
 
-def backlog_count(leads):
+def backlog_count(leads: list[dict]) -> int:
     return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
 
-def initials_sent_in_last_days(n):
+def initials_sent_in_last_days(leads: list[dict], n: int) -> int:
     count = 0
     day = TODAY - timedelta(days=1)
     checked = 0
@@ -232,14 +215,48 @@ def initials_sent_in_last_days(n):
         day -= timedelta(days=1)
     return count
 
-# === Quota calculations ===
+# === Load leads and normalize ===
+leads = read_multiline_ndjson(LEADS_FILE)
+for lead in leads:
+    for field in [
+        "email", "email 1", "email 2", "email 3", "business name", "first name",
+        "message id", "message id 2", "message id 3", "subject",
+        "initial date", "follow-up 1 date", "follow-up 2 date",
+        "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
+        # New threading fields
+        "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
+        "references 1", "references 2", "references 3",
+    ]:
+        lead.setdefault(field, "")
+
+# === Check replies ===
+all_ids = (
+    [l["message id"] for l in leads if l["message id"]] +
+    [l["message id 2"] for l in leads if l["message id 2"]] +
+    [l["message id 3"] for l in leads if l["message id 3"]]
+)
+
+replied = check_replies(all_ids, EMAIL_ADDRESS, EMAIL_PASSWORD, IMAP_SERVER, IMAP_PORT)
+for lead in leads:
+    if lead["reply"] == "no reply":
+        if lead["message id 3"] in replied:
+            lead["reply"] = "after FU2"
+        elif lead["message id 2"] in replied:
+            lead["reply"] = "after FU1"
+        elif lead["message id"] in replied:
+            lead["reply"] = "after initial"
+    elif not lead["reply"]:
+        lead["reply"] = "no reply"
+
+# === Eligibility and quota ===
 BASE_QUOTA = 50
 backlogs = backlog_count(leads)
-recent_initials = initials_sent_in_last_days(3)
+recent_initials = initials_sent_in_last_days(leads, 3)
 extra_quota = min(20, backlogs)
 if recent_initials < 20:
     extra_quota += 20
 DAILY_QUOTA = BASE_QUOTA + extra_quota
+
 sent_today = sum(
     1 for l in leads
     if l.get("initial date") == TODAY.isoformat() or
@@ -247,7 +264,7 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
-# === Dynamic eligibility window ===
+# === Dynamic window ===
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
@@ -259,7 +276,10 @@ if not window_start <= NOW.time() <= window_end:
     print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {window_start}–{window_end}")
     exit(0)
 
-# === Prepare send queue by priority FU2 > FU1 > Initial ===
+# === Get Zoho access token ===
+access_token = get_zoho_access_token(ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN)
+
+# === Prepare send queue ===
 queue = []
 if sent_today < DAILY_QUOTA:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
@@ -281,62 +301,72 @@ print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
 print(f"[Quota] Sent Today: {sent_today}")
 print(f"[Process] {len(queue)} message(s) to send...")
 
-# === Sending emails via Zoho API with proper threading ===
+# === Send email function wrapper ===
+def send_email(kind: str, lead: dict, access_token: str):
+    if kind == "initial":
+        subject = next_subject(initial_subjects, company=lead["business name"])
+        message_id = send_email_zoho(
+            access_token=access_token,
+            account_id=ZOHO_ACCOUNT_ID,
+            from_address=FROM_EMAIL,
+            to_addresses=[lead["email"]],
+            subject=subject,
+            content=lead["email 1"],
+        )
+        lead["message id"] = message_id
+        lead["subject"] = subject
+        lead["initial date"] = TODAY.isoformat()
+        lead["initial time"] = NOW_TIME
+        # Clear threading fields
+        lead["in-reply-to 1"] = ""
+        lead["references 1"] = ""
+        lead["in-reply-to 2"] = ""
+        lead["references 2"] = ""
+        lead["in-reply-to 3"] = ""
+        lead["references 3"] = ""
+    elif kind == "fu1":
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
+        in_reply_to_val = lead["message id"]
+        references_val = [lead["message id"]]
+        message_id = send_email_zoho(
+            access_token=access_token,
+            account_id=ZOHO_ACCOUNT_ID,
+            from_address=FROM_EMAIL,
+            to_addresses=[lead["email"]],
+            subject=subject,
+            content=lead["email 2"],
+            in_reply_to=in_reply_to_val,
+            references=references_val,
+        )
+        lead["message id 2"] = message_id
+        lead["follow-up 1 date"] = TODAY.isoformat()
+        lead["follow-up 1 time"] = NOW_TIME
+        lead["in-reply-to 2"] = in_reply_to_val
+        lead["references 2"] = " ".join(f"<{mid}>" for mid in references_val)
+    elif kind == "fu2":
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
+        in_reply_to_val = lead["message id"]
+        references_val = [lead["message id"], lead["message id 2"]]
+        message_id = send_email_zoho(
+            access_token=access_token,
+            account_id=ZOHO_ACCOUNT_ID,
+            from_address=FROM_EMAIL,
+            to_addresses=[lead["email"]],
+            subject=subject,
+            content=lead["email 3"],
+            in_reply_to=in_reply_to_val,
+            references=references_val,
+        )
+        lead["message id 3"] = message_id
+        lead["follow-up 2 date"] = TODAY.isoformat()
+        lead["follow-up 2 time"] = NOW_TIME
+        lead["in-reply-to 3"] = in_reply_to_val
+        lead["references 3"] = " ".join(f"<{mid}>" for mid in references_val)
+
+# === Process queue and send ===
 for kind, lead in queue:
     try:
-        if kind == "initial":
-            subject = next_subject(initial_subjects, company=lead["business name"])
-            msgid = send_email_zoho(
-                to_addresses=lead["email"],
-                subject=subject,
-                content=lead["email 1"],
-            )
-            lead["message id"] = msgid
-            lead["subject"] = subject
-            lead["initial date"] = TODAY.isoformat()
-            lead["initial time"] = NOW_TIME
-            # Clear threading fields for initial
-            lead["in-reply-to 1"] = ""
-            lead["references 1"] = ""
-            lead["in-reply-to 2"] = ""
-            lead["references 2"] = ""
-            lead["in-reply-to 3"] = ""
-            lead["references 3"] = ""
-
-        elif kind == "fu1":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = lead["message id"]
-            references_val = [lead["message id"]]
-            msgid = send_email_zoho(
-                to_addresses=lead["email"],
-                subject=subject,
-                content=lead["email 2"],
-                in_reply_to=in_reply_to_val,
-                references=references_val,
-            )
-            lead["message id 2"] = msgid
-            lead["follow-up 1 date"] = TODAY.isoformat()
-            lead["follow-up 1 time"] = NOW_TIME
-            lead["in-reply-to 2"] = in_reply_to_val
-            lead["references 2"] = " ".join(references_val)
-
-        elif kind == "fu2":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = lead["message id"]
-            references_val = [lead["message id"], lead["message id 2"]] if lead["message id 2"] else [lead["message id"]]
-            msgid = send_email_zoho(
-                to_addresses=lead["email"],
-                subject=subject,
-                content=lead["email 3"],
-                in_reply_to=in_reply_to_val,
-                references=references_val,
-            )
-            lead["message id 3"] = msgid
-            lead["follow-up 2 date"] = TODAY.isoformat()
-            lead["follow-up 2 time"] = NOW_TIME
-            lead["in-reply-to 3"] = in_reply_to_val
-            lead["references 3"] = " ".join(references_val)
-
+        send_email(kind, lead, access_token)
     except Exception as e:
         print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
 
