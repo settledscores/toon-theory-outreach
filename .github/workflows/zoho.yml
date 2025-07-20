@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  zoho_verify:
+    image: python:3.11-slim
+    container_name: zoho_api_verify
+    environment:
+      - ZOHO_REFRESH_TOKEN=${ZOHO_REFRESH_TOKEN}
+      - ZOHO_CLIENT_ID=${ZOHO_CLIENT_ID}
+      - ZOHO_CLIENT_SECRET=${ZOHO_CLIENT_SECRET}
+    volumes:
+      - ./zoho_verify.py:/app/zoho_verify.py:ro
+    working_dir: /app
+    command: ["python", "zoho_verify.py"]
