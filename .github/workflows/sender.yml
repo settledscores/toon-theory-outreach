@@ -34,7 +34,9 @@ jobs:
           python-version: "3.11"
 
       - name: 📦 Install Python dependencies
-        run: pip install --upgrade pip
+        run: |
+          pip install --upgrade pip
+          pip install requests
 
       - name: 🚀 Run sender script
         run: python sender.py
