@@ -1,0 +1,54 @@
+name: Get Zoho Account ID
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-zoho-account-id:
+    runs-on: ubuntu-latest
+
+    env:
+      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch Zoho Account ID
+        run: |
+          python <<EOF
+          import os
+          import requests
+
+          def get_access_token():
+              url = "https://accounts.zoho.com/oauth/v2/token"
+              params = {
+                  "refresh_token": os.environ["ZOHO_REFRESH_TOKEN"],
+                  "client_id": os.environ["ZOHO_CLIENT_ID"],
+                  "client_secret": os.environ["ZOHO_CLIENT_SECRET"],
+                  "grant_type": "refresh_token"
+              }
+              res = requests.post(url, params=params)
+              res.raise_for_status()
+              return res.json()["access_token"]
+
+          def get_account_id(token):
+              headers = { "Authorization": f"Zoho-oauthtoken {token}" }
+              res = requests.get("https://mail.zoho.com/api/accounts", headers=headers)
+              res.raise_for_status()
+              data = res.json()["data"][0]
+              print(f"✅ Zoho Account ID: {data['accountId']}")
+
+          token = get_access_token()
+          get_account_id(token)
+          EOF
