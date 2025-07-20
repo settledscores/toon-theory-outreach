@@ -39,7 +39,7 @@ jobs:
         run: pip install requests
 
       - name: Run Script
-        run: python pipeline.py
+        run: python sender.py
 
       - name: Commit updated leads
         run: |
