@@ -2,34 +2,33 @@ import json
 import smtplib
 import imaplib
 import email
-import os
 import random
 from datetime import datetime, timedelta, time
 from email.message import EmailMessage
 from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
-# === Config ===
-EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
-EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
-FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
-IMAP_SERVER = os.environ["IMAP_SERVER"]
-IMAP_PORT = int(os.environ["IMAP_PORT"])
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-SMTP_PORT = int(os.environ["SMTP_PORT"])
+# === Gmail-specific Config ===
+EMAIL_ADDRESS = "deresistance402@gmail.com"       # Your Gmail address here
+EMAIL_PASSWORD = "qgni mclj jcuy onmy"   # Your Gmail App Password here
+FROM_EMAIL = EMAIL_ADDRESS
+
+IMAP_SERVER = "imap.gmail.com"
+IMAP_PORT = 993
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465  # SSL port
 
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
+
 NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
-WEEKDAY = TODAY.weekday()
 
+# === Time window config ===
 BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(21, 0)         # 8:30 PM
-FINAL_END_TIME = time(21, 0)  # 8:30 PM absolute limit
-
-# === Weekend send block removed ===
+END_TIME = time(21, 0)         # 9:00 PM
+FINAL_END_TIME = time(21, 0)   # Absolute cutoff
 
 # === Subject Pools ===
 initial_subjects = [
@@ -80,11 +79,14 @@ def read_multiline_ndjson(path):
     records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if not line.strip(): continue
+            if not line.strip():
+                continue
             buffer += line
             if line.strip().endswith("}"):
-                try: records.append(json.loads(buffer))
-                except: pass
+                try:
+                    records.append(json.loads(buffer))
+                except Exception:
+                    pass
                 buffer = ""
     return records
 
@@ -94,28 +96,33 @@ def write_multiline_ndjson(path, records):
             f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
 def send_email(to, subject, content, in_reply_to=None, references=None):
-    print(f"[Send] {to} | {subject}")
+    print(f"[Send] To: {to} | Subject: {subject}")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
     msg["To"] = to
     msg.set_content(content)
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
+
+    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]  # Remove < >
     msg["Message-ID"] = f"<{msg_id}>"
+
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
     if references:
         msg["References"] = references
+
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
+
     return msg_id
 
 def check_replies(message_ids):
     seen = set()
+    folders_to_check = ["INBOX", "[Gmail]/Spam"]
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
         imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        for folder in ["INBOX", "SPAM", "Junk", "[Gmail]/Spam"]:
+        for folder in folders_to_check:
             try:
                 imap.select(folder)
                 typ, data = imap.search(None, "ALL")
@@ -126,10 +133,11 @@ def check_replies(message_ids):
                     for mid in message_ids:
                         if f"<{mid}>" in headers:
                             seen.add(mid)
-            except: continue
+            except Exception:
+                continue
     return seen
 
-# === Load and normalize leads ===
+# === Load leads and defaults ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -137,13 +145,11 @@ for lead in leads:
         "message id", "message id 2", "message id 3", "subject",
         "initial date", "follow-up 1 date", "follow-up 2 date",
         "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
-        # Add the four new fields with empty defaults
         "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
         "references 1", "references 2", "references 3",
     ]:
         lead.setdefault(field, "")
 
-# === Update replies ===
 all_ids = [l["message id"] for l in leads if l["message id"]] + \
           [l["message id 2"] for l in leads if l["message id 2"]] + \
           [l["message id 3"] for l in leads if l["message id 3"]]
@@ -159,7 +165,6 @@ for lead in leads:
     elif not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Eligibility and Quota ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1")
 
@@ -192,7 +197,6 @@ def initials_sent_in_last_days(n):
     day = TODAY - timedelta(days=1)
     checked = 0
     while checked < n:
-        # No weekend skip
         count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
         checked += 1
         day -= timedelta(days=1)
@@ -205,6 +209,7 @@ extra_quota = min(20, backlogs)
 if recent_initials < 20:
     extra_quota += 20
 DAILY_QUOTA = BASE_QUOTA + extra_quota
+
 sent_today = sum(
     1 for l in leads
     if l.get("initial date") == TODAY.isoformat() or
@@ -212,7 +217,6 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
-# === Dynamic Eligibility Window ===
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
@@ -220,11 +224,10 @@ ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA -
 window_start = ideal_start.time()
 window_end = min(ideal_end.time(), FINAL_END_TIME)
 
-if not window_start <= NOW.time() <= window_end:
+if not (window_start <= NOW.time() <= window_end):
     print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {window_start}–{window_end}")
     exit(0)
 
-# === Send Queue ===
 queue = []
 if sent_today < DAILY_QUOTA:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
@@ -246,7 +249,6 @@ print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
 print(f"[Quota] Sent Today: {sent_today}")
 print(f"[Process] {len(queue)} message(s) to send...")
 
-# === Send Email ===
 for kind, lead in queue:
     try:
         if kind == "initial":
@@ -256,7 +258,6 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
-            # Clear threading fields for initial
             lead["in-reply-to 1"] = ""
             lead["references 1"] = ""
             lead["in-reply-to 2"] = ""
@@ -265,26 +266,22 @@ for kind, lead in queue:
             lead["references 3"] = ""
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            # Use initial message ID for threading headers
             in_reply_to_val = f"<{lead['message id']}>"
             references_val = f"<{lead['message id']}>"
             msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
-            # Update threading fields for FU1
             lead["in-reply-to 2"] = in_reply_to_val
             lead["references 2"] = references_val
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            # Use initial and FU1 message IDs for references
             in_reply_to_val = f"<{lead['message id']}>"
             references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
             msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
-            # Update threading fields for FU2
             lead["in-reply-to 3"] = in_reply_to_val
             lead["references 3"] = references_val
     except Exception as e:
