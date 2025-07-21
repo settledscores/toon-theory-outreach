@@ -145,14 +145,13 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json;charset=UTF-8",
     }
     payload = {
         "raw": base64.b64encode(raw_message).decode(),
         "folderId": "sent"
     }
 
-    resp = requests.post(url, headers=headers, json=payload)
+    resp = requests.post(url, headers=headers, data=payload)
     if resp.status_code != 201:
         raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
