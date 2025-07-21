@@ -157,7 +157,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
         "contentType": "message/rfc822"
     }
 
-    resp = requests.post(url, headers=headers, data=payload)
+    resp = requests.post(url, headers=headers, json=payload)
     if resp.status_code != 201:
         raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
