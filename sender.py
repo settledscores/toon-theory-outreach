@@ -32,8 +32,8 @@ NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 
 BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(21, 0)         # 8:30 PM
-FINAL_END_TIME = time(21, 0)   # 8:30 PM absolute limit
+END_TIME = time(21, 0)         # 9:00 PM
+FINAL_END_TIME = time(21, 0)   # 9:00 PM absolute limit
 
 # === Subject Pools ===
 initial_subjects = [
@@ -84,11 +84,14 @@ def read_multiline_ndjson(path):
     records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if not line.strip(): continue
+            if not line.strip():
+                continue
             buffer += line
             if line.strip().endswith("}"):
-                try: records.append(json.loads(buffer))
-                except: pass
+                try:
+                    records.append(json.loads(buffer))
+                except Exception:
+                    pass
                 buffer = ""
     return records
 
@@ -106,11 +109,19 @@ def get_access_token():
         "grant_type": "refresh_token",
     }
     resp = requests.post(url, params=params)
-    resp.raise_for_status()
-    return resp.json()["access_token"]
+    try:
+        resp.raise_for_status()
+    except Exception as ex:
+        print(f"[Error] Token refresh failed: HTTP {resp.status_code} - {resp.text}")
+        raise ex
+    data = resp.json()
+    print(f"[Debug] Token refresh response: {json.dumps(data, indent=2)}")
+    if "access_token" not in data:
+        raise Exception(f"Missing access_token in response: {data}")
+    return data["access_token"]
 
 def send_email(to, subject, content, in_reply_to=None, references=None):
-    access_token = get_access_token()  # fresh token every send
+    access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
     msg = EmailMessage()
@@ -118,6 +129,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     msg["From"] = FROM_EMAIL
     msg["To"] = to
     msg.set_content(content)
+
     msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
     msg["Message-ID"] = f"<{msg_id}>"
     if in_reply_to:
@@ -125,7 +137,6 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     if references:
         msg["References"] = references
 
-    # Convert message to bytes for Zoho API
     buf = BytesIO()
     g = BytesGenerator(buf)
     g.flatten(msg)
@@ -163,7 +174,7 @@ def check_replies(message_ids):
                     for mid in message_ids:
                         if f"<{mid}>" in headers:
                             seen.add(mid)
-            except:
+            except Exception:
                 continue
     return seen
 
