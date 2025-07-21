@@ -1,271 +1,208 @@
+import os
 import json
-import smtplib
+import base64
+import random
 import imaplib
 import email
-import os
-import random
-from datetime import datetime, timedelta, time
-from email.message import EmailMessage
-from email.utils import make_msgid
+import requests
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from email.message import EmailMessage
+from email.utils import make_msgid, formatdate
+from io import BytesIO
+from email.generator import BytesGenerator
 
 # === Config ===
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
-FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
-IMAP_SERVER = os.environ["IMAP_SERVER"]
-IMAP_PORT = int(os.environ["IMAP_PORT"])
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-SMTP_PORT = int(os.environ["SMTP_PORT"])
-
-LEADS_FILE = "leads/scraped_leads.ndjson"
+FROM_EMAIL = os.environ["FROM_EMAIL"]
+ZOHO_ACCOUNT_ID = os.environ["ZOHO_ACCOUNT_ID"]
+ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
+ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
+ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
 TIMEZONE = ZoneInfo("Africa/Lagos")
-NOW = datetime.now(TIMEZONE)
-TODAY = NOW.date()
-NOW_TIME = NOW.strftime("%H:%M")
-WEEKDAY = TODAY.weekday()
-
-BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(19, 0)         # 7:00 PM
-FINAL_END_TIME = time(20, 30)  # 8:30 PM absolute limit
-
-# === Block weekend sends ===
-if WEEKDAY >= 5:
-    print(f"[Skip] Today is weekend ({TODAY}), no emails should be sent.")
-    exit(0)
 
 # === Subject Pools ===
-initial_subjects = [
-    "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
-    "This might sound odd, but useful", "Not sure if this will land, but here goes",
-    "You might like what I’ve been sketching", "This idea’s been stuck in my head",
-    "Bet you haven’t tried this approach yet", "What if your next pitch was drawn?",
-    "This has worked weirdly well for others", "A small idea that might punch above its weight",
-    "Something about {company} got me thinking", "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
-    "Thought of you while doodling", "This one might be a stretch, but could work",
-    "Felt like this might be your kind of thing", "Kind of random, but hear me out",
-    "If you're up for an odd idea", "Not a pitch, just something I had to share",
-    "This one’s a bit out there", "Saw what you’re doing, had to send this"
+INITIAL_SUBJECTS = [
+    "Quick idea for your team", "A small idea that might punch above its weight",
+    "Trying something different", "What if this helps?", "A curious thought",
+    "Saw your site – had a thought", "Trying a new approach here", "Could this click?",
+    "This one’s a bit out there", "Small pitch, big upside"
 ]
 
-fu1_subjects = [
-    "Just Checking In, {name}", "Thought I’d Follow Up, {name}", "Any Thoughts On This, {name}?",
-    "Circling Back, {name}", "Sketching Some Ideas For {company}", "A Quick Follow-Up, {name}",
-    "Any Interest In This, {name}?", "Here’s That Idea Again, {name}", "Are You Still Open To This, {name}?",
-    "Quick Check-In, {name}", "Following Up On That Idea For {company}", "Nudging This Up Your Inbox, {name}",
-    "Revisiting, Just In Case You Missed This The Last Time, {name}", "{name}, Got A Sec?",
-    "Circling Back To That Idea For {company}", "A Follow-Up From Toon Theory, {name}"
+FU1_SUBJECTS = [
+    "Revisiting my note", "Looping back on this", "Just checking back in",
+    "Any thoughts on this?", "Wanted to follow up", "Thought I’d try again"
 ]
 
-fu2_subjects = [
-    "Any thoughts on this, {name}?", "Checking back in, {name}", "Quick follow-up, {name}",
-    "Still curious if this helps", "Wondering if this sparked anything", "Visual storytelling, still on the table?",
-    "A quick nudge your way", "Happy to mock something up", "Short reminder, {name}",
-    "Just revisiting this idea", "Whiteboard sketch still an option?", "No pressure, just following up",
-    "Back with another nudge", "A final nudge, {name}", "Hoping this reached you",
-    "Revisiting that animation idea", "Let me know if now's better", "Still worth exploring?",
-    "Quick question on our last email", "Still around if helpful", "Do you want me to close this out?",
-    "Open to creative pitches?", "Just in case it got buried"
+FU2_SUBJECTS = [
+    "Giving this one last go", "This might still be worth a look",
+    "No worries if not", "Won’t bug you after this", "Couldn’t resist trying again"
 ]
 
-random.shuffle(initial_subjects)
-random.shuffle(fu1_subjects)
-random.shuffle(fu2_subjects)
+# === Helpers ===
 
-def next_subject(pool, **kwargs):
-    if not pool:
-        return None
-    template = pool.pop(0)
-    pool.append(template)
-    return template.format(**kwargs)
+def refresh_token():
+    response = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
+        "refresh_token": ZOHO_REFRESH_TOKEN,
+        "client_id": ZOHO_CLIENT_ID,
+        "client_secret": ZOHO_CLIENT_SECRET,
+        "grant_type": "refresh_token"
+    })
+    return response.json()["access_token"]
 
-def read_multiline_ndjson(path):
-    records, buffer = [], ""
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip(): continue
-            buffer += line
-            if line.strip().endswith("}"):
-                try: records.append(json.loads(buffer))
-                except: pass
-                buffer = ""
-    return records
+def encode_email_to_raw(email_message: EmailMessage) -> str:
+    buffer = BytesIO()
+    gen = BytesGenerator(buffer)
+    gen.flatten(email_message)
+    raw_bytes = buffer.getvalue()
+    return base64.urlsafe_b64encode(raw_bytes).decode("utf-8")
 
-def write_multiline_ndjson(path, records):
-    with open(path, "w", encoding="utf-8") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
-
-def send_email(to, subject, content, in_reply_to=None):
-    print(f"[Send] {to} | {subject}")
+def build_email_message(to, subject, body, message_id=None, in_reply_to=None, references=None):
     msg = EmailMessage()
-    msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
     msg["To"] = to
-    msg.set_content(content)
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
-    msg["Message-ID"] = f"<{msg_id}>"
+    msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = message_id or make_msgid()
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
-        msg["References"] = in_reply_to
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        smtp.send_message(msg, from_addr=FROM_EMAIL)
-    return msg_id
+    if references:
+        msg["References"] = references
+    msg.set_content(body)
+    return msg
 
-def check_replies(message_ids):
-    seen = set()
-    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
-        imap.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        for folder in ["INBOX", "SPAM", "Junk", "[Gmail]/Spam"]:
-            try:
-                imap.select(folder)
-                typ, data = imap.search(None, "ALL")
-                for num in data[0].split():
-                    typ, msg_data = imap.fetch(num, "(RFC822)")
-                    msg = email.message_from_bytes(msg_data[0][1])
-                    headers = (msg.get("In-Reply-To") or "") + (msg.get("References") or "")
-                    for mid in message_ids:
-                        if f"<{mid}>" in headers:
-                            seen.add(mid)
-            except: continue
-    return seen
+def load_leads():
+    with open("leads.ndjson", "r", encoding="utf-8") as f:
+        return [json.loads(line) for line in f]
 
-# === Load and normalize leads ===
-leads = read_multiline_ndjson(LEADS_FILE)
-for lead in leads:
-    for field in [
-        "email", "email 1", "email 2", "email 3", "business name", "first name",
-        "message id", "message id 2", "message id 3", "subject",
-        "initial date", "follow-up 1 date", "follow-up 2 date",
-        "initial time", "follow-up 1 time", "follow-up 2 time", "reply"
-    ]:
-        lead.setdefault(field, "")
-
-# === Update replies ===
-all_ids = [l["message id"] for l in leads if l["message id"]] + \
-          [l["message id 2"] for l in leads if l["message id 2"]] + \
-          [l["message id 3"] for l in leads if l["message id 3"]]
-replied = check_replies(all_ids)
-for lead in leads:
-    if lead["reply"] == "no reply":
-        if lead["message id 3"] in replied:
-            lead["reply"] = "after FU2"
-        elif lead["message id 2"] in replied:
-            lead["reply"] = "after FU1"
-        elif lead["message id"] in replied:
-            lead["reply"] = "after initial"
-    elif not lead["reply"]:
-        lead["reply"] = "no reply"
-
-# === Eligibility and Quota ===
-def can_send_initial(lead):
-    return not lead["initial date"] and lead.get("email") and lead.get("email 1")
-
-def can_send_followup(lead, step):
-    if lead["reply"] != "no reply" or not lead.get("email"):
-        return False
-    if step == 2:
-        prev_key, msg_key, curr_key, content_key = "initial date", "message id", "follow-up 1 date", "email 2"
-    elif step == 3:
-        prev_key, msg_key, curr_key, content_key = "follow-up 1 date", "message id 2", "follow-up 2 date", "email 3"
-    else:
-        return False
-    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
-        return False
-    due_date = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=(3 if step == 2 else 4))
-    while due_date.weekday() >= 5:
-        due_date += timedelta(days=1)
-    return TODAY >= due_date
-
-def backlog_count(leads):
-    return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
-
-def initials_sent_in_last_days(n):
-    count = 0
-    day = TODAY - timedelta(days=1)
-    checked = 0
-    while checked < n:
-        if day.weekday() < 5:
-            if any(l.get("initial date") == day.isoformat() for l in leads):
-                count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
-            checked += 1
-        day -= timedelta(days=1)
-    return count
-
-BASE_QUOTA = 50
-backlogs = backlog_count(leads)
-recent_initials = initials_sent_in_last_days(3)
-extra_quota = min(20, backlogs)
-if recent_initials < 20:
-    extra_quota += 20
-DAILY_QUOTA = BASE_QUOTA + extra_quota
-sent_today = sum(
-    1 for l in leads
-    if l.get("initial date") == TODAY.isoformat() or
-       l.get("follow-up 1 date") == TODAY.isoformat() or
-       l.get("follow-up 2 date") == TODAY.isoformat()
-)
-
-# === Dynamic Eligibility Window ===
-total_minutes_needed = DAILY_QUOTA * 7
-ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
-ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
-
-window_start = ideal_start.time()
-window_end = min(ideal_end.time(), FINAL_END_TIME)
-
-if not window_start <= NOW.time() <= window_end:
-    print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {window_start}–{window_end}")
-    exit(0)
-
-# === Send Queue ===
-queue = []
-if sent_today < DAILY_QUOTA:
-    for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
+def save_leads(leads):
+    with open("leads.ndjson", "w", encoding="utf-8") as f:
         for lead in leads:
-            if label == "initial" and can_send_initial(lead):
-                queue = [("initial", lead)]
-                break
-            elif label == "fu1" and can_send_followup(lead, 2):
-                queue = [("fu1", lead)]
-                break
-            elif label == "fu2" and can_send_followup(lead, 3):
-                queue = [("fu2", lead)]
-                break
-        if queue:
-            break
+            f.write(json.dumps(lead) + "\n")
 
-print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
-print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
+def is_weekend(date):
+    return date.weekday() >= 5
+
+def next_weekday(date):
+    while is_weekend(date):
+        date += timedelta(days=1)
+    return date
+
+def get_today():
+    return datetime.now(TIMEZONE).date()
+
+def quota_stats(leads):
+    today = get_today()
+    sent_today = sum(1 for l in leads if l.get("last_sent_date") == str(today))
+    recent_initials = sum(1 for l in leads if l.get("stage") == "initial" and l.get("last_sent_date") and
+                          (today - datetime.fromisoformat(l["last_sent_date"]).date()).days <= 3)
+    backlog_bonus = 20 if recent_initials < 20 else 0
+    base_quota = 50
+    total_quota = base_quota + backlog_bonus
+    return total_quota, sent_today
+
+def pick_next_lead(leads):
+    today = get_today()
+    eligible = []
+
+    for lead in leads:
+        last_sent = datetime.fromisoformat(lead["last_sent_date"]).date() if lead.get("last_sent_date") else None
+        stage = lead.get("stage", "initial")
+
+        if stage == "initial" and not last_sent:
+            eligible.append((lead, "initial"))
+        elif stage == "fu1" and last_sent and (today - last_sent).days >= 3:
+            eligible.append((lead, "fu1"))
+        elif stage == "fu2" and last_sent and (today - last_sent).days >= 7:
+            eligible.append((lead, "fu2"))
+
+    eligible.sort(key=lambda x: {"fu2": 0, "fu1": 1, "initial": 2}[x[1]])
+    return eligible[0] if eligible else (None, None)
+
+def send_email_via_zoho(access_token, raw_b64):
+    headers = {
+        "Authorization": f"Zoho-oauthtoken {access_token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "fromAddress": FROM_EMAIL,
+        "accountId": ZOHO_ACCOUNT_ID,
+        "mailFormat": "raw",
+        "raw": raw_b64
+    }
+    r = requests.post("https://mail.zoho.com/api/accounts/{}/messages".format(ZOHO_ACCOUNT_ID),
+                      headers=headers, json=data)
+    return r
+
+# === Main ===
+
+leads = load_leads()
+total_quota, sent_today = quota_stats(leads)
+
+print(f"[Quota] Base: 50, Backlogs: {total_quota - 50}, Recent Initials: {sum(1 for l in leads if l.get('stage') == 'initial')}")
+print(f"[Quota] Extra: {total_quota - 50}, Total: {total_quota}")
 print(f"[Quota] Sent Today: {sent_today}")
-print(f"[Process] {len(queue)} message(s) to send...")
 
-# === Send Email ===
-for kind, lead in queue:
-    try:
-        if kind == "initial":
-            subject = next_subject(initial_subjects, company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 1"])
-            lead["message id"] = msgid
-            lead["subject"] = subject
-            lead["initial date"] = TODAY.isoformat()
-            lead["initial time"] = NOW_TIME
-        elif kind == "fu1":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 2"], f"<{lead['message id']}>")
-            lead["message id 2"] = msgid
-            lead["follow-up 1 date"] = TODAY.isoformat()
-            lead["follow-up 1 time"] = NOW_TIME
-        elif kind == "fu2":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 3"], f"<{lead['message id 2']}>")
-            lead["message id 3"] = msgid
-            lead["follow-up 2 date"] = TODAY.isoformat()
-            lead["follow-up 2 time"] = NOW_TIME
-    except Exception as e:
-        print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
+if sent_today >= total_quota:
+    print("[Exit] Quota reached.")
+    exit()
 
-print("[Save] Writing updated leads file...")
-write_multiline_ndjson(LEADS_FILE, leads)
+lead, stage = pick_next_lead(leads)
+if not lead:
+    print("[Exit] No eligible leads.")
+    exit()
+
+to_email = lead["email"]
+name = lead.get("name", "")
+subject = lead.get("subject") if stage != "initial" and "subject" in lead else None
+
+if not subject:
+    if stage == "initial":
+        subject = random.choice(INITIAL_SUBJECTS)
+    elif stage == "fu1":
+        subject = random.choice(FU1_SUBJECTS)
+    elif stage == "fu2":
+        subject = random.choice(FU2_SUBJECTS)
+
+# Example body (replace with your own generator/variant logic)
+body = f"Hey {name or 'there'},\n\nJust wanted to share a quick idea—might be useful.\n\nCheers,\nTrent"
+
+# Threading
+message_id = lead.get(f"message_id_{stage}")
+in_reply_to = lead.get("in-reply-to 1") if stage == "fu1" else lead.get("in-reply-to 2") if stage == "fu2" else None
+references = lead.get("references 1") if stage == "fu1" else lead.get("references 2") if stage == "fu2" else None
+
+# Build + encode
+msg = build_email_message(to_email, subject, body, message_id=message_id, in_reply_to=in_reply_to, references=references)
+raw = encode_email_to_raw(msg)
+
+token = refresh_token()
+res = send_email_via_zoho(token, raw)
+
+if res.status_code == 200:
+    new_message_id = msg["Message-ID"]
+    print(f"[Send] {to_email} | {subject}")
+    lead["last_sent_date"] = str(get_today())
+    if stage == "initial":
+        lead["stage"] = "fu1"
+        lead["subject"] = subject
+        lead["message_id_initial"] = new_message_id
+        lead["in-reply-to 1"] = new_message_id
+        lead["references 1"] = new_message_id
+    elif stage == "fu1":
+        lead["stage"] = "fu2"
+        lead["message_id_fu1"] = new_message_id
+        lead["in-reply-to 2"] = new_message_id
+        lead["references 2"] = f"{lead['references 1']} {new_message_id}"
+    elif stage == "fu2":
+        lead["stage"] = "done"
+        lead["message_id_fu2"] = new_message_id
+        lead["in-reply-to 3"] = new_message_id
+        lead["references 3"] = f"{lead['references 2']} {new_message_id}"
+else:
+    print(f"Error:  {to_email}: Zoho send error {res.status_code}: {res.text}")
+
+# Save
+save_leads(leads)
 print("[Done] Script completed.")
