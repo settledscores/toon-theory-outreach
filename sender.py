@@ -18,9 +18,10 @@ EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
 IMAP_SERVER = os.environ["IMAP_SERVER"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
-# Removed SMTP_SERVER and SMTP_PORT since we're using Zoho API
 
-ZOHO_ACCESS_TOKEN = os.environ["ZOHO_ACCESS_TOKEN"]
+ZOHO_REFRESH_TOKEN = os.environ["ZOHO_REFRESH_TOKEN"]
+ZOHO_CLIENT_ID = os.environ["ZOHO_CLIENT_ID"]
+ZOHO_CLIENT_SECRET = os.environ["ZOHO_CLIENT_SECRET"]
 ZOHO_ACCOUNT_ID = os.environ["ZOHO_ACCOUNT_ID"]
 
 LEADS_FILE = "leads/scraped_leads.ndjson"
@@ -96,7 +97,20 @@ def write_multiline_ndjson(path, records):
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
+def get_access_token():
+    url = "https://accounts.zoho.com/oauth/v2/token"
+    params = {
+        "refresh_token": ZOHO_REFRESH_TOKEN,
+        "client_id": ZOHO_CLIENT_ID,
+        "client_secret": ZOHO_CLIENT_SECRET,
+        "grant_type": "refresh_token",
+    }
+    resp = requests.post(url, params=params)
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
 def send_email(to, subject, content, in_reply_to=None, references=None):
+    access_token = get_access_token()  # fresh token every send
     print(f"[Send] {to} | {subject}")
 
     msg = EmailMessage()
@@ -119,7 +133,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
 
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
-        "Authorization": f"Zoho-oauthtoken {ZOHO_ACCESS_TOKEN}",
+        "Authorization": f"Zoho-oauthtoken {access_token}",
         "Content-Type": "application/json;charset=UTF-8",
     }
     payload = {
@@ -132,7 +146,6 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
         raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
     resp_json = resp.json()
-    # Return the real Zoho messageId
     return resp_json["data"]["messageId"]
 
 def check_replies(message_ids):
@@ -183,7 +196,6 @@ for lead in leads:
     elif not lead["reply"]:
         lead["reply"] = "no reply"
 
-# === Eligibility and Quota ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1")
 
