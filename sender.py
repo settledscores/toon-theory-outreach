@@ -145,10 +145,12 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
+        "User-Agent": "ZohoMailAPI/1.0"
     }
     payload = {
         "raw": base64.b64encode(raw_message).decode(),
-        "folderId": "sent"
+        "folderId": "sent",
+        "contentType": "message/rfc822"
     }
 
     resp = requests.post(url, headers=headers, json=payload)
@@ -316,7 +318,7 @@ for kind, lead in queue:
             lead["references 2"] = references_val
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = f"<{lead['message id']}>"
+            in_reply_to_val = f"<{lead['message id 2']}>"
             references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
             msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 3"] = msgid
