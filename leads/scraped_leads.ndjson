@@ -18,6 +18,15 @@
   "initial date": "",
   "follow-up 1 date": "",
   "follow-up 2 date": "",
-  "reply": ""
+  "reply": "no reply",
+  "subject": "",
+  "initial time": "",
+  "follow-up 1 time": "",
+  "follow-up 2 time": "",
+  "in-reply-to 1": "",
+  "in-reply-to 2": "",
+  "in-reply-to 3": "",
+  "references 1": "",
+  "references 2": "",
+  "references 3": ""
 }
-
