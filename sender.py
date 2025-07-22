@@ -153,7 +153,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     }
     payload = {
         "raw": raw_encoded,
-        "folderId": "sent",
+        "folderId": "5",
         "contentType": "message/rfc822"
     }
 
