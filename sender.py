@@ -27,7 +27,7 @@ WEEKDAY = TODAY.weekday()
 
 BASE_START_TIME = time(13, 0)  # 1:00 PM
 END_TIME = time(21, 0)         # 8:30 PM
-FINAL_END_TIME = time(21, 0)  # 8:30 PM absolute limit
+FINAL_END_TIME = time(21, 0)   # 8:30 PM hard cutoff
 
 # === Block weekend sends ===
 if WEEKDAY >= 5:
@@ -41,11 +41,12 @@ initial_subjects = [
     "You might like what I’ve been sketching", "This idea’s been stuck in my head",
     "Bet you haven’t tried this approach yet", "What if your next pitch was drawn?",
     "This has worked weirdly well for others", "A small idea that might punch above its weight",
-    "Something about {company} got me thinking", "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
-    "Thought of you while doodling", "This one might be a stretch, but could work",
-    "Felt like this might be your kind of thing", "Kind of random, but hear me out",
-    "If you're up for an odd idea", "Not a pitch, just something I had to share",
-    "This one’s a bit out there", "Saw what you’re doing, had to send this"
+    "Something about {company} got me thinking", "Is this a weird idea? Maybe.",
+    "Is this worth trying? Probably.", "Thought of you while doodling",
+    "This one might be a stretch, but could work", "Felt like this might be your kind of thing",
+    "Kind of random, but hear me out", "If you're up for an odd idea",
+    "Not a pitch, just something I had to share", "This one’s a bit out there",
+    "Saw what you’re doing, had to send this"
 ]
 
 fu1_subjects = [
@@ -140,7 +141,6 @@ for lead in leads:
         "message id", "message id 2", "message id 3", "subject",
         "initial date", "follow-up 1 date", "follow-up 2 date",
         "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
-        # Add the four new fields with empty defaults
         "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
         "references 1", "references 2", "references 3",
     ]:
@@ -169,18 +169,25 @@ def can_send_initial(lead):
 def can_send_followup(lead, step):
     if lead["reply"] != "no reply" or not lead.get("email"):
         return False
+
     if step == 2:
-        prev_key, msg_key, curr_key, content_key = "initial date", "message id", "follow-up 1 date", "email 2"
+        prev_date_key, prev_time_key = "initial date", "initial time"
+        msg_key, curr_date_key, content_key = "message id", "follow-up 1 date", "email 2"
     elif step == 3:
-        prev_key, msg_key, curr_key, content_key = "follow-up 1 date", "message id 2", "follow-up 2 date", "email 3"
+        prev_date_key, prev_time_key = "follow-up 1 date", "follow-up 1 time"
+        msg_key, curr_date_key, content_key = "message id 2", "follow-up 2 date", "email 3"
     else:
         return False
-    if not (lead[prev_key] and lead[msg_key] and not lead[curr_key] and lead.get(content_key)):
+
+    if not (lead[prev_date_key] and lead[prev_time_key] and lead[msg_key] and not lead[curr_date_key] and lead.get(content_key)):
         return False
-    due_date = datetime.strptime(lead[prev_key], "%Y-%m-%d").date() + timedelta(days=(3 if step == 2 else 4))
-    while due_date.weekday() >= 5:
-        due_date += timedelta(days=1)
-    return TODAY >= due_date
+
+    try:
+        prev_dt = datetime.strptime(f"{lead[prev_date_key]} {lead[prev_time_key]}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
+    except:
+        return False
+
+    return NOW >= prev_dt + timedelta(minutes=5)
 
 def backlog_count(leads):
     return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
@@ -214,7 +221,6 @@ sent_today = sum(
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
-
 window_start = ideal_start.time()
 window_end = min(ideal_end.time(), FINAL_END_TIME)
 
@@ -254,35 +260,27 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
-            # Clear threading fields for initial
-            lead["in-reply-to 1"] = ""
-            lead["references 1"] = ""
-            lead["in-reply-to 2"] = ""
-            lead["references 2"] = ""
-            lead["in-reply-to 3"] = ""
-            lead["references 3"] = ""
+            lead["in-reply-to 1"] = lead["references 1"] = ""
+            lead["in-reply-to 2"] = lead["references 2"] = ""
+            lead["in-reply-to 3"] = lead["references 3"] = ""
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            # Use initial message ID for threading headers
             in_reply_to_val = f"<{lead['message id']}>"
             references_val = f"<{lead['message id']}>"
             msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
-            # Update threading fields for FU1
             lead["in-reply-to 2"] = in_reply_to_val
             lead["references 2"] = references_val
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            # Use initial and FU1 message IDs for references
             in_reply_to_val = f"<{lead['message id']}>"
             references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
             msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
-            # Update threading fields for FU2
             lead["in-reply-to 3"] = in_reply_to_val
             lead["references 3"] = references_val
     except Exception as e:
