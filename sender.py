@@ -15,8 +15,8 @@ EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
 IMAP_SERVER = os.environ["IMAP_SERVER"]
 IMAP_PORT = int(os.environ["IMAP_PORT"])
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-SMTP_PORT = int(os.environ["SMTP_PORT"])
+SMTP_SERVER = "smtppro.zoho.com"
+SMTP_PORT = 465
 
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
