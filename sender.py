@@ -118,7 +118,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
 
     payload = {
@@ -134,6 +134,8 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
         payload["inReplyTo"] = in_reply_to
     if references:
         payload["references"] = references
+
+    print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
 
     resp = requests.post(url, headers=headers, json=payload)
     print(f"[Debug] JSON POST Response Code: {resp.status_code}")
