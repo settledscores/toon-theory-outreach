@@ -138,7 +138,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     print(f"[Debug] JSON POST Response Code: {resp.status_code}")
     print(f"[Debug] JSON POST Body: {resp.text}")
 
-    if resp.status_code == 201:
+    if resp.status_code in (200, 201):
         return resp.json()["data"]["messageId"]
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
     
