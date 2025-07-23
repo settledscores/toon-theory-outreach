@@ -127,10 +127,14 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
         "subject": subject,
         "content": content
     }
+
+    custom_headers = []
     if in_reply_to:
-        payload["inReplyTo"] = in_reply_to
+        custom_headers.append({ "name": "In-Reply-To", "value": in_reply_to })
     if references:
-        payload["references"] = references
+        custom_headers.append({ "name": "References", "value": references })
+    if custom_headers:
+        payload["customHeaders"] = custom_headers
 
     print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
 
