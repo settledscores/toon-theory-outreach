@@ -122,14 +122,11 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     }
 
     payload = {
+        "fromAddress": FROM_EMAIL,
         "toAddress": to,
         "subject": subject,
-        "messageBody": {
-            "content": content,
-            "contentType": "text/plain"
-        }
+        "content": content
     }
-
     if in_reply_to:
         payload["inReplyTo"] = in_reply_to
     if references:
@@ -143,7 +140,6 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
 
     if resp.status_code == 201:
         return resp.json()["data"]["messageId"]
-
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
     
 def check_replies(message_ids):
