@@ -31,9 +31,9 @@ TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 
-BASE_START_TIME = time(13, 0)  # 1:00 PM
-END_TIME = time(21, 0)         # 9:00 PM
-FINAL_END_TIME = time(21, 0)   # 9:00 PM absolute limit
+BASE_START_TIME = time(13, 0)
+END_TIME = time(21, 0)
+FINAL_END_TIME = time(21, 0)
 
 # === Subject Pools ===
 initial_subjects = [
@@ -109,11 +109,7 @@ def get_access_token():
         "grant_type": "refresh_token",
     }
     resp = requests.post(url, params=params)
-    try:
-        resp.raise_for_status()
-    except Exception as ex:
-        print(f"[Error] Token refresh failed: HTTP {resp.status_code} - {resp.text}")
-        raise ex
+    resp.raise_for_status()
     data = resp.json()
     print(f"[Debug] Token refresh response: {json.dumps(data, indent=2)}")
     if "access_token" not in data:
@@ -138,24 +134,22 @@ def build_rfc822_message(to, subject, body, in_reply_to=None, references=None):
     g = BytesGenerator(buf)
     g.flatten(msg)
     raw_bytes = buf.getvalue()
-    return base64.b64encode(raw_bytes).decode("utf-8"), msg_id
+    return raw_bytes, msg_id
 
 def send_email(to, subject, content, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
-    raw_encoded, msg_id = build_rfc822_message(to, subject, content, in_reply_to, references)
+    raw_bytes, msg_id = build_rfc822_message(to, subject, content, in_reply_to, references)
 
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
-        "User-Agent": "ZohoMailAPI/1.0"
-    }
-    payload = {
-        "raw": raw_encoded,
+        "User-Agent": "ZohoMailAPI/1.0",
+        "Content-Type": "message/rfc822"
     }
 
-    resp = requests.post(url, headers=headers, json=payload)
+    resp = requests.post(url, headers=headers, data=raw_bytes)
     if resp.status_code != 201:
         raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
