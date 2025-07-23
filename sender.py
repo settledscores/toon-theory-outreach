@@ -122,7 +122,6 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     }
 
     payload = {
-        "fromAddress": FROM_EMAIL,
         "toAddress": to,
         "subject": subject,
         "messageBody": {
