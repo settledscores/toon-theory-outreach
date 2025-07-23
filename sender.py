@@ -4,7 +4,6 @@ import email
 import os
 import random
 import requests
-import base64
 from datetime import datetime, timedelta, time
 from email.message import EmailMessage
 from email.utils import make_msgid
@@ -29,11 +28,10 @@ TIMEZONE = ZoneInfo("Africa/Lagos")
 NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
-WEEKDAY = TODAY.weekday()
 
-BASE_START_TIME = time(13, 0)
-END_TIME = time(21, 0)
-FINAL_END_TIME = time(21, 0)
+BASE_START_TIME = time(13, 0)  # 1:00 PM
+END_TIME = time(21, 0)         # 9:00 PM
+FINAL_END_TIME = time(21, 0)   # Absolute cutoff
 
 # === Subject Pools ===
 initial_subjects = [
@@ -42,11 +40,12 @@ initial_subjects = [
     "You might like what I’ve been sketching", "This idea’s been stuck in my head",
     "Bet you haven’t tried this approach yet", "What if your next pitch was drawn?",
     "This has worked weirdly well for others", "A small idea that might punch above its weight",
-    "Something about {company} got me thinking", "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
-    "Thought of you while doodling", "This one might be a stretch, but could work",
-    "Felt like this might be your kind of thing", "Kind of random, but hear me out",
-    "If you're up for an odd idea", "Not a pitch, just something I had to share",
-    "This one’s a bit out there", "Saw what you’re doing, had to send this"
+    "Something about {company} got me thinking", "Is this a weird idea? Maybe.",
+    "Is this worth trying? Probably.", "Thought of you while doodling",
+    "This one might be a stretch, but could work", "Felt like this might be your kind of thing",
+    "Kind of random, but hear me out", "If you're up for an odd idea",
+    "Not a pitch, just something I had to share", "This one’s a bit out there",
+    "Saw what you’re doing, had to send this"
 ]
 
 fu1_subjects = [
@@ -112,8 +111,6 @@ def get_access_token():
     resp.raise_for_status()
     data = resp.json()
     print(f"[Debug] Token refresh response: {json.dumps(data, indent=2)}")
-    if "access_token" not in data:
-        raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
 def build_rfc822_message(to, subject, body, in_reply_to=None, references=None):
@@ -133,13 +130,11 @@ def build_rfc822_message(to, subject, body, in_reply_to=None, references=None):
     buf = BytesIO()
     g = BytesGenerator(buf)
     g.flatten(msg)
-    raw_bytes = buf.getvalue()
-    return raw_bytes, msg_id
+    return buf.getvalue(), msg_id
 
 def send_email(to, subject, content, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
-
     raw_bytes, msg_id = build_rfc822_message(to, subject, content, in_reply_to, references)
 
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
@@ -152,9 +147,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     resp = requests.post(url, headers=headers, data=raw_bytes)
     if resp.status_code != 201:
         raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
-
-    resp_json = resp.json()
-    return resp_json["data"]["messageId"]
+    return resp.json()["data"]["messageId"]
 
 def check_replies(message_ids):
     seen = set()
@@ -175,7 +168,7 @@ def check_replies(message_ids):
                 continue
     return seen
 
-# === Load and normalize leads ===
+# === Load Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -188,7 +181,7 @@ for lead in leads:
     ]:
         lead.setdefault(field, "")
 
-# === Update replies ===
+# === Update Replies ===
 all_ids = [l["message id"] for l in leads if l["message id"]] + \
           [l["message id 2"] for l in leads if l["message id 2"]] + \
           [l["message id 3"] for l in leads if l["message id 3"]]
@@ -218,52 +211,26 @@ def can_send_followup(lead, step):
         msg_key, curr_date_key, content_key = "message id 2", "follow-up 2 date", "email 3"
     else:
         return False
-
     if not (lead.get(prev_date_key) and lead.get(prev_time_key) and lead.get(msg_key) and not lead.get(curr_date_key) and lead.get(content_key)):
         return False
-
-    prev_dt_str = f"{lead[prev_date_key]} {lead[prev_time_key]}"
-    prev_dt = datetime.strptime(prev_dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
-    due_dt = prev_dt + timedelta(minutes=5)
-
-    return datetime.now(TIMEZONE) >= due_dt
-
-def backlog_count(leads):
-    return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
-
-def initials_sent_in_last_days(n):
-    count = 0
-    day = TODAY - timedelta(days=1)
-    checked = 0
-    while checked < n:
-        count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
-        checked += 1
-        day -= timedelta(days=1)
-    return count
+    prev_dt = datetime.strptime(f"{lead[prev_date_key]} {lead[prev_time_key]}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
+    return datetime.now(TIMEZONE) >= prev_dt + timedelta(minutes=5)
 
 BASE_QUOTA = 50
-backlogs = backlog_count(leads)
-recent_initials = initials_sent_in_last_days(3)
+backlogs = sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
+recent_initials = sum(1 for l in leads if l.get("initial date") in [(TODAY - timedelta(days=i)).isoformat() for i in range(1, 4)])
 extra_quota = min(20, backlogs)
 if recent_initials < 20:
     extra_quota += 20
 DAILY_QUOTA = BASE_QUOTA + extra_quota
-sent_today = sum(
-    1 for l in leads
-    if l.get("initial date") == TODAY.isoformat() or
-       l.get("follow-up 1 date") == TODAY.isoformat() or
-       l.get("follow-up 2 date") == TODAY.isoformat()
-)
+sent_today = sum(1 for l in leads if TODAY.isoformat() in [l.get("initial date"), l.get("follow-up 1 date"), l.get("follow-up 2 date")])
 
-total_minutes_needed = DAILY_QUOTA * 7
-ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
+total_minutes = DAILY_QUOTA * 7
+ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
 
-window_start = ideal_start.time()
-window_end = min(ideal_end.time(), FINAL_END_TIME)
-
-if not window_start <= NOW.time() <= window_end:
-    print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {window_start}–{window_end}")
+if not (ideal_start.time() <= NOW.time() <= min(ideal_end.time(), FINAL_END_TIME)):
+    print(f"[Skip] Outside dynamic window ({NOW.time()} WAT), allowed {ideal_start.time()}–{min(ideal_end.time(), FINAL_END_TIME)}")
     exit(0)
 
 queue = []
@@ -296,32 +263,28 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
-            lead["in-reply-to 1"] = ""
-            lead["references 1"] = ""
-            lead["in-reply-to 2"] = ""
-            lead["references 2"] = ""
-            lead["in-reply-to 3"] = ""
-            lead["references 3"] = ""
+            lead["in-reply-to 1"] = lead["references 1"] = lead["in-reply-to 2"] = ""
+            lead["references 2"] = lead["in-reply-to 3"] = lead["references 3"] = ""
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = f"<{lead['message id']}>"
-            references_val = f"<{lead['message id']}>"
-            msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
+            in_reply_to = f"<{lead['message id']}>"
+            references = in_reply_to
+            msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to, references=references)
             lead["message id 2"] = msgid
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
-            lead["in-reply-to 2"] = in_reply_to_val
-            lead["references 2"] = references_val
+            lead["in-reply-to 2"] = in_reply_to
+            lead["references 2"] = references
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = f"<{lead['message id 2']}>"
-            references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
-            msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
+            in_reply_to = f"<{lead['message id 2']}>"
+            references = f"<{lead['message id']}> <{lead['message id 2']}>"
+            msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to, references=references)
             lead["message id 3"] = msgid
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
-            lead["in-reply-to 3"] = in_reply_to_val
-            lead["references 3"] = references_val
+            lead["in-reply-to 3"] = in_reply_to
+            lead["references 3"] = references
     except Exception as e:
         print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
 
