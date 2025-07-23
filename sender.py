@@ -111,21 +111,20 @@ def get_access_token():
         raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
-def send_email(to, subject, content, in_reply_to=None, references=None):
+def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
-    is_reply = bool(in_reply_to)
+    is_reply = bool(reply_to_mail_id)
     if is_reply:
-        # use Zoho's reply endpoint
-        original_mail_id = in_reply_to.strip("<>")
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{original_mail_id}/reply"
+        # use Zoho's reply endpoint with mailId
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
         payload = {
             "content": content,
             "subject": subject
         }
     else:
-        # use standard compose endpoint
+        # use compose endpoint
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
             "fromAddress": FROM_EMAIL,
@@ -147,7 +146,7 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     print(f"[Debug] JSON POST Body: {resp.text}")
 
     if resp.status_code in (200, 201):
-        return resp.json()["data"]["mailId"]
+        return resp.json()["data"]["mailId"], resp.json()["data"]["messageId"]
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
     
 def check_replies(message_ids):
