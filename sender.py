@@ -1,3 +1,5 @@
+# FULLY UPDATED SCRIPT
+
 import json
 import imaplib
 import email
@@ -111,20 +113,14 @@ def get_access_token():
         raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
-def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, references=None):
+def send_email(to, subject, content, reply_to_mail_id=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
-    is_reply = bool(reply_to_mail_id)
-    if is_reply:
-        # use Zoho's reply endpoint with mailId
+    if reply_to_mail_id:
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
-        payload = {
-            "content": content,
-            "subject": subject
-        }
+        payload = {"content": content, "subject": subject}
     else:
-        # use compose endpoint
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
             "fromAddress": FROM_EMAIL,
@@ -148,7 +144,7 @@ def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, re
     if resp.status_code in (200, 201):
         return resp.json()["data"]["mailId"], resp.json()["data"]["messageId"]
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
-    
+
 def check_replies(message_ids):
     seen = set()
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as imap:
@@ -173,8 +169,8 @@ leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name",
-        "message id", "message id 2", "message id 3", "subject",
-        "initial date", "follow-up 1 date", "follow-up 2 date",
+        "message id", "message id 2", "message id 3", "mail id", "mail id 2", "mail id 3",
+        "subject", "initial date", "follow-up 1 date", "follow-up 2 date",
         "initial time", "follow-up 1 time", "follow-up 2 time", "reply",
         "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
         "references 1", "references 2", "references 3",
@@ -197,6 +193,7 @@ for lead in leads:
     elif not lead["reply"]:
         lead["reply"] = "no reply"
 
+# === Queue logic ===
 def can_send_initial(lead):
     return not lead["initial date"] and lead.get("email") and lead.get("email 1")
 
@@ -211,47 +208,34 @@ def can_send_followup(lead, step):
         msg_key, curr_date_key, content_key = "message id 2", "follow-up 2 date", "email 3"
     else:
         return False
-
     if not (lead.get(prev_date_key) and lead.get(prev_time_key) and lead.get(msg_key) and not lead.get(curr_date_key) and lead.get(content_key)):
         return False
+    prev_dt = datetime.strptime(f"{lead[prev_date_key]} {lead[prev_time_key]}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
+    return datetime.now(TIMEZONE) >= prev_dt + timedelta(minutes=5)
 
-    prev_dt_str = f"{lead[prev_date_key]} {lead[prev_time_key]}"
-    prev_dt = datetime.strptime(prev_dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
-    due_dt = prev_dt + timedelta(minutes=5)
-
-    return datetime.now(TIMEZONE) >= due_dt
-
+# === Quota and timing ===
 def backlog_count(leads):
     return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
 
 def initials_sent_in_last_days(n):
     count = 0
     day = TODAY - timedelta(days=1)
-    checked = 0
-    while checked < n:
+    for _ in range(n):
         count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
-        checked += 1
         day -= timedelta(days=1)
     return count
 
 BASE_QUOTA = 50
 backlogs = backlog_count(leads)
 recent_initials = initials_sent_in_last_days(3)
-extra_quota = min(20, backlogs)
-if recent_initials < 20:
-    extra_quota += 20
+extra_quota = 20 if recent_initials < 20 else 0
+extra_quota += min(20, backlogs)
 DAILY_QUOTA = BASE_QUOTA + extra_quota
-sent_today = sum(
-    1 for l in leads
-    if l.get("initial date") == TODAY.isoformat() or
-       l.get("follow-up 1 date") == TODAY.isoformat() or
-       l.get("follow-up 2 date") == TODAY.isoformat()
-)
+sent_today = sum(1 for l in leads if TODAY.isoformat() in [l.get("initial date"), l.get("follow-up 1 date"), l.get("follow-up 2 date")])
 
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
-
 window_start = ideal_start.time()
 window_end = min(ideal_end.time(), FINAL_END_TIME)
 
@@ -284,37 +268,30 @@ for kind, lead in queue:
     try:
         if kind == "initial":
             subject = next_subject(initial_subjects, company=lead["business name"])
-            msgid = send_email(lead["email"], subject, lead["email 1"])
-            lead["message id"] = msgid
+            mail_id, msg_id = send_email(lead["email"], subject, lead["email 1"])
+            lead["mail id"] = mail_id
+            lead["message id"] = msg_id
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
-            lead["in-reply-to 1"] = ""
-            lead["references 1"] = ""
-            lead["in-reply-to 2"] = ""
-            lead["references 2"] = ""
-            lead["in-reply-to 3"] = ""
-            lead["references 3"] = ""
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = f"<{lead['message id']}>"
-            references_val = f"<{lead['message id']}>"
-            msgid = send_email(lead["email"], subject, lead["email 2"], in_reply_to=in_reply_to_val, references=references_val)
-            lead["message id 2"] = msgid
+            mail_id, msg_id = send_email(lead["email"], subject, lead["email 2"], reply_to_mail_id=lead["mail id"])
+            lead["mail id 2"] = mail_id
+            lead["message id 2"] = msg_id
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
-            lead["in-reply-to 2"] = in_reply_to_val
-            lead["references 2"] = references_val
+            lead["in-reply-to 2"] = f"<{lead['message id']}>"
+            lead["references 2"] = f"<{lead['message id']}>"
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            in_reply_to_val = f"<{lead['message id 2']}>"
-            references_val = f"<{lead['message id']}> <{lead['message id 2']}>"
-            msgid = send_email(lead["email"], subject, lead["email 3"], in_reply_to=in_reply_to_val, references=references_val)
-            lead["message id 3"] = msgid
+            mail_id, msg_id = send_email(lead["email"], subject, lead["email 3"], reply_to_mail_id=lead["mail id 2"])
+            lead["mail id 3"] = mail_id
+            lead["message id 3"] = msg_id
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
-            lead["in-reply-to 3"] = in_reply_to_val
-            lead["references 3"] = references_val
+            lead["in-reply-to 3"] = f"<{lead['message id 2']}>"
+            lead["references 3"] = f"<{lead['message id']}> <{lead['message id 2']}>"
     except Exception as e:
         print(f"[Error] {lead.get('email', 'UNKNOWN')}: {e}")
 
