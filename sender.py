@@ -115,28 +115,32 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
-    url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
+    is_reply = bool(in_reply_to)
+    if is_reply:
+        # use Zoho's reply endpoint
+        original_mail_id = in_reply_to.strip("<>")
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{original_mail_id}/reply"
+        payload = {
+            "content": content,
+            "subject": subject
+        }
+    else:
+        # use standard compose endpoint
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
+        payload = {
+            "fromAddress": FROM_EMAIL,
+            "toAddress": to,
+            "subject": subject,
+            "content": content
+        }
+
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "fromAddress": FROM_EMAIL,
-        "toAddress": to,
-        "subject": subject,
-        "content": content
-    }
-
-    custom_headers = []
-    if in_reply_to:
-        custom_headers.append({ "name": "In-Reply-To", "value": in_reply_to })
-    if references:
-        custom_headers.append({ "name": "References", "value": references })
-    if custom_headers:
-        payload["customHeaders"] = custom_headers
-
     print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
+    print(f"[Debug] URL: {url}")
 
     resp = requests.post(url, headers=headers, json=payload)
     print(f"[Debug] JSON POST Response Code: {resp.status_code}")
