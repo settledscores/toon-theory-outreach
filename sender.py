@@ -125,11 +125,12 @@ def send_email(to, subject, content, in_reply_to=None, references=None):
         "fromAddress": FROM_EMAIL,
         "toAddress": to,
         "subject": subject,
-        "content": content,
-        "mailFormat": "text",
+        "messageBody": {
+            "content": content,
+            "contentType": "text/plain"
+        }
     }
 
-    # Threading headers (optional)
     if in_reply_to:
         payload["inReplyTo"] = in_reply_to
     if references:
