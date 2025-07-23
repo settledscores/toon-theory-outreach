@@ -4,12 +4,7 @@ import email
 import os
 import random
 import requests
-import base64
 from datetime import datetime, timedelta, time
-from email.message import EmailMessage
-from email.utils import make_msgid
-from email.generator import BytesGenerator
-from io import BytesIO
 from zoneinfo import ZoneInfo
 
 # === Config ===
@@ -116,67 +111,36 @@ def get_access_token():
         raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
-def build_rfc822_message(to, subject, body, in_reply_to=None, references=None):
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = FROM_EMAIL
-    msg["To"] = to
-    msg["Date"] = datetime.now(TIMEZONE).strftime("%a, %d %b %Y %H:%M:%S %z")
-    msg_id = make_msgid(domain=FROM_EMAIL.split("@")[-1])[1:-1]
-    msg["Message-ID"] = f"<{msg_id}>"
-    if in_reply_to:
-        msg["In-Reply-To"] = in_reply_to
-    if references:
-        msg["References"] = references
-    msg.set_content(body)
-
-    buf = BytesIO()
-    g = BytesGenerator(buf)
-    g.flatten(msg)
-    raw_bytes = buf.getvalue()
-
-    print(f"[Debug] Built message headers:\n{msg}")
-    print(f"[Debug] Raw message preview (first 500 bytes):\n{raw_bytes[:500].decode(errors='ignore')}")
-    return raw_bytes, msg_id
-
 def send_email(to, subject, content, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
-    raw_bytes, msg_id = build_rfc822_message(to, subject, content, in_reply_to, references)
-
     url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
-        "User-Agent": "ZohoMailAPI/1.0",
-        "Content-Type": "message/rfc822"
+        "Content-Type": "application/json",
     }
 
-    print(f"[Debug] Sending to Zoho... Byte size: {len(raw_bytes)}")
+    payload = {
+        "fromAddress": FROM_EMAIL,
+        "toAddress": to,
+        "subject": subject,
+        "content": content,
+        "mailFormat": "text",
+    }
 
-    resp = requests.post(url, headers=headers, data=raw_bytes)
-    print(f"[Debug] Response Code: {resp.status_code}")
-    print(f"[Debug] Response Body: {resp.text}")
+    # Threading headers (optional)
+    if in_reply_to:
+        payload["inReplyTo"] = in_reply_to
+    if references:
+        payload["references"] = references
+
+    resp = requests.post(url, headers=headers, json=payload)
+    print(f"[Debug] JSON POST Response Code: {resp.status_code}")
+    print(f"[Debug] JSON POST Body: {resp.text}")
 
     if resp.status_code == 201:
-        resp_json = resp.json()
-        return resp_json["data"]["messageId"]
-
-    if resp.status_code == 404 and "JSON_PARSE_ERROR" in resp.text:
-        print("[Fallback] Retrying with multipart/form-data upload...")
-        files = {
-            "message": ("email.eml", raw_bytes, "message/rfc822")
-        }
-        fallback_headers = {
-            "Authorization": f"Zoho-oauthtoken {access_token}",
-            "User-Agent": "ZohoMailAPI/1.0"
-        }
-        resp = requests.post(url, headers=fallback_headers, files=files)
-        print(f"[Debug] Fallback Response Code: {resp.status_code}")
-        print(f"[Debug] Fallback Response Body: {resp.text}")
-        if resp.status_code == 201:
-            resp_json = resp.json()
-            return resp_json["data"]["messageId"]
+        return resp.json()["data"]["messageId"]
 
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
     
