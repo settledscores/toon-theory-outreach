@@ -137,8 +137,10 @@ def send_email(lead, step="initial"):
             "toAddress": to,
             "subject": subject,
             "content": content,
-            "inReplyTo": f"<{lead['message id']}>",
-            "references": f"<{lead['message id']}>"
+            "mailHeader": {
+                "In-Reply-To": f"<{lead['message id']}>",
+                "References": f"<{lead['message id']}>"
+            }
         }
 
     elif step == "fu2":
@@ -150,8 +152,10 @@ def send_email(lead, step="initial"):
             "toAddress": to,
             "subject": subject,
             "content": content,
-            "inReplyTo": f"<{lead['message id 2']}>",
-            "references": f"<{lead['message id']}> <{lead['message id 2']}>"
+            "mailHeader": {
+                "In-Reply-To": f"<{lead['message id 2']}>",
+                "References": f"<{lead['message id']}> <{lead['message id 2']}>"
+            }
         }
 
     else:
