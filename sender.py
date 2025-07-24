@@ -166,7 +166,7 @@ def send_email(lead, step="initial"):
     print(f"[Debug] JSON POST Body: {resp.text}")
 
     if resp.status_code in (200, 201):
-        return subject, resp.json()["data"]["mailId"], resp.json()["data"]["messageId"]
+        return subject, resp.json()["data"]["messageId"], resp.json()["data"]["mailId"].strip("<>")
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
 def check_replies(message_ids):
