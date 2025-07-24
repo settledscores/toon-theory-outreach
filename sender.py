@@ -127,28 +127,29 @@ def send_email(lead, step="initial"):
             "subject": subject,
             "content": content
         }
+
     elif step == "fu1":
         subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
         content = lead["email 2"]
-        reply_to_mail_id = lead["mail id"]
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{lead['mail id']}/reply"
         payload = {
             "subject": subject,
             "content": content,
             "inReplyTo": f"<{lead['message id']}>",
             "references": f"<{lead['message id']}>"
         }
+
     elif step == "fu2":
         subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
         content = lead["email 3"]
-        reply_to_mail_id = lead["mail id 2"]
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{lead['mail id 2']}/reply"
         payload = {
             "subject": subject,
             "content": content,
             "inReplyTo": f"<{lead['message id 2']}>",
             "references": f"<{lead['message id']}> <{lead['message id 2']}>"
         }
+
     else:
         raise ValueError("Unknown step type")
 
