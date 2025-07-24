@@ -129,13 +129,14 @@ def send_email(lead, step="initial"):
         original_dt = f"{lead['initial date']} at {lead['initial time']}"
         original_sender = FROM_EMAIL
         original_content = lead["email 1"]
+        quoted_content = original_content.replace('\n', '\n> ')
 
         quoted = f"""
 ---
 
 On {original_dt}, {original_sender} wrote:
 
-> {original_content.replace('\n', '\n> ')}
+> {quoted_content}
 """
         content = lead["email 2"].strip() + quoted
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
@@ -147,13 +148,14 @@ On {original_dt}, {original_sender} wrote:
         original_dt = f"{lead['follow-up 1 date']} at {lead['follow-up 1 time']}"
         original_sender = FROM_EMAIL
         original_content = lead["email 2"]
+        quoted_content = original_content.replace('\n', '\n> ')
 
         quoted = f"""
 ---
 
 On {original_dt}, {original_sender} wrote:
 
-> {original_content.replace('\n', '\n> ')}
+> {quoted_content}
 """
         content = lead["email 3"].strip() + quoted
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
