@@ -115,8 +115,8 @@ def get_access_token():
 
 def send_email(lead, step="initial"):
     access_token = get_access_token()
-
     to = lead["email"]
+
     if step == "initial":
         subject = next_subject(initial_subjects, company=lead["business name"])
         content = lead["email 1"]
@@ -131,10 +131,13 @@ def send_email(lead, step="initial"):
     elif step == "fu1":
         subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
         content = lead["email 2"]
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{lead['mail id']}/reply"
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
+            "fromAddress": FROM_EMAIL,
+            "toAddress": to,
             "subject": subject,
             "content": content,
+            "originalMailId": lead["mail id"],
             "inReplyTo": f"<{lead['message id']}>",
             "references": f"<{lead['message id']}>"
         }
@@ -142,10 +145,13 @@ def send_email(lead, step="initial"):
     elif step == "fu2":
         subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
         content = lead["email 3"]
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{lead['mail id 2']}/reply"
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
+            "fromAddress": FROM_EMAIL,
+            "toAddress": to,
             "subject": subject,
             "content": content,
+            "originalMailId": lead["mail id 2"],
             "inReplyTo": f"<{lead['message id 2']}>",
             "references": f"<{lead['message id']}> <{lead['message id 2']}>"
         }
