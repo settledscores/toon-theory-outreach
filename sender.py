@@ -113,14 +113,28 @@ def get_access_token():
         raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
-def send_email(to, subject, content, reply_to_mail_id=None):
+def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, references=None):
     access_token = get_access_token()
     print(f"[Send] {to} | {subject}")
 
+    headers = {
+        "Authorization": f"Zoho-oauthtoken {access_token}",
+        "Content-Type": "application/json"
+    }
+
     if reply_to_mail_id:
+        # Reply endpoint for threading
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
-        payload = {"content": content, "subject": subject}
+        payload = {
+            "content": content,
+            "subject": subject,
+        }
+        if in_reply_to:
+            payload["inReplyTo"] = in_reply_to
+        if references:
+            payload["references"] = references
     else:
+        # Normal send endpoint
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
             "fromAddress": FROM_EMAIL,
@@ -128,11 +142,6 @@ def send_email(to, subject, content, reply_to_mail_id=None):
             "subject": subject,
             "content": content
         }
-
-    headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json"
-    }
 
     print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
     print(f"[Debug] URL: {url}")
