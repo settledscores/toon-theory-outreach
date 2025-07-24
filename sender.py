@@ -119,47 +119,54 @@ def send_email(lead, step="initial"):
 
     if step == "initial":
         subject = next_subject(initial_subjects, company=lead["business name"])
-        content = lead["email 1"]
+        content = lead["email 1"].strip()
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
-        payload = {
-            "fromAddress": FROM_EMAIL,
-            "toAddress": to,
-            "subject": subject,
-            "content": content
-        }
 
     elif step == "fu1":
-        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-        content = lead["email 2"]
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(
+            fu1_subjects, name=lead["first name"], company=lead["business name"]
+        )
+        original_dt = f"{lead['initial date']} at {lead['initial time']}"
+        original_sender = FROM_EMAIL
+        original_content = lead["email 1"]
+
+        quoted = f"""
+---
+
+On {original_dt}, {original_sender} wrote:
+
+> {original_content.replace('\n', '\n> ')}
+"""
+        content = lead["email 2"].strip() + quoted
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
-        payload = {
-            "fromAddress": FROM_EMAIL,
-            "toAddress": to,
-            "subject": subject,
-            "content": content,
-            "mailHeader": {
-                "In-Reply-To": f"<{lead['message id']}>",
-                "References": f"<{lead['message id']}>"
-            }
-        }
 
     elif step == "fu2":
-        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-        content = lead["email 3"]
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(
+            fu2_subjects, name=lead["first name"], company=lead["business name"]
+        )
+        original_dt = f"{lead['follow-up 1 date']} at {lead['follow-up 1 time']}"
+        original_sender = FROM_EMAIL
+        original_content = lead["email 2"]
+
+        quoted = f"""
+---
+
+On {original_dt}, {original_sender} wrote:
+
+> {original_content.replace('\n', '\n> ')}
+"""
+        content = lead["email 3"].strip() + quoted
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
-        payload = {
-            "fromAddress": FROM_EMAIL,
-            "toAddress": to,
-            "subject": subject,
-            "content": content,
-            "mailHeader": {
-                "In-Reply-To": f"<{lead['message id 2']}>",
-                "References": f"<{lead['message id']}> <{lead['message id 2']}>"
-            }
-        }
 
     else:
         raise ValueError("Unknown step type")
+
+    payload = {
+        "fromAddress": FROM_EMAIL,
+        "toAddress": to,
+        "subject": subject,
+        "content": content
+    }
 
     print(f"[Send] {to} | {subject}")
     print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
