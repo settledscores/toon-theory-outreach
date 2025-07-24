@@ -137,7 +137,6 @@ def send_email(lead, step="initial"):
             "toAddress": to,
             "subject": subject,
             "content": content,
-            "originalMailId": lead["mail id"],
             "inReplyTo": f"<{lead['message id']}>",
             "references": f"<{lead['message id']}>"
         }
@@ -151,7 +150,6 @@ def send_email(lead, step="initial"):
             "toAddress": to,
             "subject": subject,
             "content": content,
-            "originalMailId": lead["mail id 2"],
             "inReplyTo": f"<{lead['message id 2']}>",
             "references": f"<{lead['message id']}> <{lead['message id 2']}>"
         }
