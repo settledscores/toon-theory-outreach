@@ -113,28 +113,13 @@ def get_access_token():
         raise Exception(f"Missing access_token in response: {data}")
     return data["access_token"]
 
-def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, references=None):
+def send_email(lead, step="initial"):
     access_token = get_access_token()
-    print(f"[Send] {to} | {subject}")
 
-    headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    if reply_to_mail_id:
-        # Reply endpoint for threading
-        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
-        payload = {
-            "content": content,
-            "subject": subject,
-        }
-        if in_reply_to:
-            payload["inReplyTo"] = in_reply_to
-        if references:
-            payload["references"] = references
-    else:
-        # Normal send endpoint
+    to = lead["email"]
+    if step == "initial":
+        subject = next_subject(initial_subjects, company=lead["business name"])
+        content = lead["email 1"]
         url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages"
         payload = {
             "fromAddress": FROM_EMAIL,
@@ -142,16 +127,45 @@ def send_email(to, subject, content, reply_to_mail_id=None, in_reply_to=None, re
             "subject": subject,
             "content": content
         }
+    elif step == "fu1":
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
+        content = lead["email 2"]
+        reply_to_mail_id = lead["mail id"]
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
+        payload = {
+            "subject": subject,
+            "content": content,
+            "inReplyTo": f"<{lead['message id']}>",
+            "references": f"<{lead['message id']}>"
+        }
+    elif step == "fu2":
+        subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
+        content = lead["email 3"]
+        reply_to_mail_id = lead["mail id 2"]
+        url = f"https://mail.zoho.com/api/accounts/{ZOHO_ACCOUNT_ID}/messages/{reply_to_mail_id}/reply"
+        payload = {
+            "subject": subject,
+            "content": content,
+            "inReplyTo": f"<{lead['message id 2']}>",
+            "references": f"<{lead['message id']}> <{lead['message id 2']}>"
+        }
+    else:
+        raise ValueError("Unknown step type")
 
+    print(f"[Send] {to} | {subject}")
     print(f"[Debug] Payload being sent: {json.dumps(payload, indent=2)}")
     print(f"[Debug] URL: {url}")
 
+    headers = {
+        "Authorization": f"Zoho-oauthtoken {access_token}",
+        "Content-Type": "application/json"
+    }
     resp = requests.post(url, headers=headers, json=payload)
     print(f"[Debug] JSON POST Response Code: {resp.status_code}")
     print(f"[Debug] JSON POST Body: {resp.text}")
 
     if resp.status_code in (200, 201):
-        return resp.json()["data"]["mailId"], resp.json()["data"]["messageId"]
+        return subject, resp.json()["data"]["mailId"], resp.json()["data"]["messageId"]
     raise Exception(f"Zoho send error {resp.status_code}: {resp.text}")
 
 def check_replies(message_ids):
@@ -275,17 +289,14 @@ print(f"[Process] {len(queue)} message(s) to send...")
 
 for kind, lead in queue:
     try:
+        subject, mail_id, msg_id = send_email(lead, step=kind)
         if kind == "initial":
-            subject = next_subject(initial_subjects, company=lead["business name"])
-            mail_id, msg_id = send_email(lead["email"], subject, lead["email 1"])
             lead["mail id"] = mail_id
             lead["message id"] = msg_id
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu1_subjects, name=lead["first name"], company=lead["business name"])
-            mail_id, msg_id = send_email(lead["email"], subject, lead["email 2"], reply_to_mail_id=lead["mail id"])
             lead["mail id 2"] = mail_id
             lead["message id 2"] = msg_id
             lead["follow-up 1 date"] = TODAY.isoformat()
@@ -293,8 +304,6 @@ for kind, lead in queue:
             lead["in-reply-to 2"] = f"<{lead['message id']}>"
             lead["references 2"] = f"<{lead['message id']}>"
         elif kind == "fu2":
-            subject = f"Re: {lead['subject']}" if lead["subject"] else next_subject(fu2_subjects, name=lead["first name"], company=lead["business name"])
-            mail_id, msg_id = send_email(lead["email"], subject, lead["email 3"], reply_to_mail_id=lead["mail id 2"])
             lead["mail id 3"] = mail_id
             lead["message id 3"] = msg_id
             lead["follow-up 2 date"] = TODAY.isoformat()
