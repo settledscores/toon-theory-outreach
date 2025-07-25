@@ -3,19 +3,23 @@ import json
 INPUT_PATH = "leads/scraped_leads.ndjson"
 OUTPUT_PATH = "leads/sanitized_leads.ndjson"
 
-def sanitize_ndjson(input_path, output_path):
+def sanitize_multiline_ndjson(input_path, output_path):
+    buffer = ""
     with open(input_path, "r", encoding="utf-8") as infile, open(output_path, "w", encoding="utf-8") as outfile:
         for line in infile:
-            line = line.strip()
-            if not line:
+            stripped = line.strip()
+            if not stripped:
                 continue
-            try:
-                data = json.loads(line)
-                if "website url" in data:
-                    sanitized = {"website url": data["website url"]}
-                    outfile.write(json.dumps(sanitized, ensure_ascii=False) + "\n")
-            except json.JSONDecodeError:
-                print("Skipping invalid JSON line:", line)
+            buffer += stripped
+            if stripped.endswith("}"):
+                try:
+                    obj = json.loads(buffer)
+                    if "website url" in obj:
+                        only_website = {"website url": obj["website url"]}
+                        outfile.write(json.dumps(only_website, ensure_ascii=False) + "\n")
+                except json.JSONDecodeError:
+                    print("Skipping invalid JSON block:\n", buffer)
+                buffer = ""
 
 if __name__ == "__main__":
-    sanitize_ndjson(INPUT_PATH, OUTPUT_PATH)
+    sanitize_multiline_ndjson(INPUT_PATH, OUTPUT_PATH)
