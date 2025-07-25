@@ -1,0 +1,20 @@
+name: Sanitize Old Leads
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Run sanitizer
+        run: |
+          python sanitize_leads.py
