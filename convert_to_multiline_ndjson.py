@@ -5,13 +5,34 @@ import re
 FLAT_PATH = "leads/scraped_leads.ndjson"
 NESTED_PATH = "leads/scraped_leads_nested.ndjson"
 
-# Fields to sanitize
+# Deprecated fields to remove
+DEPRECATED_FIELDS = {
+    "message id", "message id 2", "message id 3",
+    "use cases", "services"
+}
+
+# Fields that may contain whitespace-only strings to normalize
 WHITESPACE_FIELDS = [
     "first name", "last name", "middle name", "title", "email",
-    "web copy", "use cases", "services", "email 1", "email 2", "email 3",
-    "message id", "message id 2", "message id 3",
+    "web copy", "email 1", "email 2", "email 3",
     "initial date", "follow-up 1 date", "follow-up 2 date", "reply"
 ]
+
+def attempt_repair(text):
+    # Remove trailing commas before closing braces/brackets
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+
+    # Ensure all keys and string values are quoted
+    def fix_quotes(match):
+        key, val = match.group(1).strip(), match.group(2).strip()
+        key = f'"{key}"' if not key.startswith('"') else key
+        val = val.strip('"')
+        val = f'"{val}"' if not val.startswith('"') and not val.lower() in ("true", "false", "null") and not re.match(r'^-?\d+(\.\d+)?$', val) else val
+        return f"{key}: {val}"
+
+    text = re.sub(r"([a-zA-Z0-9 _\-]+)\s*:\s*([^,\n]+)", fix_quotes, text)
+
+    return text
 
 def repair_ndjson(raw_text):
     blocks = re.findall(r'{.*?}\s*(?=\n{|\Z)', raw_text, flags=re.DOTALL)
@@ -20,10 +41,18 @@ def repair_ndjson(raw_text):
     whitespace_fixes = []
 
     for i, block in enumerate(blocks):
+        original = block
+        block = attempt_repair(block)
+
         try:
             obj = json.loads(block)
 
-            # Identify and fix whitespace-only fields
+            # Remove deprecated fields
+            for key in list(obj.keys()):
+                if key in DEPRECATED_FIELDS:
+                    del obj[key]
+
+            # Normalize whitespace-only fields
             for field in WHITESPACE_FIELDS:
                 val = obj.get(field, None)
                 if isinstance(val, str) and val.strip() == "":
@@ -33,12 +62,12 @@ def repair_ndjson(raw_text):
                             "field": field,
                             "business name": obj.get("business name", "(unknown)")
                         })
-                    obj[field] = ""  # normalize to empty string
+                    obj[field] = ""
 
             repaired.append(obj)
 
         except json.JSONDecodeError as e:
-            print(f"❌ Skipped malformed block #{i+1}: {e}")
+            print(f"❌ Skipped block #{i+1}: {e}")
             skipped += 1
 
     return repaired, skipped, whitespace_fixes
@@ -59,7 +88,7 @@ def convert_flat_to_nested(flat_path, nested_path):
 
     print(f"✅ Converted {len(records)} records to nested NDJSON → {nested_path}")
     if skipped:
-        print(f"⚠️ Skipped {skipped} malformed block(s)")
+        print(f"⚠️ Skipped {skipped} unrecoverable block(s)")
 
     if whitespace_fixes:
         print(f"🧼 Fixed {len(whitespace_fixes)} whitespace-only field(s):")
