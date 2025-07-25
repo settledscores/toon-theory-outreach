@@ -146,6 +146,10 @@ sent_today = sum(
        l.get("follow-up 2 date") == TODAY.isoformat()
 )
 
+print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
+print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
+print(f"[Quota] Sent Today: {sent_today}")
+
 total_minutes_needed = DAILY_QUOTA * 7
 ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
 ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
@@ -171,6 +175,8 @@ if sent_today < DAILY_QUOTA:
         if queue:
             break
 
+print(f"[Process] {len(queue)} message(s) to send...")
+
 for kind, lead in queue:
     try:
         if kind == "initial":
@@ -179,6 +185,7 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
+
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just checking in"
             content = quote_previous_message(
@@ -192,21 +199,48 @@ for kind, lead in queue:
             send_email(lead["email"], subject, content)
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
+
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just circling back"
-            content = quote_previous_message(
-                new_text=lead["email 3"],
-                old_text=lead["email 2"],
+
+            initial_quoted = quote_previous_message(
+                new_text=lead["email 1"],
+                old_text="",
+                old_date=lead["initial date"],
+                old_time=lead["initial time"],
+                old_sender_name="Trent",
+                old_sender_email=FROM_EMAIL
+            ).strip()
+
+            fu1_quoted = quote_previous_message(
+                new_text=lead["email 2"],
+                old_text=initial_quoted,
                 old_date=lead["follow-up 1 date"],
                 old_time=lead["follow-up 1 time"],
                 old_sender_name="Trent",
                 old_sender_email=FROM_EMAIL
             )
+
+            content = quote_previous_message(
+                new_text=lead["email 3"],
+                old_text=fu1_quoted,
+                old_date=TODAY.isoformat(),
+                old_time=NOW_TIME,
+                old_sender_name="Trent",
+                old_sender_email=FROM_EMAIL
+            )
+
             send_email(lead["email"], subject, content)
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
+
     except Exception as e:
-        pass
+        print(f"[Error] Failed to send {kind} to {lead.get('email')}: {e}")
+
+print("[Save] Writing updated leads file...")
+write_multiline_ndjson(LEADS_FILE, leads)
+print("[Done] Script completed.")
+
 
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
