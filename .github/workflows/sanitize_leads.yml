@@ -1,20 +1,46 @@
-name: Sanitize Old Leads
+name: Sanitize Scraped Leads
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: lead-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
 jobs:
   sanitize:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
 
-      - name: Set up Python
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🧰 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
-      - name: Run sanitizer
+      - name: 🧼 Run sanitizer
+        run: python sanitize_leads.py
+
+      - name: 🔄 Commit sanitized leads
         run: |
-          python sanitize_leads.py
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git commit -m "🧼 Sanitize scraped_leads.ndjson [bot]" || echo "No changes to commit"
+          git pull --rebase origin main || true
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+
+      - name: 🧯 Emergency commit on crash
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency save after crash [bot]"
+          git pull --rebase origin main || true
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
