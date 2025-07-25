@@ -105,7 +105,7 @@ def can_send_followup(lead, step):
         return False
     if not (lead[prev_key] and not lead[curr_key] and lead.get(content_key)):
         return False
-    prev_dt = datetime.strptime(f"{lead['initial date']} {lead[prev_key]}", "%Y-%m-%d %H:%M")
+    prev_dt = datetime.strptime(f"{lead['initial date']} {lead[prev_key]}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
     return NOW >= (prev_dt + timedelta(minutes=5))
 
 def backlog_count(leads):
