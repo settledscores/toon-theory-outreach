@@ -1,4 +1,4 @@
-name: Extract Emails from Web Copy
+name: Extract Emails from the Web
 
 on:
   workflow_dispatch:
@@ -23,6 +23,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
       - name: Run email extractor
         run: python extract_emails.py
 
@@ -37,8 +42,7 @@ jobs:
             git commit -m "📬 Extracted emails from web copy [bot]"
             git pull --rebase origin main || true
             git push
-          fi
-
+          
       - name: Emergency commit
         if: always()
         run: |
