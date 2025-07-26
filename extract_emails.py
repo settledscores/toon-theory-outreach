@@ -7,16 +7,26 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import warnings
 
-# === Config ===
-INPUT_PATH = "leads/scraped_leads.ndjson"
-OUTPUT_PATH = "leads/emails.txt"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"}
-RELEVANT_KEYWORDS = ["about", "contact", "team", "our-story", "story", "who-we-are", "leadership", "staff"]
-IRRELEVANT_KEYWORDS = ["blog", "news", "faq", "privacy", "terms", "careers", "jobs", "cookies"]
-
-# === Setup ===
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# === Paths ===
+INPUT_PATH = "leads/scraped_leads.ndjson"
+OUTPUT_PATH = "leads/emails.txt"
+
+# === Setup ===
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"
+}
+RELEVANT_KEYWORDS = {
+    "about", "team", "contact", "leadership", "our-story", "who-we-are",
+    "people", "company", "founder", "bio", "management", "executives", "us"
+}
+IRRELEVANT_KEYWORDS = {
+    "blog", "faq", "faqs", "terms", "privacy", "policy", "careers", "jobs",
+    "news", "events", "press", "sitemap", "cookies"
+}
+GENERIC_EMAILS = {"info@", "support@", "help@", "hello@", "admin@"}
 
 # === Helpers ===
 def extract_domain(url):
@@ -34,7 +44,9 @@ def is_match(email, domain, first, last):
     if not email.endswith("@" + domain):
         return False
     local = email.split("@")[0].lower()
-    return first.lower() in local or last.lower() in local
+    if any(email.startswith(prefix) for prefix in GENERIC_EMAILS):
+        return False
+    return first in local or last in local
 
 def normalize_url(url):
     url = url.strip().rstrip("/")
@@ -42,76 +54,50 @@ def normalize_url(url):
         return f"https://{url}"
     return url
 
-def is_relevant_link(href):
-    href_lower = href.lower()
-    if any(x in href_lower for x in IRRELEVANT_KEYWORDS):
-        return False
-    if any(x in href_lower for x in RELEVANT_KEYWORDS):
-        return True
-    return False
-
-def fetch_with_retries(url):
+def fetch_html(url):
     for scheme in ["https", "http"]:
         try:
-            parsed = urlparse(url)
-            test_url = parsed._replace(scheme=scheme).geturl()
+            test_url = urlparse(url)._replace(scheme=scheme).geturl()
             res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 return res.text
-        except Exception as e:
-            print(f"  ⚠️ Failed {scheme.upper()} fetch: {e}")
+        except Exception:
+            pass
     return ""
 
-def crawl_all_pages(start_url):
-    visited = set()
-    to_visit = [start_url]
-    domain = urlparse(start_url).netloc
-    full_text = ""
-    page_count = 0
+def collect_relevant_links(index_html, base_url, domain):
+    soup = BeautifulSoup(index_html, "html.parser")
+    eligible = []
+    skipped = 0
 
-    while to_visit:
-        url = to_visit.pop(0)
-        if url in visited:
+    for link in soup.find_all("a", href=True):
+        href = urljoin(base_url, link["href"])
+        parsed = urlparse(href)
+        path = parsed.path.lower()
+
+        if parsed.netloc and parsed.netloc != domain:
             continue
 
-        print(f"  🕸️ Visiting: {url}")
-        html = fetch_with_retries(url)
-        if not html:
-            print("  ⚠️ No HTML content, skipping.")
+        if any(bad in path for bad in IRRELEVANT_KEYWORDS):
+            skipped += 1
             continue
+        if any(good in path for good in RELEVANT_KEYWORDS):
+            eligible.append(href)
 
-        visited.add(url)
-        soup = BeautifulSoup(html, "html.parser")
-        page_text = soup.get_text(separator=' ', strip=True)
-        full_text += page_text + " "
-        page_count += 1
-        print(f"  📄 +{len(page_text)} chars from {url}")
-
-        for link in soup.find_all("a", href=True):
-            href = urljoin(url, link["href"])
-            parsed = urlparse(href)
-            if parsed.netloc == domain and href not in visited and href not in to_visit:
-                if is_relevant_link(href):
-                    to_visit.append(href)
-                    print(f"    ➕ Queueing: {href}")
-                else:
-                    print(f"    🚫 Skipping irrelevant: {href}")
-
-    print(f"  🔚 Finished crawling {page_count} pages from {start_url}")
-    return full_text
+    return list(dict.fromkeys(eligible))[:20], skipped  # remove duplicates, limit to 20
 
 def read_multiline_ndjson(path):
     with open(path, "r", encoding="utf-8") as f:
         buffer = ""
         for line in f:
-            if line.strip() == "":
+            if not line.strip():
                 continue
             buffer += line
             if line.strip().endswith("}"):
                 try:
                     yield json.loads(buffer)
-                except Exception as e:
-                    print(f"❌ Skipping invalid JSON block: {e}")
+                except:
+                    pass
                 buffer = ""
 
 # === Main ===
@@ -130,46 +116,62 @@ def main():
     for i, record in enumerate(read_multiline_ndjson(INPUT_PATH), 1):
         first = record.get("first name", "").strip().lower()
         last = record.get("last name", "").strip().lower()
-        domain = extract_domain(record.get("website url", ""))
-        web_copy = record.get("web copy", "").strip()
         website_url = record.get("website url", "").strip()
-        existing_email = record.get("email", "").strip()
+        web_copy = record.get("web copy", "").strip()
+        domain = extract_domain(website_url)
+        email = record.get("email", "").strip()
 
-        if existing_email:
-            print(f"⏭️ Skipping #{i} — already has email: {existing_email}")
-            total_skipped += 1
-            continue
+        missing = []
+        if not first: missing.append("first name")
+        if not last: missing.append("last name")
+        if not domain: missing.append("domain")
+        if not web_copy: missing.append("web copy")
+        if email: missing.append("email already present")
 
-        missing_fields = []
-        if not first: missing_fields.append("first name")
-        if not last: missing_fields.append("last name")
-        if not domain: missing_fields.append("domain")
-        if not web_copy: missing_fields.append("web copy")
-
-        if missing_fields:
-            print(f"⏭️ Skipping #{i} — missing {', '.join(missing_fields)}")
+        if missing:
+            print(f"⏭️ Skipping #{i} — {', '.join(missing)}")
             total_skipped += 1
             continue
 
         total_checked += 1
         norm_url = normalize_url(website_url)
-        print(f"\n🌐 Crawling #{i}: {norm_url} for {first} {last} [{domain}]")
+        print(f"\n🌐 Checking #{i}: {norm_url} for {first} {last} [{domain}]")
 
-        full_text = crawl_all_pages(norm_url)
-        found_emails = extract_emails(full_text)
+        index_html = fetch_html(norm_url)
+        if not index_html:
+            print("  ⚠️ Couldn't load index page.")
+            continue
 
-        match_found = False
-        for email in found_emails:
+        index_emails = extract_emails(index_html)
+        for email in index_emails:
             if is_match(email, domain, first, last):
+                print(f"  ✅ Found matching email on index: {email}")
                 matches.add(email.lower())
                 total_matched += 1
-                print(f"  ✅ Match: {email}")
-                match_found = True
                 break
+        else:
+            relevant_links, skipped = collect_relevant_links(index_html, norm_url, domain)
+            if skipped > 0:
+                print(f"  🔍 Skipped all irrelevant URLs for {domain}")
+            found = False
+            for link in relevant_links:
+                html = fetch_html(link)
+                if not html:
+                    continue
+                emails = extract_emails(html)
+                for email in emails:
+                    if is_match(email, domain, first, last):
+                        print(f"  ✅ Found matching email on {link}: {email}")
+                        matches.add(email.lower())
+                        total_matched += 1
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
+                print("  ❌ No matching email found")
 
-        if not match_found:
-            print("  ❌ No match found")
-
+    # === Final Output ===
     print("\n📊 Scrape Summary")
     print(f"✔️ Leads checked: {total_checked}")
     print(f"⏭️ Leads skipped: {total_skipped}")
