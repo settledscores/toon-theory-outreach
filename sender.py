@@ -4,9 +4,9 @@ import imaplib
 import email
 import os
 import random
+import re
 from datetime import datetime, timedelta, time
 from email.message import EmailMessage
-from email.utils import make_msgid
 from zoneinfo import ZoneInfo
 
 # === Config ===
@@ -32,6 +32,7 @@ FINAL_END_TIME = time(21, 0)
 if WEEKDAY >= 5:
     exit(0)
 
+# === Subject Pool ===
 initial_subjects = [
     "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
     "This might sound odd, but useful", "Not sure if this will land, but here goes",
@@ -42,27 +43,50 @@ initial_subjects = [
     "Thought of you while doodling", "This one might be a stretch, but could work",
     "Felt like this might be your kind of thing", "Kind of random, but hear me out",
     "If you're up for an odd idea", "Not a pitch, just something I had to share",
-    "This one’s a bit out there", "Saw what you’re doing, had to send this"
+    "This one’s a bit out there", "Saw what you’re doing, had to send this",
+    "Something visual that might work for {company}", "Quick idea you probably haven’t seen before",
+    "Just playing with this angle", "This made me think of {company}",
+    "Wanna try something weird?", "You ever test your pitch visually?",
+    "Quick thought: could sketches help?", "Random, but could work for {company}",
+    "Hope this doesn’t sound too off", "Could this work for your pitch?",
+    "Ever tried sketching your message?", "This stuck in my head after seeing {company}",
+    "Does this feel off-brand or on-point?", "Bit of an odd angle, but may click",
 ]
 random.shuffle(initial_subjects)
 
+# === Signatures & Stripping ===
+SIGNATURES = [
+    "Warmly,\nTrent — Toon Theory\ntoontheory.com\nWhiteboard videos your customers will actually remember.",
+    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
+    "Cheers,\nTrent — Toon Theory\nhttps://toontheory.com\nExplainer videos made to convert, not just impress.",
+    "Take care,\nTrent — Toon Theory\nwww.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
+    "Sincerely,\nTrent — Founder, Toon Theory\ntoontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
+    "Best wishes,\nTrent — Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
+    "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
+    "Respectfully,\nTrent — Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
+    "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
+    "Regards,\nTrent — Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
+    "With gratitude,\nTrent — Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
+    "Yours truly,\nTrent — Founder, Toon Theory\ntoontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
+    "Faithfully,\nTrent — Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
+    "Thanks,\nTrent — Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress."
+]
+_signature_pattern = re.compile("|".join(re.escape(sig) for sig in SIGNATURES), flags=re.MULTILINE)
+def strip_signature(text): return _signature_pattern.sub("", text).strip()
+
+# === Helpers ===
 def next_subject(pool, **kwargs):
-    if not pool:
-        return None
+    if not pool: return None
     template = pool.pop(0)
     pool.append(template)
     return template.format(**kwargs)
 
 def quote_previous_message(new_text, old_text, old_date, old_time, old_sender_name, old_sender_email):
-    old_dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M")
-    old_dt = old_dt.replace(tzinfo=TIMEZONE)
+    old_dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
     formatted_date = old_dt.strftime("%A, %b %d, %Y")
     header_line = f"--- On {formatted_date}, {old_sender_name} <{old_sender_email}> wrote ---"
     quoted = "\n".join(["> " + line for line in old_text.strip().splitlines()])
-    return f"""{new_text}
-
-{header_line}
-{quoted}"""
+    return f"{new_text}\n\n{header_line}\n{quoted}"
 
 def read_multiline_ndjson(path):
     records, buffer = [], ""
@@ -108,9 +132,7 @@ def can_send_followup(lead, step):
     prev_dt = datetime.strptime(f"{lead['initial date']} {lead[prev_key]}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
     return NOW >= (prev_dt + timedelta(minutes=5))
 
-def backlog_count(leads):
-    return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
-
+def backlog_count(leads): return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
 def initials_sent_in_last_days(n):
     count, day, checked = 0, TODAY - timedelta(days=1), 0
     while checked < n:
@@ -120,7 +142,7 @@ def initials_sent_in_last_days(n):
         day -= timedelta(days=1)
     return count
 
-# === Load leads ===
+# === Load and Normalize Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
     for field in [
@@ -132,19 +154,16 @@ for lead in leads:
     if not lead["reply"]:
         lead["reply"] = "no reply"
 
+# === Quota & Scheduling ===
 BASE_QUOTA = 50
 backlogs = backlog_count(leads)
 recent_initials = initials_sent_in_last_days(3)
 extra_quota = min(20, backlogs)
-if recent_initials < 20:
-    extra_quota += 20
+if recent_initials < 20: extra_quota += 20
 DAILY_QUOTA = BASE_QUOTA + extra_quota
-sent_today = sum(
-    1 for l in leads
-    if l.get("initial date") == TODAY.isoformat() or
-       l.get("follow-up 1 date") == TODAY.isoformat() or
-       l.get("follow-up 2 date") == TODAY.isoformat()
-)
+sent_today = sum(1 for l in leads if l.get("initial date") == TODAY.isoformat() or
+                 l.get("follow-up 1 date") == TODAY.isoformat() or
+                 l.get("follow-up 2 date") == TODAY.isoformat())
 
 print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
 print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
@@ -159,6 +178,7 @@ window_end = min(ideal_end.time(), FINAL_END_TIME)
 if not window_start <= NOW.time() <= window_end:
     exit(0)
 
+# === Message Selection ===
 queue = []
 if sent_today < DAILY_QUOTA:
     for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
@@ -172,11 +192,11 @@ if sent_today < DAILY_QUOTA:
             elif label == "fu2" and can_send_followup(lead, 3):
                 queue = [("fu2", lead)]
                 break
-        if queue:
-            break
+        if queue: break
 
 print(f"[Process] {len(queue)} message(s) to send...")
 
+# === Sending ===
 for kind, lead in queue:
     try:
         if kind == "initial":
@@ -190,7 +210,7 @@ for kind, lead in queue:
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just checking in"
             content = quote_previous_message(
                 new_text=lead["email 2"],
-                old_text=lead["email 1"],
+                old_text=strip_signature(lead["email 1"]),
                 old_date=lead["initial date"],
                 old_time=lead["initial time"],
                 old_sender_name="Trent",
@@ -204,7 +224,7 @@ for kind, lead in queue:
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just circling back"
 
             initial_quoted = quote_previous_message(
-                new_text=lead["email 1"],
+                new_text=strip_signature(lead["email 1"]),
                 old_text="",
                 old_date=lead["initial date"],
                 old_time=lead["initial time"],
@@ -213,7 +233,7 @@ for kind, lead in queue:
             ).strip()
 
             fu1_quoted = quote_previous_message(
-                new_text=lead["email 2"],
+                new_text=strip_signature(lead["email 2"]),
                 old_text=initial_quoted,
                 old_date=lead["follow-up 1 date"],
                 old_time=lead["follow-up 1 time"],
@@ -237,11 +257,7 @@ for kind, lead in queue:
     except Exception as e:
         print(f"[Error] Failed to send {kind} to {lead.get('email')}: {e}")
 
-print("[Save] Writing updated leads file...")
-write_multiline_ndjson(LEADS_FILE, leads)
-print("[Done] Script completed.")
-
-
+# === Save ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
