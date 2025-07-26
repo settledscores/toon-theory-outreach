@@ -3,8 +3,12 @@ import json
 import re
 import requests
 import urllib3
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse, urljoin
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+import warnings
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Paths ===
 INPUT_PATH = "leads/scraped_leads.ndjson"
