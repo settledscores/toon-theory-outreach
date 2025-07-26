@@ -15,7 +15,6 @@ INPUT_PATH = "leads/scraped_leads.ndjson"
 OUTPUT_PATH = "leads/emails.txt"
 
 # === Setup ===
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"}
 
 # === Helpers ===
@@ -51,7 +50,7 @@ def fetch_with_retries(url):
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 return res.text
         except Exception as e:
-            print(f"⚠️ Failed fetch {scheme.upper()} {url}: {e}")
+            print(f"  ⚠️ Failed {scheme.upper()} fetch: {e}")
     return ""
 
 def crawl_all_pages(start_url):
@@ -59,19 +58,25 @@ def crawl_all_pages(start_url):
     to_visit = [start_url]
     domain = urlparse(start_url).netloc
     full_text = ""
+    page_count = 0
 
     while to_visit:
         url = to_visit.pop(0)
         if url in visited:
             continue
 
+        print(f"  🕸️ Visiting: {url}")
         html = fetch_with_retries(url)
         if not html:
+            print("  ⚠️ No HTML content, skipping.")
             continue
 
         visited.add(url)
         soup = BeautifulSoup(html, "html.parser")
-        full_text += soup.get_text(separator=' ', strip=True) + " "
+        page_text = soup.get_text(separator=' ', strip=True)
+        print(f"  📄 Collected {len(page_text)} characters from {url}")
+        full_text += page_text + " "
+        page_count += 1
 
         for link in soup.find_all("a", href=True):
             href = urljoin(url, link["href"])
@@ -79,6 +84,7 @@ def crawl_all_pages(start_url):
             if parsed.netloc == domain and href not in visited and href not in to_visit:
                 to_visit.append(href)
 
+    print(f"  🔚 Finished crawling {page_count} pages from {start_url}")
     return full_text
 
 def read_multiline_ndjson(path):
@@ -104,8 +110,9 @@ def main():
     matches = set()
     total_checked = 0
     total_matched = 0
+    total_skipped = 0
 
-    print("📥 Starting email scraping from leads...")
+    print("📥 Starting email scraping from leads...\n")
 
     for i, record in enumerate(read_multiline_ndjson(INPUT_PATH), 1):
         first = record.get("first name", "").strip().lower()
@@ -114,13 +121,20 @@ def main():
         web_copy = record.get("web copy", "").strip()
         website_url = record.get("website url", "").strip()
 
-        if not (first and last and domain and web_copy):
-            print(f"⏭️ Skipping #{i} — missing required fields.")
+        missing_fields = []
+        if not first: missing_fields.append("first name")
+        if not last: missing_fields.append("last name")
+        if not domain: missing_fields.append("domain")
+        if not web_copy: missing_fields.append("web copy")
+
+        if missing_fields:
+            print(f"⏭️ Skipping #{i} — missing {', '.join(missing_fields)}")
+            total_skipped += 1
             continue
 
         total_checked += 1
         norm_url = normalize_url(website_url)
-        print(f"🌐 Crawling #{i}: {norm_url}")
+        print(f"\n🌐 Crawling #{i}: {norm_url} for {first} {last} [{domain}]")
 
         full_text = crawl_all_pages(norm_url)
         found_emails = extract_emails(full_text)
@@ -130,19 +144,24 @@ def main():
             if is_match(email, domain, first, last):
                 matches.add(email.lower())
                 total_matched += 1
-                print(f"✅ Match: {email} for {first} {last} at {domain}")
+                print(f"  ✅ Found matching email: {email}")
                 match_found = True
                 break
 
         if not match_found:
-            print(f"❌ No match found for #{i}")
+            print("  ❌ No matching email found")
+
+    # Final output
+    print("\n📊 Scrape Summary")
+    print(f"✔️ Leads checked: {total_checked}")
+    print(f"⏭️ Leads skipped: {total_skipped}")
+    print(f"📬 Emails matched: {total_matched}")
 
     if matches:
         os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
         with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
             f.write("\n".join(sorted(matches)) + "\n")
-        print(f"\n✅ Extracted {len(matches)} emails from {total_checked} leads.")
-        print(f"📄 Saved to {OUTPUT_PATH}")
+        print(f"\n✅ Saved {len(matches)} emails to {OUTPUT_PATH}")
     else:
         print("⚠️ No valid emails found.")
 
