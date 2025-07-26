@@ -52,19 +52,16 @@ openers = [
 ]
 
 paragraph_1_variants = [
-    "I’m Trent and I run an animation studio called Toon Theory, we make short, hand-drawn videos. Not flashy, just clear and kind of charming.",
-    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams share the important work they’re putting out there.",
-    "I’m Trent. I run Toon Theory, it’s just a few of us drawing stories for people like you who don’t love PowerPoints.",
-    "I’m Trent. I make short videos at a studio called Toon Theory. Think whiteboard sketches with a background voice, simple and watchable.",
-    "I’m Trent and I’m the guy behind Toon Theory. We help teams show what they mean without making it a whole production snag.",
-    "I’m Trent. Toon Theory is my animation shop, mostly whiteboard videos with a human feel. Not too polished, not too stiff.",
-    "I’m Trent and I run Toon Theory. We sketch short videos for businesses who want to say *a lot* without writing an essay.",
-    "I’m Trent. I make videos at Toon Theory, mostly hand-drawn stuff that people don’t mind watching.",
-    "I’m Trent. I started Toon Theory a while back. We draw whiteboard videos for teams who need to explain what they’re up to.",
-    "I’m Trent and I run an animation studio called Toon Theory. We don’t do fancy, just videos that feel real and personal.",
-    "I’m Trent. Toon Theory is my studio, we draw little stories for small businesses with big things to say.",
+    "I’m Trent and I run an animation studio called Toon Theory. We make short, hand-drawn videos: usually for small teams with a lot going on behind the scenes.",
+    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams explain what they do when the message is hard to pin down.",
+    "I’m Trent. I run Toon Theory, it’s just a few of us drawing stories for folks whose work doesn’t always fit neatly into a sentence.",
+    "I’m Trent. I make short videos at a studio called Toon Theory. Think whiteboard sketches with a background voice; simple tools for telling stories that are anything but simple.",
+    "I’m Trent and I’m the guy behind Toon Theory. We help businesses like your's show what they mean; especially when it’s the kind of thing that’s tricky to summarize in one sentence.",
+    "I’m Trent. I started Toon Theory a while back. We draw whiteboard videos to simplify what people usually need more than one paragraph to explain.",
+    "I’m Trent and I run an animation studio called Toon Theory. We don’t do flashy — just clear, human videos that help small B2B teams say more with less.",
+    "I’m Trent and I run an animation studio called Toon Theory. We draw little stories for small businesses that help cut through the noise without dumbing anything down."
 ]
-      
+     
 paragraph_2_variants = [
     "With so many bundled offerings and tailored services like the ones {company} provides, it’s easy for prospects to miss the point. We make videos that connect those dots instantly, and we handle everything in-house so you don't even have to lift a finger.",
     "Teams like {company} that deliver bundled, multi-layered offerings often need help showing how it all fits together. That’s what we do: clear videos that explain it all, zero lift on your side.",
@@ -80,28 +77,23 @@ paragraph_2_variants = [
     "Some businesses like {company} try to explain how it all connects through decks, web content or emails. We turn it into something you can send or share in under two minutes. No writing or editing needed from your side.",
 ]
 
-
 paragraph_3_variants = [
     "These videos are pretty low-lift; most folks use them across their homepage, email, or even onboarding.",
-    "They’re short, hand-drawn, and easy to reuse anywhere you need to explain what you do.",
-    "They’re not fancy or high-budget; just a simple way to say something once and use it everywhere.",
-    "Clients end up dropping these into proposals, landing pages, even training. Super versatile.",
-    "They’re quick to watch and easy to share; kind of like a visual elevator pitch you can repurpose.",
-    "Most teams keep reusing them; on websites, in follow-ups, or even onboarding flows.",
-    "It’s not studio-glossy stuff; just helpful and reusable in lots of places like your homepage or your newsletters.",
+    "They’re short, hand-drawn, and easy to reuse anywhere you need to explain what you do. They’re not fancy or high-budget; just a simple way to say something once and use it everywhere.",
+    "Clients end up dropping these videos into proposals, landing pages, even training. They're really versatile.",
+    "They’re quick to watch and easy to share; kind of like a visual elevator pitch you can repurpose, even on your landing pages or pitch decks.",
+    "Most teams keep reusing them. They're really helpful on landing pages, in follow-ups, or even onboarding flows.",
+    "It’s not studio-glossy stuff; but they're helpful and reusable in lots of places like your homepage or your newsletters.",
     "People usually end up using these in more places than they expected; website, email, intros, that kind of thing.",
-    "They tend to stick around; folks re-use them in demos, sales decks, or even hiring.",
-    "Nothing flashy; just something that helps people catch on faster, and reuse again and again.",
-    "Teams often plug them into their homepage, newsletters, or even client onboarding kits.",
-    "They’re built once, but tend to get reused in all kinds of conversations.",
-    "It’s not the kind of video you watch once and forget; most clients use them on repeat.",
-    "They slot in wherever you need a quick ‘here’s what we do’; homepage, sales call, whatever.",
-    "Most folks use them as evergreen explainers; handy whenever someone asks ‘so what do you do?’",
-    "They’re simple enough to live on your homepage but clear enough for email intros and decks too.",
-    "It’s a single piece of content, but it usually earns its keep across different touchpoints. Such as your homepage or project briefs.",
-    "Once you’ve got one, you can drop it into all sorts of places (like your homepage or even newsletters) where words fall short.",
-    "They’re short, visual, and surprisingly sticky; people keep watching and re-watching.",
-    "These things tend to travel well; from landing pages to pitches and everything in between."
+    "These videos tend to stick around; folks re-use them in demos, sales decks, or even when onboarding new hires",
+    "Teams often plug them into their homepage, newsletters, or even client onboarding kits. These videos are super dynamic.",
+    "They’re built once, but tend to get reused in all kinds of conversations; such as your homepage, newsletters or pitch decks.",
+    "It’s not the kind of video you watch once and forget; most clients use them on repeat from homepages to newsletters to onboarding kits.",
+    "These videos slot in easily wherever you need a quick *‘here’s what we do’*; such as your homepage, sales calls, newsletters or whatever.",
+    "Most folks use them as evergreen explainers; handy whenever someone asks *‘so what do you do?’* They can live on your homepage, pitch decks or even newsletters.",
+    "These videos are simple enough to live on your homepage but clear enough for email intros and decks too.",
+    "Once you’ve got one of these videos, you can drop it into all sorts of places such as your homepage or even newsletters where words fail to keep up.",
+    "These videos short, punchy, and surprisingly sticky. People keep watching and re-watching. And they tend to travel well; from landing pages to pitches and everything in between.",
 ]
 
 paragraph_4_variants = [
