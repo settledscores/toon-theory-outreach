@@ -18,26 +18,22 @@ HEADERS = {
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def clean_text(text):
-    """Remove non-ASCII and normalize whitespace."""
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
     return " ".join(text.split())
 
 def extract_visible_text(html):
-    """Extract all visible, non-boilerplate text from HTML."""
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header", "form", "svg", "img", "noscript", "aside"]):
         tag.decompose()
     return " ".join(soup.stripped_strings)
 
 def normalize_url(url):
-    """Ensure it starts with http/https and no trailing slash."""
     url = url.strip().rstrip("/")
     if not url.startswith("http"):
         return f"https://{url}"
     return url
 
 def fetch_with_retries(url):
-    """Try both HTTPS and HTTP with fallback."""
     for scheme in ["https", "http"]:
         parsed = urlparse(url)
         test_url = parsed._replace(scheme=scheme).geturl()
@@ -46,14 +42,14 @@ def fetch_with_retries(url):
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 return res
         except Exception as e:
-            print(f"⚠️ Fetch error via {scheme.upper()}: {e}")
+            print(f"⚠️ {scheme.upper()} fetch failed: {e}")
     return None
 
 def crawl_site(base_url, max_pages=MAX_PAGES):
     visited = set()
     to_visit = [base_url]
     domain = urlparse(base_url).netloc
-    combined_text = ""
+    all_text = ""
 
     while to_visit and len(visited) < max_pages:
         url = to_visit.pop(0)
@@ -62,25 +58,22 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
         res = fetch_with_retries(url)
         if not res:
-            print(f"⚠️ Skipped page (fetch failed): {url}")
+            print(f"⚠️ Skipped (fetch failed): {url}")
             continue
 
         visited.add(url)
-        print(f"🔍 Crawling: {url}")
+        print(f"🔍 Crawled: {url}")
 
         soup = BeautifulSoup(res.text, "html.parser")
-        visible_text = extract_visible_text(res.text)
-        cleaned = clean_text(visible_text)
-        combined_text += cleaned + " "
+        visible = extract_visible_text(res.text)
+        all_text += clean_text(visible) + " "
 
-        # Collect internal links to visit
-        for link in soup.find_all("a", href=True):
-            href = urljoin(url, link["href"])
-            parsed = urlparse(href)
-            if parsed.netloc == domain and href not in visited and href not in to_visit:
+        for a in soup.find_all("a", href=True):
+            href = urljoin(url, a["href"])
+            if urlparse(href).netloc == domain and href not in visited and href not in to_visit:
                 to_visit.append(href)
 
-    return combined_text.strip()
+    return all_text.strip()
 
 def read_ndjson_nested(path):
     buffer = ""
@@ -91,7 +84,7 @@ def read_ndjson_nested(path):
                     try:
                         yield json.loads(buffer)
                     except Exception as e:
-                        print(f"❌ Malformed record skipped: {e}")
+                        print(f"❌ Bad record skipped: {e}")
                     buffer = ""
             else:
                 buffer += line
@@ -99,7 +92,7 @@ def read_ndjson_nested(path):
             try:
                 yield json.loads(buffer)
             except Exception as e:
-                print(f"❌ Trailing record skipped: {e}")
+                print(f"❌ Final record skipped: {e}")
 
 def write_ndjson_nested(path, records):
     with open(path, "w", encoding="utf-8") as f:
@@ -109,37 +102,41 @@ def write_ndjson_nested(path, records):
 
 def main():
     if not os.path.exists(SCRAPED_LEADS_PATH):
-        print(f"❌ Missing file: {SCRAPED_LEADS_PATH}")
+        print(f"❌ Missing: {SCRAPED_LEADS_PATH}")
         return
 
     updated = []
     changed = False
 
     for i, lead in enumerate(read_ndjson_nested(SCRAPED_LEADS_PATH), 1):
-        website = lead.get("website url", "").strip()
-        existing_copy = lead.get("web copy", "").strip()
+        url = lead.get("website url", "").strip()
 
-        if not website:
-            print(f"⏭️ Skipping #{i}: No website URL")
+        if "web copy" not in lead:
+            print(f"⏭️ #{i}: No 'web copy' field — skipping")
             updated.append(lead)
             continue
 
-        if existing_copy:
-            print(f"⏭️ Skipping #{i}: Already has web copy")
+        if not url:
+            print(f"⏭️ #{i}: No website URL")
             updated.append(lead)
             continue
 
-        norm_url = normalize_url(website)
-        print(f"\n🌐 Processing #{i}: {norm_url}")
+        if lead["web copy"].strip():
+            print(f"⏭️ #{i}: Already has web copy")
+            updated.append(lead)
+            continue
+
+        norm_url = normalize_url(url)
+        print(f"\n🌐 #{i}: {norm_url}")
 
         content = crawl_site(norm_url)
         char_count = len(content)
 
         if char_count < CHAR_COUNT_THRESHOLD:
-            print(f"⚠️ Not enough content ({char_count} chars) — skipping.")
+            print(f"⚠️ Not enough characters ({char_count}) — ineligible")
             lead["web copy"] = ""
         else:
-            print(f"✅ Eligible — {char_count} characters scraped.")
+            print(f"✅ Eligible — {char_count} characters scraped")
             lead["web copy"] = str(char_count)
             changed = True
 
@@ -147,9 +144,9 @@ def main():
 
     if changed:
         write_ndjson_nested(SCRAPED_LEADS_PATH, updated)
-        print(f"\n📝 Saved updated leads to: {SCRAPED_LEADS_PATH}")
+        print(f"\n📝 Updated file: {SCRAPED_LEADS_PATH}")
     else:
-        print("\n⚠️ No updates made — all leads already processed or skipped.")
+        print("\n⚠️ No updates made")
 
 if __name__ == "__main__":
     main()
