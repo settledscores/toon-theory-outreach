@@ -7,15 +7,16 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import warnings
 
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# === Paths ===
+# === Config ===
 INPUT_PATH = "leads/scraped_leads.ndjson"
 OUTPUT_PATH = "leads/emails.txt"
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"}
+RELEVANT_KEYWORDS = ["about", "contact", "team", "our-story", "story", "who-we-are", "leadership", "staff"]
+IRRELEVANT_KEYWORDS = ["blog", "news", "faq", "privacy", "terms", "careers", "jobs", "cookies"]
 
 # === Setup ===
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ToonTheoryBot/1.0; +https://toontheory.com)"}
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Helpers ===
 def extract_domain(url):
@@ -40,6 +41,14 @@ def normalize_url(url):
     if not url.startswith("http"):
         return f"https://{url}"
     return url
+
+def is_relevant_link(href):
+    href_lower = href.lower()
+    if any(x in href_lower for x in IRRELEVANT_KEYWORDS):
+        return False
+    if any(x in href_lower for x in RELEVANT_KEYWORDS):
+        return True
+    return False
 
 def fetch_with_retries(url):
     for scheme in ["https", "http"]:
@@ -74,15 +83,19 @@ def crawl_all_pages(start_url):
         visited.add(url)
         soup = BeautifulSoup(html, "html.parser")
         page_text = soup.get_text(separator=' ', strip=True)
-        print(f"  📄 Collected {len(page_text)} characters from {url}")
         full_text += page_text + " "
         page_count += 1
+        print(f"  📄 +{len(page_text)} chars from {url}")
 
         for link in soup.find_all("a", href=True):
             href = urljoin(url, link["href"])
             parsed = urlparse(href)
             if parsed.netloc == domain and href not in visited and href not in to_visit:
-                to_visit.append(href)
+                if is_relevant_link(href):
+                    to_visit.append(href)
+                    print(f"    ➕ Queueing: {href}")
+                else:
+                    print(f"    🚫 Skipping irrelevant: {href}")
 
     print(f"  🔚 Finished crawling {page_count} pages from {start_url}")
     return full_text
@@ -120,6 +133,12 @@ def main():
         domain = extract_domain(record.get("website url", ""))
         web_copy = record.get("web copy", "").strip()
         website_url = record.get("website url", "").strip()
+        existing_email = record.get("email", "").strip()
+
+        if existing_email:
+            print(f"⏭️ Skipping #{i} — already has email: {existing_email}")
+            total_skipped += 1
+            continue
 
         missing_fields = []
         if not first: missing_fields.append("first name")
@@ -144,14 +163,13 @@ def main():
             if is_match(email, domain, first, last):
                 matches.add(email.lower())
                 total_matched += 1
-                print(f"  ✅ Found matching email: {email}")
+                print(f"  ✅ Match: {email}")
                 match_found = True
                 break
 
         if not match_found:
-            print("  ❌ No matching email found")
+            print("  ❌ No match found")
 
-    # Final output
     print("\n📊 Scrape Summary")
     print(f"✔️ Leads checked: {total_checked}")
     print(f"⏭️ Leads skipped: {total_skipped}")
