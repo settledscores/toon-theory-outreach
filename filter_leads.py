@@ -30,25 +30,23 @@ def filter_leads():
     records = read_multiline_ndjson(INPUT_PATH)
 
     filtered = []
-    removed_missing_web_copy = 0
-    removed_missing_email = 0
+    removed_partial = 0
 
     for record in records:
-        web_copy = record.get("web copy", "")
-        email = record.get("email", "")
+        email = record.get("email", "").strip()
+        web_copy = record.get("web copy", "").strip()
 
-        if not web_copy or not web_copy.strip():
-            removed_missing_web_copy += 1
-            continue
+        # Keep if both email and web copy are present
+        if email and web_copy:
+            filtered.append(record)
+        # Keep if both email and web copy are missing (website url is always present)
+        elif not email and not web_copy:
+            filtered.append(record)
+        # Remove if only one of them is present
+        else:
+            removed_partial += 1
 
-        if not email or not email.strip():
-            removed_missing_email += 1
-            continue
-
-        filtered.append(record)
-
-    print(f"🧹 Removed {removed_missing_web_copy} leads missing 'web copy'")
-    print(f"🧹 Removed {removed_missing_email} leads missing 'email'")
+    print(f"🧹 Removed {removed_partial} leads with partial email/web copy")
     print(f"💾 Saving {len(filtered)} eligible leads...")
 
     write_ndjson(filtered, TEMP_PATH)
