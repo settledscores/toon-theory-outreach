@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 INPUT_PATH = "leads/scraped_leads.ndjson"
 PERMS_PATH = "leads/permutations.txt"
+EMAILS_PATH = "leads/emails.txt"
 
 def extract_domain(url):
     try:
