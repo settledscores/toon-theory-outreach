@@ -36,13 +36,9 @@ def filter_leads():
         email = record.get("email", "").strip()
         web_copy = record.get("web copy", "").strip()
 
-        # Keep if both email and web copy are present
-        if email and web_copy:
+        # Keep if both present or both absent (i.e., minimal records)
+        if (email and web_copy) or (not email and not web_copy):
             filtered.append(record)
-        # Keep if both email and web copy are missing (website url is always present)
-        elif not email and not web_copy:
-            filtered.append(record)
-        # Remove if only one of them is present
         else:
             removed_partial += 1
 
