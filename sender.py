@@ -1,7 +1,5 @@
 import json
 import smtplib
-import imaplib
-import email
 import os
 import random
 import re
@@ -13,29 +11,24 @@ from zoneinfo import ZoneInfo
 EMAIL_ADDRESS = os.environ["EMAIL_ADDRESS"]
 EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
-IMAP_SERVER = os.environ["IMAP_SERVER"]
-IMAP_PORT = int(os.environ["IMAP_PORT"])
 SMTP_SERVER = "smtppro.zoho.com"
 SMTP_PORT = 465
-
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
-
 BASE_START_TIME = time(13, 0)
-END_TIME = time(21, 0)
+END_TIME = time(22, 0)
 FINAL_END_TIME = time(22, 0)
 
 if WEEKDAY >= 5:
     print("[Skipped] Weekend detected — exiting.")
     exit(0)
 
-# === Subjects ===
+# === Subject Pool ===
 initial_subjects = [
-    # original + 15 new to double pool
     "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
     "This might sound odd, but useful", "Not sure if this will land, but here goes",
     "You might like what I’ve been sketching", "This idea’s been stuck in my head",
@@ -55,7 +48,7 @@ initial_subjects = [
 ]
 random.shuffle(initial_subjects)
 
-# === Signature Management ===
+# === Signature Stripper ===
 SIGNATURES = [
     "Warmly,\nTrent — Toon Theory\ntoontheory.com\nWhiteboard videos your customers will actually remember.",
     "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
@@ -75,48 +68,7 @@ SIGNATURES = [
 _signature_pattern = re.compile("|".join(re.escape(sig) for sig in SIGNATURES), flags=re.MULTILINE)
 def strip_signature(text): return _signature_pattern.sub("", text).strip()
 
-# === Utility Functions ===
-def next_subject(pool, **kwargs):
-    if not pool: return None
-    template = pool.pop(0)
-    pool.append(template)
-    return template.format(**kwargs)
-
-def quote_previous_message(new_text, old_text, old_date, old_time, old_sender_name, old_sender_email):
-    old_dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
-    formatted_date = old_dt.strftime("%A, %b %d, %Y")
-    header_line = f"--- On {formatted_date}, {old_sender_name} <{old_sender_email}> wrote ---"
-    separator = "\n" + ("─" * 72) + "\n"
-    quoted = "\n".join(["> " + line for line in old_text.strip().splitlines()])
-    return f"{new_text}{separator}{header_line}\n{quoted}"
-
-def weekday_offset(start_date, days):
-    current = start_date
-    added = 0
-    while added < days:
-        current += timedelta(days=1)
-        if current.weekday() < 5:
-            added += 1
-    return current
-
-def can_send_initial(lead):
-    return not lead["initial date"] and lead.get("email") and lead.get("email 1")
-
-def can_send_followup(lead, step):
-    if lead["reply"] != "no reply" or not lead.get("email"):
-        return False
-    if step == 2:
-        if not lead["initial date"] or lead["follow-up 1 date"] or not lead.get("email 2"):
-            return False
-        eligible_date = weekday_offset(datetime.strptime(lead["initial date"], "%Y-%m-%d").date(), 3)
-        return TODAY >= eligible_date
-    elif step == 3:
-        if not lead["follow-up 1 date"] or lead["follow-up 2 date"] or not lead.get("email 3"):
-            return False
-        eligible_date = weekday_offset(datetime.strptime(lead["follow-up 1 date"], "%Y-%m-%d").date(), 4)
-        return TODAY >= eligible_date
-    return False
-
+# === Utility ===
 def read_multiline_ndjson(path):
     records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
@@ -145,24 +97,58 @@ def send_email(to, subject, content):
         smtp.send_message(msg, from_addr=FROM_EMAIL)
 
 def is_minimal_url_only(lead):
-    """Return True if the lead only contains 'website url'."""
     return (
         list(lead.keys()) == ["website url"]
         or (
-            "website url" in lead
-            and all(
-                (k == "website url" or not str(v).strip())
-                for k, v in lead.items()
-            )
+            "website url" in lead and all((k == "website url" or not str(v).strip()) for k, v in lead.items())
         )
-)
+    )
+
+def next_subject(pool, **kwargs):
+    template = pool.pop(0)
+    pool.append(template)
+    return template.format(**kwargs)
+
+def quote_previous_message(new_text, old_text, old_date, old_time, old_sender_name, old_sender_email):
+    dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
+    date_str = dt.strftime("%A, %b %d, %Y")
+    header = f"--- On {date_str}, {old_sender_name} <{old_sender_email}> wrote ---"
+    sep = "\n" + ("─" * 72) + "\n"
+    quoted = "\n".join(["> " + line for line in old_text.strip().splitlines()])
+    return f"{new_text}{sep}{header}\n{quoted}"
+
+def weekday_offset(start_date, days):
+    current = start_date
+    added = 0
+    while added < days:
+        current += timedelta(days=1)
+        if current.weekday() < 5:
+            added += 1
+    return current
+
+def can_send_initial(lead):
+    return not lead.get("initial date") and lead.get("email") and lead.get("email 1")
+
+def can_send_followup(lead, step):
+    if lead.get("reply", "no reply") != "no reply" or not lead.get("email"):
+        return False
+    if step == 2:
+        if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2"):
+            return False
+        return TODAY >= weekday_offset(datetime.strptime(lead["initial date"], "%Y-%m-%d").date(), 3)
+    elif step == 3:
+        if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3"):
+            return False
+        return TODAY >= weekday_offset(datetime.strptime(lead["follow-up 1 date"], "%Y-%m-%d").date(), 4)
+    return False
 
 # === Load Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
+cleaned_leads = []
 for lead in leads:
     if is_minimal_url_only(lead):
-        continue  # ⛔ Skip untouched
-
+        cleaned_leads.append(lead)
+        continue
     for field in [
         "email", "email 1", "email 2", "email 3", "business name", "first name", "subject",
         "initial date", "follow-up 1 date", "follow-up 2 date",
@@ -171,6 +157,14 @@ for lead in leads:
         lead.setdefault(field, "")
     if not lead["reply"]:
         lead["reply"] = "no reply"
+    for obsolete in [
+        "message id", "message id 2", "message id 3",
+        "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
+        "references 1", "references 2", "references 3"
+    ]:
+        lead.pop(obsolete, None)
+    cleaned_leads.append(lead)
+leads = cleaned_leads
 
 # === Quota Logic ===
 def backlog_count(leads): return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
@@ -195,16 +189,14 @@ print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {rece
 print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
 print(f"[Quota] Sent Today: {sent_today}")
 
-# === Time Window ===
-total_minutes_needed = DAILY_QUOTA * 7
-ideal_start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=total_minutes_needed)
-ideal_end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
-window_start = ideal_start.time()
-window_end = min(ideal_end.time(), FINAL_END_TIME)
-if not window_start <= NOW.time() <= window_end:
+# === Time Window Check ===
+minutes_needed = DAILY_QUOTA * 7
+start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=minutes_needed)
+end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
+if not start.time() <= NOW.time() <= min(end.time(), FINAL_END_TIME):
     exit(0)
 
-# === Message Selection & Send ===
+# === Message Send ===
 queue = []
 for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
     for lead in leads:
@@ -246,7 +238,6 @@ for kind, lead in queue:
 
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just circling back"
-
             initial_quoted = quote_previous_message(
                 new_text=strip_signature(lead["email 1"]),
                 old_text="",
@@ -255,7 +246,6 @@ for kind, lead in queue:
                 old_sender_name="Trent",
                 old_sender_email=FROM_EMAIL
             ).strip()
-
             fu1_quoted = quote_previous_message(
                 new_text=strip_signature(lead["email 2"]),
                 old_text=initial_quoted,
@@ -264,7 +254,6 @@ for kind, lead in queue:
                 old_sender_name="Trent",
                 old_sender_email=FROM_EMAIL
             )
-
             content = quote_previous_message(
                 new_text=lead["email 3"],
                 old_text=fu1_quoted,
@@ -273,7 +262,6 @@ for kind, lead in queue:
                 old_sender_name="Trent",
                 old_sender_email=FROM_EMAIL
             )
-
             send_email(lead["email"], subject, content)
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
