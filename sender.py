@@ -144,6 +144,19 @@ def send_email(to, subject, content):
         smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         smtp.send_message(msg, from_addr=FROM_EMAIL)
 
+def is_minimal_url_only(lead):
+    """Return True if the lead only contains 'website url'."""
+    return (
+        list(lead.keys()) == ["website url"]
+        or (
+            "website url" in lead
+            and all(
+                (k == "website url" or not str(v).strip())
+                for k, v in lead.items()
+            )
+        )
+)
+
 # === Load Leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
@@ -158,19 +171,6 @@ for lead in leads:
         lead.setdefault(field, "")
     if not lead["reply"]:
         lead["reply"] = "no reply"
-
-def is_minimal_url_only(lead):
-    """Return True if the lead only contains 'website url'."""
-    return (
-        list(lead.keys()) == ["website url"]
-        or (
-            "website url" in lead
-            and all(
-                (k == "website url" or not str(v).strip())
-                for k, v in lead.items()
-            )
-        )
-)
 
 # === Quota Logic ===
 def backlog_count(leads): return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
