@@ -649,17 +649,29 @@ def main():
     updated1 = updated2 = updated3 = 0
 
     for lead in leads:
+        # Skip leads that only have "website url" and nothing else useful
+        if set(lead.keys()) == {"website url"}:
+            continue
+
         if not lead.get("email 1", "").strip():
-            email1 = build_email1(lead)
-            if email1:
+            try:
+                email1 = build_email1(lead)
                 lead["email 1"] = email1
                 updated1 += 1
+            except Exception as e:
+                print(f"⚠️ Skipping email 1 for {lead.get('website url', '[no url]')}: {e}")
         if not lead.get("email 2", "").strip():
-            lead["email 2"] = build_email2(lead)
-            updated2 += 1
+            try:
+                lead["email 2"] = build_email2(lead)
+                updated2 += 1
+            except Exception as e:
+                print(f"⚠️ Skipping email 2 for {lead.get('website url', '[no url]')}: {e}")
         if not lead.get("email 3", "").strip():
-            lead["email 3"] = build_email3(lead)
-            updated3 += 1
+            try:
+                lead["email 3"] = build_email3(lead)
+                updated3 += 1
+            except Exception as e:
+                print(f"⚠️ Skipping email 3 for {lead.get('website url', '[no url]')}: {e}")
 
     save_ndjson(LEADS_FILE, leads)
     print(f"✅ Done: {updated1} email 1s, {updated2} email 2s, {updated3} email 3s generated.")
