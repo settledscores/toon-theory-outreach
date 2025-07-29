@@ -186,57 +186,60 @@ async function saveAllLeads() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  for (const baseUrl of SEARCH_URLS) {
-    let pageNum = 1;
+for (const baseUrl of SEARCH_URLS) {
+  const urlMatch = baseUrl.match(/page=(\d+)/);
+  let pageNum = urlMatch ? parseInt(urlMatch[1]) : 1;
 
-    while (true) {
-      const paginatedUrl = `${baseUrl}&page=${pageNum}`;
-      console.log(`🌐 Visiting: ${paginatedUrl}`);
+  while (true) {
+    const paginatedUrl = urlMatch
+      ? baseUrl.replace(/page=\d+/, `page=${pageNum}`)
+      : `${baseUrl}&page=${pageNum}`;
+    console.log(`🌐 Visiting: ${paginatedUrl}`);
 
-      let newLeadsThisPage = 0;
+    let newLeadsThisPage = 0;
 
-      await page.goto(paginatedUrl, { waitUntil: 'networkidle2', timeout: 0 });
+    await page.goto(paginatedUrl, { waitUntil: 'networkidle2', timeout: 0 });
 
-      const linksExist = await page.$('a[href*="/profile/"]');
-      if (!linksExist) {
-        console.log('⚠ No profiles found on this page, stopping pagination.');
-        break;
-      }
-
-      await humanScroll(page);
-
-      const profileLinks = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('a[href*="/profile/"]'))
-          .map(a => a.href)
-          .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
-      );
-
-      if (profileLinks.length === 0) {
-        console.log(`⚠ No profile links on page ${pageNum}.`);
-        break;
-      }
-
-      for (const link of profileLinks) {
-        const rec = await scrapeProfile(page, link);
-        const added = rec && storeNewLead(rec);
-
-        if (rec && added) {
-          newLeadsThisPage++;
-          console.log(`✅ Added: ${rec['business name']}`);
-        } else if (rec && !added) {
-          console.log(`⏭ Duplicate: ${rec['business name']}`);
-        }
-
-        const pause = rec && added ? randomBetween(5000, 12000) : 2000;
-        console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
-        await delay(pause);
-      }
-
-      pageNum++;
+    const linksExist = await page.$('a[href*="/profile/"]');
+    if (!linksExist) {
+      console.log('⚠ No profiles found on this page, stopping pagination.');
+      break;
     }
 
-    console.log(`📌 Finished ${baseUrl}`);
+    await humanScroll(page);
+
+    const profileLinks = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+        .map(a => a.href)
+        .filter((href, i, arr) => !href.includes('/about') && arr.indexOf(href) === i)
+    );
+
+    if (profileLinks.length === 0) {
+      console.log(`⚠ No profile links on page ${pageNum}.`);
+      break;
+    }
+
+    for (const link of profileLinks) {
+      const rec = await scrapeProfile(page, link);
+      const added = rec && storeNewLead(rec);
+
+      if (rec && added) {
+        newLeadsThisPage++;
+        console.log(`✅ Added: ${rec['business name']}`);
+      } else if (rec && !added) {
+        console.log(`⏭ Duplicate: ${rec['business name']}`);
+      }
+
+      const pause = rec && added ? randomBetween(5000, 12000) : 2000;
+      console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
+      await delay(pause);
+    }
+
+    pageNum++;
   }
+
+  console.log(`📌 Finished ${baseUrl}`);
+}
 
   await browser.close();
   await saveAllLeads();
