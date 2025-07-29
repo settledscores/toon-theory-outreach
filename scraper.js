@@ -8,16 +8,13 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_country=CAN&find_entity=&find_loc=Victoria%2C+BC&find_text=Accounting&find_type=&page=8',
-  'https://www.bbb.org/search?find_country=CAN&find_entity=&find_loc=Edmonton%2C+AB&find_text=Accounting&find_type=&page=12',
-  'https://www.bbb.org/search?find_country=CAN&find_entity=&find_loc=Toronto%2C+ON&find_text=Legal+Services&find_type=&page=8',
-  'https://www.bbb.org/search?find_country=CAN&find_entity=60005-101&find_loc=Vancouver%2C+BC&find_text=Accounting&find_type=Category&page=5',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Colorado+Springs%2C+CO&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=&find_type=&find_loc=Springfield%2C+MO&find_country=USA',
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=Springfield%2C+MO&find_country=USA',
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=San+Antonio%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=San+Antonio%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=60005-101&find_type=Category&find_loc=San+Diego%2C+CA&find_country=USA'
+  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=San+Diego%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=tax+consulting&find_entity=60858-000&find_type=Category&find_loc=San+Diego%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=San+Diego%2C+TX&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=accounting&find_entity=&find_type=&find_loc=Los+Angeles%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA'
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
@@ -230,7 +227,7 @@ for (const baseUrl of SEARCH_URLS) {
         console.log(`⏭ Duplicate: ${rec['business name']}`);
       }
 
-      const pause = rec && added ? randomBetween(5000, 12000) : 2000;
+      const pause = rec && added ? randomBetween(2000, 5000) : 1000;
       console.log(`⏳ Waiting ${Math.floor(pause / 1000)}s`);
       await delay(pause);
     }
