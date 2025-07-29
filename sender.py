@@ -19,7 +19,7 @@ NOW = datetime.now(TIMEZONE)
 TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
-BASE_START_TIME = time(13, 0)
+BASE_START_TIME = time(7, 0)
 END_TIME = time(22, 0)
 FINAL_END_TIME = time(22, 0)
 
