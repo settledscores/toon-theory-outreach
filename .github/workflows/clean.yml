@@ -37,7 +37,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: 🧼 Run lead cleaner
-        run: python3 scripts/clean_leads.py
+        run: python3 clean_leads.py
 
       - name: 🔄 Commit cleaned leads
         run: |
