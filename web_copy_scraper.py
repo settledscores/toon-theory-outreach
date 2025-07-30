@@ -4,7 +4,7 @@ import json
 import requests
 import urllib3
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse as original_urlparse
 
 # === Settings ===
 SCRAPED_LEADS_PATH = "leads/scraped_leads.ndjson"
@@ -16,6 +16,17 @@ HEADERS = {
 
 # === Init ===
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# === Safe urlparse wrapper ===
+def safe_urlparse(url):
+    try:
+        parsed = original_urlparse(url)
+        if "[" in parsed.netloc or "]" in parsed.netloc:
+            raise ValueError("Invalid bracketed netloc")
+        return parsed
+    except Exception as e:
+        print(f"⛔ Skipping malformed URL: {url} — {e}")
+        return None
 
 def clean_text(text):
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
@@ -31,20 +42,16 @@ def normalize_url(url):
     url = url.strip().rstrip("/")
     if not url.startswith("http"):
         url = f"https://{url}"
-    try:
-        parsed = urlparse(url)
-        if not parsed.scheme or not parsed.netloc:
-            raise ValueError("Invalid URL")
-        return parsed.geturl()
-    except Exception as e:
-        print(f"⛔ Skipping malformed URL: {url} — {e}")
-        return None
+    parsed = safe_urlparse(url)
+    return parsed.geturl() if parsed else None
 
 def fetch_with_retries(url):
     for scheme in ["https", "http"]:
+        parsed = safe_urlparse(url)
+        if not parsed:
+            return None
+        test_url = parsed._replace(scheme=scheme).geturl()
         try:
-            parsed = urlparse(url)
-            test_url = parsed._replace(scheme=scheme).geturl()
             res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 return res
@@ -55,7 +62,10 @@ def fetch_with_retries(url):
 def crawl_site(base_url, max_pages=MAX_PAGES):
     visited = set()
     to_visit = [base_url]
-    domain = urlparse(base_url).netloc
+    parsed_base = safe_urlparse(base_url)
+    if not parsed_base:
+        return ""
+    domain = parsed_base.netloc
     all_text = ""
 
     while to_visit and len(visited) < max_pages:
@@ -77,8 +87,12 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
 
         for a in soup.find_all("a", href=True):
             href = urljoin(url, a["href"])
-            if urlparse(href).netloc == domain and href not in visited and href not in to_visit:
-                to_visit.append(href)
+            parsed = safe_urlparse(href)
+            if not parsed:
+                continue
+            if parsed.netloc != domain or href in visited or href in to_visit:
+                continue
+            to_visit.append(href)
 
     return all_text.strip()
 
@@ -135,11 +149,11 @@ def main():
 
         norm_url = normalize_url(url)
         if not norm_url:
+            print(f"⛔ #{i}: Invalid URL — skipping")
             updated.append(lead)
             continue
 
         print(f"\n🌐 #{i}: {norm_url}")
-
         content = crawl_site(norm_url)
         char_count = len(content)
 
