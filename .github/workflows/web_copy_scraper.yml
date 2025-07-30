@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scrape-web-copy
+  group: lead-pipeline
   cancel-in-progress: false
 
 permissions:
