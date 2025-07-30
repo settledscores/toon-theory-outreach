@@ -3,13 +3,25 @@ import json
 import re
 import requests
 import urllib3
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse as original_urlparse, urljoin
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import warnings
 
-# === Safety and Warnings ===
+# === Warnings & Patching ===
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def safe_urlparse(url):
+    try:
+        parsed = original_urlparse(url)
+        if "[" in parsed.netloc or "]" in parsed.netloc:
+            raise ValueError("Invalid bracketed address")
+        return parsed
+    except Exception as e:
+        print(f"⛔ Skipping malformed URL: {url} — {e}")
+        return None
+
+urlparse = safe_urlparse
 
 # === Paths ===
 INPUT_PATH = "leads/scraped_leads.ndjson"
@@ -33,10 +45,29 @@ GENERIC_EMAILS = {"info@", "support@", "help@", "hello@", "admin@"}
 def extract_domain(url):
     try:
         parsed = urlparse(url)
-        domain = parsed.netloc or parsed.path
-        return domain.replace("www.", "").lower()
+        return parsed.netloc.replace("www.", "").lower() if parsed else ""
     except:
         return ""
+
+def normalize_url(url):
+    url = url.strip().rstrip("/")
+    if not url.startswith("http"):
+        url = f"https://{url}"
+    parsed = urlparse(url)
+    return parsed.geturl() if parsed else ""
+
+def fetch_html(url):
+    for scheme in ["https", "http"]:
+        try:
+            parsed = urlparse(url)
+            if not parsed: continue
+            test_url = parsed._replace(scheme=scheme).geturl()
+            res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
+            if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
+                return res.text
+        except:
+            continue
+    return ""
 
 def extract_emails(text):
     return re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
@@ -49,32 +80,6 @@ def is_match(email, domain, first, last):
         return False
     return first in local or last in local
 
-def normalize_url(url):
-    url = url.strip().rstrip("/")
-    if not url:
-        return None
-    if not url.startswith("http"):
-        url = f"https://{url}"
-    try:
-        parsed = urlparse(url)
-        if not parsed.netloc:
-            raise ValueError("Missing netloc")
-        return parsed.geturl()
-    except Exception as e:
-        print(f"⛔ Skipping malformed URL: {url} — {e}")
-        return None
-
-def fetch_html(url):
-    for scheme in ["https", "http"]:
-        try:
-            test_url = urlparse(url)._replace(scheme=scheme).geturl()
-            res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
-            if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
-                return res.text
-        except Exception:
-            pass
-    return ""
-
 def collect_relevant_links(index_html, base_url, domain):
     soup = BeautifulSoup(index_html, "html.parser")
     eligible = []
@@ -83,6 +88,7 @@ def collect_relevant_links(index_html, base_url, domain):
     for link in soup.find_all("a", href=True):
         href = urljoin(base_url, link["href"])
         parsed = urlparse(href)
+        if not parsed: continue
         path = parsed.path.lower()
 
         if parsed.netloc and parsed.netloc != domain:
@@ -94,7 +100,7 @@ def collect_relevant_links(index_html, base_url, domain):
         if any(good in path for good in RELEVANT_KEYWORDS):
             eligible.append(href)
 
-    return list(dict.fromkeys(eligible))[:20], skipped  # remove duplicates, limit to 20
+    return list(dict.fromkeys(eligible))[:20], skipped
 
 def read_multiline_ndjson(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -128,11 +134,10 @@ def main():
         last = record.get("last name", "").strip().lower()
         website_url = record.get("website url", "").strip()
         web_copy = record.get("web copy", "").strip()
+        domain = extract_domain(website_url)
         email = record.get("email", "").strip()
 
-        domain = extract_domain(website_url)
         missing = []
-
         if not first: missing.append("first name")
         if not last: missing.append("last name")
         if not domain: missing.append("domain")
@@ -144,13 +149,8 @@ def main():
             total_skipped += 1
             continue
 
-        norm_url = normalize_url(website_url)
-        if not norm_url:
-            print(f"⏭️ Skipping #{i} — Malformed website URL")
-            total_skipped += 1
-            continue
-
         total_checked += 1
+        norm_url = normalize_url(website_url)
         print(f"\n🌐 Checking #{i}: {norm_url} for {first} {last} [{domain}]")
 
         index_html = fetch_html(norm_url)
