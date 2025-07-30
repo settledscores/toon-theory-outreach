@@ -86,13 +86,19 @@ def crawl_site(base_url, max_pages=MAX_PAGES):
         all_text += clean_text(visible) + " "
 
         for a in soup.find_all("a", href=True):
-            href = urljoin(url, a["href"])
-            parsed = safe_urlparse(href)
-            if not parsed:
+            raw_href = a["href"]
+            try:
+                joined_href = urljoin(url, raw_href)
+                parsed = safe_urlparse(joined_href)
+                if not parsed:
+                    continue
+                href = parsed.geturl()
+                if parsed.netloc != domain or href in visited or href in to_visit:
+                    continue
+                to_visit.append(href)
+            except Exception as e:
+                print(f"⛔ Skipping bad link ({raw_href}): {e}")
                 continue
-            if parsed.netloc != domain or href in visited or href in to_visit:
-                continue
-            to_visit.append(href)
 
     return all_text.strip()
 
