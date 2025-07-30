@@ -1,10 +1,12 @@
+import os
 import json
 import smtplib
-import os
-import random
+import imaplib
+import email
 import re
-from datetime import datetime, timedelta, time
+import random
 from email.message import EmailMessage
+from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 
 # === Config ===
@@ -13,6 +15,7 @@ EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 FROM_EMAIL = os.environ.get("FROM_EMAIL", EMAIL_ADDRESS)
 SMTP_SERVER = "smtppro.zoho.com"
 SMTP_PORT = 465
+IMAP_SERVER = "imap.zoho.com"
 LEADS_FILE = "leads/scraped_leads.ndjson"
 TIMEZONE = ZoneInfo("Africa/Lagos")
 NOW = datetime.now(TIMEZONE)
@@ -48,27 +51,13 @@ initial_subjects = [
 ]
 random.shuffle(initial_subjects)
 
-# === Signature Stripper ===
 SIGNATURES = [
-    "Warmly,\nTrent — Toon Theory\ntoontheory.com\nWhiteboard videos your customers will actually remember.",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
-    "Cheers,\nTrent — Toon Theory\nhttps://toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Take care,\nTrent — Toon Theory\nwww.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "Sincerely,\nTrent — Founder, Toon Theory\ntoontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Best wishes,\nTrent — Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Respectfully,\nTrent — Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
-    "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Regards,\nTrent — Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "With gratitude,\nTrent — Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Yours truly,\nTrent — Founder, Toon Theory\ntoontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Faithfully,\nTrent — Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Thanks,\nTrent — Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress."
+    "Warmly,", "All the best,", "Cheers,", "Take care,", "Sincerely,", "Best wishes,", "Kind regards,",
+    "Respectfully,", "Warm regards,", "Regards,", "With gratitude,", "Yours truly,", "Faithfully,", "Thanks,"
 ]
 _signature_pattern = re.compile("|".join(re.escape(sig) for sig in SIGNATURES), flags=re.MULTILINE)
 def strip_signature(text): return _signature_pattern.sub("", text).strip()
 
-# === Utility ===
 def read_multiline_ndjson(path):
     records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
@@ -86,22 +75,16 @@ def write_multiline_ndjson(path, records):
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
 
-def send_email(to, subject, content):
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = FROM_EMAIL
-    msg["To"] = to
-    msg.set_content(content)
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        smtp.send_message(msg, from_addr=FROM_EMAIL)
+def is_ascii_email(email_addr):
+    try:
+        email_addr.encode('ascii')
+        return True
+    except:
+        return False
 
 def is_minimal_url_only(lead):
-    return (
-        list(lead.keys()) == ["website url"]
-        or (
-            "website url" in lead and all((k == "website url" or not str(v).strip()) for k, v in lead.items())
-        )
+    return list(lead.keys()) == ["website url"] or (
+        "website url" in lead and all((k == "website url" or not str(v).strip()) for k, v in lead.items())
     )
 
 def next_subject(pool, **kwargs):
@@ -142,61 +125,101 @@ def can_send_followup(lead, step):
         return TODAY >= weekday_offset(datetime.strptime(lead["follow-up 1 date"], "%Y-%m-%d").date(), 4)
     return False
 
-# === Load Leads ===
+def detect_reply_status(leads):
+    print("[IMAP] Checking for replies...")
+    try:
+        with imaplib.IMAP4_SSL(IMAP_SERVER) as mail:
+            mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            for folder in ['INBOX', 'SPAM']:
+                mail.select(folder)
+                result, data = mail.search(None, 'ALL')
+                if result != "OK": continue
+                for num in data[0].split():
+                    res, msg_data = mail.fetch(num, "(RFC822)")
+                    if res != "OK": continue
+                    raw = email.message_from_bytes(msg_data[0][1])
+                    from_addr = email.utils.parseaddr(raw.get("From", ""))[1].lower()
+                    subject = (raw.get("Subject") or "").lower()
+                    body = ""
+                    if raw.is_multipart():
+                        for part in raw.walk():
+                            if part.get_content_type() == "text/plain":
+                                body += part.get_payload(decode=True).decode(errors="ignore")
+                    else:
+                        body = raw.get_payload(decode=True).decode(errors="ignore")
+                    for lead in leads:
+                        lead_email = lead.get("email", "").lower()
+                        if not lead_email: continue
+                        matched = (
+                            lead_email in from_addr or
+                            lead_email in subject or
+                            lead_email in body
+                        )
+                        if matched:
+                            if lead.get("follow-up 2 date"):
+                                lead["reply"] = "after FU2"
+                            elif lead.get("follow-up 1 date"):
+                                lead["reply"] = "after FU1"
+                            elif lead.get("initial date"):
+                                lead["reply"] = "after initial"
+    except Exception as e:
+        print(f"[IMAP] Error: {e}")
+
+def send_email(to, subject, content):
+    if not is_ascii_email(to):
+        raise ValueError("Non-ASCII address skipped")
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = FROM_EMAIL
+    msg["To"] = to
+    msg.set_content(content)
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg, from_addr=FROM_EMAIL)
+
+# === Load and preprocess leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
-cleaned_leads = []
 for lead in leads:
-    if is_minimal_url_only(lead):
-        cleaned_leads.append(lead)
-        continue
-    for field in [
-        "email", "email 1", "email 2", "email 3", "business name", "first name", "subject",
-        "initial date", "follow-up 1 date", "follow-up 2 date",
-        "initial time", "follow-up 1 time", "follow-up 2 time", "reply"
-    ]:
-        lead.setdefault(field, "")
+    if is_minimal_url_only(lead): continue
+    for f in ["email", "email 1", "email 2", "email 3", "business name", "first name", "subject",
+              "initial date", "follow-up 1 date", "follow-up 2 date",
+              "initial time", "follow-up 1 time", "follow-up 2 time", "reply"]:
+        lead.setdefault(f, "")
     if not lead["reply"]:
         lead["reply"] = "no reply"
-    for obsolete in [
-        "message id", "message id 2", "message id 3",
-        "in-reply-to 1", "in-reply-to 2", "in-reply-to 3",
-        "references 1", "references 2", "references 3"
-    ]:
-        lead.pop(obsolete, None)
-    cleaned_leads.append(lead)
-leads = cleaned_leads
+    for key in list(lead):
+        if key.startswith(("message id", "in-reply-to", "references")):
+            del lead[key]
 
-# === Quota Logic ===
-def backlog_count(leads): return sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
-def initials_sent_in_last_days(n):
-    count, day, checked = 0, TODAY - timedelta(days=1), 0
-    while checked < n:
-        if day.weekday() < 5:
-            count += sum(1 for l in leads if l.get("initial date") == day.isoformat())
-            checked += 1
-        day -= timedelta(days=1)
-    return count
+detect_reply_status(leads)
 
 BASE_QUOTA = 50
-backlogs = backlog_count(leads)
-recent_initials = initials_sent_in_last_days(3)
+backlogs = sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
+recent_initials = sum(
+    1 for l in leads
+    if l.get("initial date") in [
+        (TODAY - timedelta(days=d)).isoformat()
+        for d in range(1, 6) if (TODAY - timedelta(days=d)).weekday() < 5
+    ]
+)
 extra_quota = min(20, backlogs)
-if recent_initials < 20: extra_quota += 20
+if recent_initials < 20:
+    extra_quota += 20
 DAILY_QUOTA = BASE_QUOTA + extra_quota
-sent_today = sum(1 for l in leads if TODAY.isoformat() in [l.get("initial date"), l.get("follow-up 1 date"), l.get("follow-up 2 date")])
+sent_today = sum(1 for l in leads if TODAY.isoformat() in [
+    l.get("initial date"), l.get("follow-up 1 date"), l.get("follow-up 2 date")
+])
 
 print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
 print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
 print(f"[Quota] Sent Today: {sent_today}")
 
-# === Time Window Check ===
 minutes_needed = DAILY_QUOTA * 7
 start = datetime.combine(TODAY, BASE_START_TIME) - timedelta(minutes=minutes_needed)
 end = datetime.combine(TODAY, END_TIME) + timedelta(minutes=(DAILY_QUOTA - BASE_QUOTA) * 7)
 if not start.time() <= NOW.time() <= min(end.time(), FINAL_END_TIME):
     exit(0)
 
-# === Message Send ===
 queue = []
 for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
     for lead in leads:
@@ -221,7 +244,6 @@ for kind, lead in queue:
             lead["subject"] = subject
             lead["initial date"] = TODAY.isoformat()
             lead["initial time"] = NOW_TIME
-
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just checking in"
             content = quote_previous_message(
@@ -235,7 +257,6 @@ for kind, lead in queue:
             send_email(lead["email"], subject, content)
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
-
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just circling back"
             initial_quoted = quote_previous_message(
@@ -265,11 +286,9 @@ for kind, lead in queue:
             send_email(lead["email"], subject, content)
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
-
     except Exception as e:
         print(f"[Error] Failed to send {kind} to {lead.get('email')}: {e}")
 
-# === Save File ===
 print("[Save] Writing updated leads file...")
 write_multiline_ndjson(LEADS_FILE, leads)
 print("[Done] Script completed.")
