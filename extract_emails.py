@@ -43,11 +43,8 @@ GENERIC_EMAILS = {"info@", "support@", "help@", "hello@", "admin@"}
 
 # === Helpers ===
 def extract_domain(url):
-    try:
-        parsed = urlparse(url)
-        return parsed.netloc.replace("www.", "").lower() if parsed else ""
-    except:
-        return ""
+    parsed = urlparse(url)
+    return parsed.netloc.replace("www.", "").lower() if parsed else ""
 
 def normalize_url(url):
     url = url.strip().rstrip("/")
@@ -58,9 +55,10 @@ def normalize_url(url):
 
 def fetch_html(url):
     for scheme in ["https", "http"]:
+        parsed = urlparse(url)
+        if not parsed:
+            continue
         try:
-            parsed = urlparse(url)
-            if not parsed: continue
             test_url = parsed._replace(scheme=scheme).geturl()
             res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
@@ -86,19 +84,23 @@ def collect_relevant_links(index_html, base_url, domain):
     skipped = 0
 
     for link in soup.find_all("a", href=True):
-        href = urljoin(base_url, link["href"])
-        parsed = urlparse(href)
-        if not parsed: continue
-        path = parsed.path.lower()
-
-        if parsed.netloc and parsed.netloc != domain:
+        raw_href = link["href"]
+        try:
+            full_href = urljoin(base_url, raw_href)
+            parsed = urlparse(full_href)
+            if not parsed:
+                continue
+            path = parsed.path.lower()
+            if parsed.netloc and parsed.netloc != domain:
+                continue
+            if any(bad in path for bad in IRRELEVANT_KEYWORDS):
+                skipped += 1
+                continue
+            if any(good in path for good in RELEVANT_KEYWORDS):
+                eligible.append(parsed.geturl())
+        except Exception as e:
+            print(f"⛔ Bad href skipped: {raw_href} — {e}")
             continue
-
-        if any(bad in path for bad in IRRELEVANT_KEYWORDS):
-            skipped += 1
-            continue
-        if any(good in path for good in RELEVANT_KEYWORDS):
-            eligible.append(href)
 
     return list(dict.fromkeys(eligible))[:20], skipped
 
