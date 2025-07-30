@@ -30,14 +30,21 @@ def extract_visible_text(html):
 def normalize_url(url):
     url = url.strip().rstrip("/")
     if not url.startswith("http"):
-        return f"https://{url}"
-    return url
+        url = f"https://{url}"
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError("Invalid URL")
+        return parsed.geturl()
+    except Exception as e:
+        print(f"⛔ Skipping malformed URL: {url} — {e}")
+        return None
 
 def fetch_with_retries(url):
     for scheme in ["https", "http"]:
-        parsed = urlparse(url)
-        test_url = parsed._replace(scheme=scheme).geturl()
         try:
+            parsed = urlparse(url)
+            test_url = parsed._replace(scheme=scheme).geturl()
             res = requests.get(test_url, headers=HEADERS, timeout=10, verify=False)
             if res.status_code == 200 and "text/html" in res.headers.get("Content-Type", ""):
                 return res
@@ -127,6 +134,10 @@ def main():
             continue
 
         norm_url = normalize_url(url)
+        if not norm_url:
+            updated.append(lead)
+            continue
+
         print(f"\n🌐 #{i}: {norm_url}")
 
         content = crawl_site(norm_url)
