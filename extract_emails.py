@@ -7,6 +7,7 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import warnings
 
+# === Safety and Warnings ===
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -50,9 +51,18 @@ def is_match(email, domain, first, last):
 
 def normalize_url(url):
     url = url.strip().rstrip("/")
+    if not url:
+        return None
     if not url.startswith("http"):
-        return f"https://{url}"
-    return url
+        url = f"https://{url}"
+    try:
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            raise ValueError("Missing netloc")
+        return parsed.geturl()
+    except Exception as e:
+        print(f"⛔ Skipping malformed URL: {url} — {e}")
+        return None
 
 def fetch_html(url):
     for scheme in ["https", "http"]:
@@ -118,10 +128,11 @@ def main():
         last = record.get("last name", "").strip().lower()
         website_url = record.get("website url", "").strip()
         web_copy = record.get("web copy", "").strip()
-        domain = extract_domain(website_url)
         email = record.get("email", "").strip()
 
+        domain = extract_domain(website_url)
         missing = []
+
         if not first: missing.append("first name")
         if not last: missing.append("last name")
         if not domain: missing.append("domain")
@@ -133,8 +144,13 @@ def main():
             total_skipped += 1
             continue
 
-        total_checked += 1
         norm_url = normalize_url(website_url)
+        if not norm_url:
+            print(f"⏭️ Skipping #{i} — Malformed website URL")
+            total_skipped += 1
+            continue
+
+        total_checked += 1
         print(f"\n🌐 Checking #{i}: {norm_url} for {first} {last} [{domain}]")
 
         index_html = fetch_html(norm_url)
