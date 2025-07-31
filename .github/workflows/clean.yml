@@ -1,0 +1,49 @@
+name: Clear Empty Initials
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: lead-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Python dependencies
+        run: pip install --upgrade pip
+
+      - name: 🧹 Run Initials Cleaner
+        run: python clear_empty_initials.py
+
+      - name: 🔄 Commit updated leads
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git commit -m "🔄 Auto-clear empty initial emails [bot]" || echo "No changes to commit"
+          git pull --rebase origin main || true
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+
+      - name: 🧯 Emergency commit on crash
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads/scraped_leads.ndjson
+          git diff --cached --quiet || git commit -m "🧯 Emergency save after crash [bot]"
+          git pull --rebase origin main || true
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
