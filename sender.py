@@ -55,8 +55,20 @@ SIGNATURES = [
     "Warmly,", "All the best,", "Cheers,", "Take care,", "Sincerely,", "Best wishes,", "Kind regards,",
     "Respectfully,", "Warm regards,", "Regards,", "With gratitude,", "Yours truly,", "Faithfully,", "Thanks,"
 ]
-_signature_pattern = re.compile("|".join(re.escape(sig) for sig in SIGNATURES), flags=re.MULTILINE)
-def strip_signature(text): return _signature_pattern.sub("", text).strip()
+
+def strip_signature(text):
+    lines = text.strip().splitlines()
+    stripped = []
+    count = 0
+    for line in reversed(lines):
+        if count < 4 and any(line.strip().startswith(sig) for sig in SIGNATURES):
+            count += 1
+            continue
+        if count > 0 and count < 4:
+            count += 1
+            continue
+        stripped.insert(0, line)
+    return "\n".join(stripped).strip()
 
 def read_multiline_ndjson(path):
     records, buffer = [], ""
@@ -96,7 +108,7 @@ def quote_previous_message(new_text, old_text, old_date, old_time, old_sender_na
     dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
     date_str = dt.strftime("%A, %b %d, %Y")
     header = f"--- On {date_str}, {old_sender_name} <{old_sender_email}> wrote ---"
-    sep = "\n" + ("─" * 72) + "\n"
+    sep = "\n--\n"
     quoted = "\n".join(["> " + line for line in old_text.strip().splitlines()])
     return f"{new_text}{sep}{header}\n{quoted}"
 
