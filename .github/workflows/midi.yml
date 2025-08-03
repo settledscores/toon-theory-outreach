@@ -1,9 +1,7 @@
 name: Generate Full Verse MIDI
 
 on:
-  push:
-    paths:
-      - generate-midi.py
+  workflow_dispatch:  # ✅ Manual trigger only
 
 jobs:
   build-midi:
