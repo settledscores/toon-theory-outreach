@@ -1,0 +1,29 @@
+name: Generate MIDI File
+
+on:
+  push:
+    paths:
+      - generate-midi.py
+
+jobs:
+  build-midi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install midiutil
+        run: pip install midiutil
+
+      - name: Generate MIDI
+        run: python generate-midi.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: bring_me_to_life_verse
+          path: bring_me_to_life_verse.mid
