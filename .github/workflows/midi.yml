@@ -1,4 +1,4 @@
-name: Generate MIDI File
+name: Generate Full Verse MIDI
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
         run: python generate-midi.py
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: bring_me_to_life_verse
-          path: bring_me_to_life_verse.mid
+          name: bring_me_to_life_first_verse_full
+          path: bring_me_to_life_first_verse_full.mid
