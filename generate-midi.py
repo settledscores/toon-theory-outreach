@@ -17,7 +17,7 @@ chords = [
 time = 0
 for triad in chords:
     for note in triad:
-        pitch = MIDIFile().noteNameToNumber(note)
+        from midiutil.MidiFile import noteNameToNumber pitch = noteNameToNumber(note)
         mf.addNote(0, 0, pitch, time, 4, 80)
     time += 4
 
