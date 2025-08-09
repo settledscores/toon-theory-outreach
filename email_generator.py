@@ -436,10 +436,11 @@ def save_ndjson(filepath, records):
 def build_email1(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
-
+    
+    salutation = rotators["sal"].next().format(name=name)
     return (
-        f"{rotators['o'].next().format(name=name, company=company)}\n\n"
-        f"{rotators['p1'].next()}\n\n"
+        f"{salutation},\n\n"
+        f"{rotators['p1'].next().format(name=name, company=company)}\n\n"
         f"{rotators['p2'].next().format(company=company)}\n\n"
         f"{rotators['p3'].next()}\n\n"
         f"{rotators['p4'].next().format(company=company)}\n\n"
