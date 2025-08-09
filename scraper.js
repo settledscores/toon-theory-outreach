@@ -8,13 +8,16 @@ import path from 'path';
 puppeteer.use(StealthPlugin());
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Accounting&find_entity=&find_type=&find_loc=San+Diego%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=tax+consulting&find_entity=60858-000&find_type=Category&find_loc=San+Diego%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=San+Diego%2C+TX&find_country=USA',
-  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=accounting&find_entity=&find_type=&find_loc=Los+Angeles%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Los+Angeles%2C+CA&find_country=USA'
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=Newark%2C+NJ&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
+  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
+  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
