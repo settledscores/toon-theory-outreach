@@ -24,555 +24,365 @@ class VariantRotator:
             self._reshuffle()
         return self.pool.pop()
 
-# --- Salutations & Signatures ----------------------------------------------
+#--------------SALUTATIONS & SIGNATURE---------------------------------------------------------------------------
 
 salutations = [
-    "Hi", "Hey", "Hello", "Hi there", "Hey there", "Hello there",
-    "Good day"
-]
-
-openers = [
-    "Hi {name}, I read about {company} a couple days back, so I figured I’d finally say hi.",
-    "Hello {name}, I know inboxes are crowded so I’ll cut to the chase.",
-    "Hi there {name}, Reaching out with a quick idea that might be up your alley.",
-    "Hey there {name}, You might be the wrong person for this, but maybe not.",
-    "Hi {name}, Dropping in with something that might be useful (or at least mildly interesting.)",
-    "Hello {name}, Noticed some of the work you’re doing and thought it was worth getting in touch.",
-    "Hi {name}, No fluff here, just a small idea I wanted to toss your way.",
-    "Hi {name}, You can ignore this if it’s way off, but I still think it might be a fit.",
-    "Hey there {name}, I’ll keep this super quick; had an idea for {company}.",
-    "Hey {name}, If this email is one of 200 you've gotten today, I’ll make mine short.",
-    "Hi there {name}, I’ve got a weird idea that might actually help.",
-    "Hi {name}, Not pitching anything, just wanted to throw an idea your way.",
-    "Hey there {name}, This might sound random, but it’s relevant; promise.",
-    "Hello there {name}, Totally okay if this isn’t your thing, just sharing an idea.",
-    "Hey {name}, If you hate cold emails, I’m with you; I’ll be brief.",
-    "Hi {name}, Hoping to trade a tiny bit of your attention for a quick sketch of an idea.",
-    "Hey {name}, I don’t send these often, just when I think it’s worth it."
-]
-
-paragraph_1_variants = [
-    "I’m Trent and I run an animation studio called Toon Theory. We make short, hand-drawn videos: usually for small teams with a lot going on behind the scenes.",
-    "I’m Trent and Toon Theory is a tiny animation studio I run. We use doodles and voiceover to help teams explain what they do when the message is hard to pin down.",
-    "I’m Trent. I run Toon Theory, it’s just a few of us drawing stories for folks whose work doesn’t always fit neatly into a sentence.",
-    "I’m Trent. I make short videos at a studio called Toon Theory. Think whiteboard sketches with a background voice; simple tools for telling stories that are anything but simple.",
-    "I’m Trent and I’m the guy behind Toon Theory. We help businesses like your's show what they mean; especially when it’s the kind of thing that’s tricky to summarize in one sentence.",
-    "I’m Trent. I started Toon Theory a while back. We draw whiteboard videos to simplify what people usually need more than one paragraph to explain.",
-    "I’m Trent and I run an animation studio called Toon Theory. We don’t do flashy — just clear, human videos that help small B2B teams say more with less.",
-    "I’m Trent and I run an animation studio called Toon Theory. We draw little stories for small businesses that help cut through the noise without dumbing anything down."
-]
-     
-paragraph_2_variants = [
-    "With so many bundled offerings and tailored services like the ones {company} provides, it’s easy for prospects to miss the point. We make videos that connect those dots instantly, and we handle everything in-house so you don't even have to lift a finger.",
-    "Teams like {company} that deliver bundled, multi-layered offerings often need help showing how it all fits together. That’s what we do: clear videos that explain it all, zero lift on your side.",
-    "The kinds of customized, bundled services that {company} provides usually take a paragraph or two to explain. We turn that into a 90-second video that says it better.",
-    "I know {company} delivers bundled services that aren’t easy to summarize in one email or pitch deck. Even smart prospects can tune out if things aren’t quite framed right. These videos fix that. Our explainers do that job in under two minutes, with zero input needed on your end.",
-    "I know {company} runs a layered, solution-based operation, which is exactly what our videos are built for: simplifying complex offers into something people understand right away."
-    "If you've ever tried to put {company}'s key offerings into words and ended up with a huge wall of text, you're not alone. We help simplify it with short, clear explainers; and we handle every step in-house, so you can just hit play.",
-    "If explaining everything you offer at {company} takes more than a minute, then you're probably doing it wrong and even *losing* customers. A video can help, and we’ll take care of every piece of it so you don’t even have to move a muscle."
-    "A lot of businesses like {company} who offer multi-layered services struggle with the *'how do we explain this?'* problem. That’s where we come in. One short video often does the trick, and the best part is that we handle all the moving parts with zero effort on your end.",
-    "We’ve worked with teams like {company} who have a lot going on: layered offers, custom solutions, you name it. Our videos help connect the dots without adding more work to your plate. That's because we do it all in-house, with minimal effort on your end.",
-    "If it takes three paragraphs to explain what you do at {company}, then it’s probably time for a video. We build those from scratch with all the add-ons: clean, clear, and with zero effort on your end.",
-    "We’ve helped others businesses like {company} untangle the hard-to-summarize parts of their work. These videos let you show how all the dots connect; and we handle every part of the process so you don't even have to lift a finger.",
-    "Some businesses like {company} try to explain how it all connects through decks, web content or emails. We turn it into something you can send or share in under two minutes. No writing or editing needed from your side.",
-]
-
-paragraph_3_variants = [
-    "These videos are pretty low-lift; most folks use them across their homepage, email, or even onboarding.",
-    "They’re short, hand-drawn, and easy to reuse anywhere you need to explain what you do. They’re not fancy or high-budget; just a simple way to say something once and use it everywhere.",
-    "Clients end up dropping these videos into proposals, landing pages, even training. They're really versatile.",
-    "They’re quick to watch and easy to share; kind of like a visual elevator pitch you can repurpose, even on your landing pages or pitch decks.",
-    "Most teams keep reusing them. They're really helpful on landing pages, in follow-ups, or even onboarding flows.",
-    "It’s not studio-glossy stuff; but they're helpful and reusable in lots of places like your homepage or your newsletters.",
-    "People usually end up using these in more places than they expected; website, email, intros, that kind of thing.",
-    "These videos tend to stick around; folks re-use them in demos, sales decks, or even when onboarding new hires",
-    "Teams often plug them into their homepage, newsletters, or even client onboarding kits. These videos are super dynamic.",
-    "They’re built once, but tend to get reused in all kinds of conversations; such as your homepage, newsletters or pitch decks.",
-    "It’s not the kind of video you watch once and forget; most clients use them on repeat from homepages to newsletters to onboarding kits.",
-    "These videos slot in easily wherever you need a quick *‘here’s what we do’*; such as your homepage, sales calls, newsletters or whatever.",
-    "Most folks use them as evergreen explainers; handy whenever someone asks *‘so what do you do?’* They can live on your homepage, pitch decks or even newsletters.",
-    "These videos are simple enough to live on your homepage but clear enough for email intros and decks too.",
-    "Once you’ve got one of these videos, you can drop it into all sorts of places such as your homepage or even newsletters where words fail to keep up.",
-    "These videos short, punchy, and surprisingly sticky. People keep watching and re-watching. And they tend to travel well; from landing pages to pitches and everything in between.",
-]
-
-paragraph_4_variants = [
-    "If you’re open to it, I could put together a quick sketch or sample script; just something to see if the tone feels right.",
-    "I'd be happy to mock up a small piece; maybe a 10-second snippet; to give you a sense of how this could sound.",
-    "I could sketch something out if you’re curious; nothing polished, just a rough idea to react to.",
-    "If you want to see what this might look like for {company}, I could whip up a quick snippet, say 10 seconds. Absolutely no strings",
-    "No pressure at all; I can put together a tiny demo if it helps spark ideas.",
-    "Totally optional, but I’d be glad to send over a first-pass sketch. Just to play around with.",
-    "If you’re into it, I could draft a small script or storyboard to show how this might work for you.",
-    "Always happy to put pen to paper. I could sketch something simple out; no strings.",
-    "Let me know if you’d like to see how this could sound for {company}; happy to whip up a quick teaser, 10 seconds or so.",
-    "I could mock something up if you want to see how it might look like with your brand's voice behind it.",
-    "If it helps to see it in action, I can send over a tiny preview; even just a first line or two. No strings.",
-    "Happy to send over a short teaser if you want to see what it might feel like in practice.",
-    "If you're even a little curious, I can sketch a 10-second snippet just for you to test the waters.",
-    "I’d be happy to whip out a quick script or 10 second snippet if you want to see what it could look like for {company}.",
-    "Let me know if you want a quick visual mock; no deck, no pitch, just a sketch.",
-    "This might be easier to show than tell; happy to put a no-cost sample together if you’re up for it.",
-    "If it sounds halfway interesting, I’d be glad to draw something up; just a loose draft to react to."
-]
-
-paragraph_5_variants = [
-    "Reply anytime if you're even a little interested; and feel free to check out some previous work in my signature. Just reply 'NO' if you'd prefer not to hear from me again.",
-    "If this sparks even a bit of curiosity, you can reply whenever. I also added a few past projects in my signature. Totally fine to reply 'NO' if you'd rather not get future emails.",
-    "You can reply whenever if this seems worth exploring. There’s some past work in my signature too. Or just send 'NO' if this isn’t your thing.",
-    "No rush; reply if you're even slightly interested. You can take a peek at what we’ve done before in my signature. Also say 'NO' if you don't want me to reach out again.",
-    "If you're curious at all, feel free to reply. There’s some previous work listed in my signature. And if this isn’t for you, just reply 'NO'.",
-    "You’re welcome to reach out if this interests you. A few examples are included in my signature; and if not your thing, a simple 'NO' will take you off my list.",
-    "Reply anytime if it feels like something you’d want to chat more about. You’ll see some past examples of our work in my signature. Totally fine to reply 'NO' if not.",
-    "If any part of this felt interesting, you can always reply. Some previous projects are listed in the signature. Or reply 'NO' and I won’t send anything else.",
-    "Happy to hear from you if this caught your eye. You’ll find some examples down below if you’d like to browse; or just reply 'NO' if you’d rather not get follow-ups.",
-    "You’re free to ignore this, but if you're at all interested, reply anytime. A few past projects are mentioned below in my signature. Just say 'NO' if you'd prefer no future messages."
+    "Hi {name}",
+    "Hey {name}",
+    "Hello {name}",
+    "Hi there {name}",
+    "Hey there {name}",
+    "Hello there {name}",
 ]
 
 signatures = [
-    "Warmly,\nTrent — Toon Theory\ntoontheory.com\nWhiteboard videos your customers will actually remember.",
-    "All the best,\nTrent — Founder, Toon Theory\nwww.toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
-    "Cheers,\nTrent — Toon Theory\nhttps://toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Take care,\nTrent — Toon Theory\nwww.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "Sincerely,\nTrent — Founder, Toon Theory\ntoontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Best wishes,\nTrent — Toon Theory\nwww.toontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Kind regards,\nTrent — Founder, Toon Theory\nhttps://www.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Respectfully,\nTrent — Toon Theory\nhttps://toontheory.com\nTrusted by consultants, coaches, and businesses who care about clarity.",
-    "Warm regards,\nTrent — Founder @ Toon Theory\nwww.toontheory.com\nExplainer videos made to convert, not just impress.",
-    "Regards,\nTrent — Toon Theory\nhttps://www.toontheory.com\nThe explainer video partner for thoughtful, service-based brands.",
-    "With gratitude,\nTrent — Toon Theory\nwww.toontheory.com\nHelping you teach, pitch, and persuade in under two minutes.",
-    "Yours truly,\nTrent — Founder, Toon Theory\ntoontheory.com\nAnimation for experts who need to sound less 'expert-y'.",
-    "Faithfully,\nTrent — Toon Theory\nwww.toontheory.com\nExplainers that turn confusion into conversion.",
-    "Thanks,\nTrent — Toon Theory\nhttps://www.toontheory.com\nExplainer videos made to convert, not just impress."
+    "All the best,\n– Trent,\nToon Theory\ntoontheory.com",
+    "Take care,\n– Trent, Founder\nToon Theory\nwww.toontheory.com",
+    "Looking forward,\n– Trent,\nToon Theory\nhttps://toontheory.com",
+    "Catch you later,\n– Trent, Founder\nToon Theory\nhttps://www.toontheory.com",
+    "Have a good one,\n– Trent, Founder\nToon Theory\nhttp://toontheory.com",
+    "Until next time,\n– Trent,\nToon Theory\nhttp://www.toontheory.com",
+    "Talk soon,\n– Trent, Founder\nToon Theory\nhttps://toontheory.com/",
+    "Looking forward,\n– Trent,\nToon Theory\nhttps://www.toontheory.com/",
+    "Cheers,\n– Trent, Founder\nToon Theory\nhttp://toontheory.com/",
+    "All the best,\n– Trent,\nToon Theory\nhttp://www.toontheory.com/",
+    "Best regards,\n– Trent, Founder\nToon Theory\ntoontheory.com/",
+    "Take care,\n– Trent,\nToon Theory\nwww.toontheory.com/",
+    "Catch you later,\n– Trent, Founder\nToon Theory\nhttps://ToonTheory.com",
+    "Have a good one,\n– Trent,\nToon Theory\nhttps://toontheory.com"
 ]
 
-# --- Email 2 Templates ------------------------------------------------------
-
-email2_templates = [
-    """{salutation} {name},
-
-Just looping back in case this got lost in your inbox. I mentioned how whiteboard animation could support {company}’s messaging ; and I still believe there’s a great fit here.
-
-These videos are especially helpful when you’re trying to explain something technical, strategic, or new in a way that sticks.
-
-If it helps, I’d be happy to put together a short script or quick teaser to show what this could look like.
-
-Feel free to reply if you’d like to explore it. You’ll find examples of our work in my signature. If it’s not a fit, feel free to reply with a quick “NO” and I won’t reach out again.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Wanted to follow up in case this timing works better for you. Whiteboard animation can be a surprisingly simple way to make your message clearer and more memorable; especially in B2B settings.
-
-For {company}, this could mean increased understanding and stronger engagement, both internally and externally.
-
-If you're still open to that quick sketch or demo, I’d be happy to create one based on something you’re working on.
-
-There are some past projects in my signature if you’d like to browse. And of course, just reply “NO” if you’d rather not hear from me again.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just circling back. I realize it can be tricky to see how something like whiteboard animation fits into a business like {company}, which is why I’d love to show rather than tell.
-
-If you’d be open to a 10-second snippet or a short script tailored to one of your core offerings, I’d be glad to share.
-
-It’s no obligation, just a way to explore what this could look like in your context.
-
-You’ll find some of our past work in my signature. If this isn't something you're interested in, replying with “NO” will do the trick.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Following up briefly in case you’re still open to exploring how animated storytelling could help simplify {company}’s messaging.
-
-It’s something that’s worked well for businesses trying to explain detailed services, product workflows, or industry insights in a more digestible way.
-
-Happy to create a short, customized sample if you’d like a clearer sense of how this could look.
-
-Reply anytime; there’s also some of our previous work mentioned below. Or just reply “NO” if you'd prefer not to receive future messages.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I didn’t want to leave things hanging without checking in. I mentioned how whiteboard animation can be a strong complement to what {company} is already doing, especially when you’re communicating ideas that needs a touch of individuality.
-
-If it’s helpful, I can pull together a short visual sketch or sample script based on one of your key offerings.
-
-No pressure; just a creative starting point for you to consider.
-
-You’ll find some of our work in my signature. If it’s not for you, feel free to just reply “NO” and I’ll close the loop here.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Reaching out again in case the idea of using whiteboard animation is still on your radar.
-
-It’s often a great fit for simplifying dense content, making internal updates more engaging, or curating educational content that feel less overwhelming and more human.
-
-For {company}, I’d be glad to sketch a quick visual or draft a short script so you can see what this might look like in practice.
-
-Reply when you can, or check out some examples in the signature below. If you’re not interested, a quick “NO” will ensure no follow-ups.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Quick follow-up in case now’s a better time. My last note was about how visual storytelling could support {company}'s messaging for doubled impact.
-
-If you're curious, I could create a ten-second teaser or a rough script so you can get a sense of what’s possible.
-
-Just reply if you’d like to explore. There are some previous work samples in the signature below. If not, no worries at all — just send “NO”.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I wanted to briefly follow up to see if the idea of a quick, low-lift sketch might interest you.
-
-These kinds of animations are used to clarify big-picture strategies, improve training content, or explain services in a more human way.
-
-If {company} has something complex or critical to explain, I’d love to put together a sample to show what it might look like.
-
-Reply when ready, and check out some past examples mentioned below. Or simply reply “NO” if you'd like to opt out.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I know inboxes get full fast, so here's a quick follow up.
-
-Whiteboard storytelling might be a surprisingly effective way for {company} to simplify something your audience or team needs to grasp quickly.
-
-If you’re still open to it, I can send a short demo such as a sample script or 10-second sketch, just to give you a feel.
-
-Let me know, or feel free to check out some of our past work in the signature. And if you’re not interested, just reply “NO”.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just checking in one more time.
-
-I understand if now’s not ideal, but I still think there’s value in exploring how a short whiteboard video could help {company} communicate more clearly.
-
-It could be a great fit for onboarding, product overviews, or thought leadership; and I’d be happy to show you a no-cost sample.
-
-You can reply any time, or check out some of our past work in my signature. Or just send a quick “NO” if you’re not looking to explore this.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I wanted to circle back following my last email about using whiteboard animation at {company}. These videos can really simplify complex ideas and help you connect with your audience in a memorable way.
-
-If you’re open to it, I’d love to put together that quick sketch or script I mentioned earlier; something tailored specifically to one of your key offerings or a new product launch, perhaps.
-
-Feel free to reply anytime. And just in case you missed it, some of our past projects are in my signature. If this isn’t your thing, replying “NO” is all it takes.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just circling back as I didn’t want you to miss out on the chance to explore whiteboard animation for {company}.
-
-Our videos are designed to help businesses like yours increase engagement, boost clarity, and convert more customers; all with animated storytelling.
-
-If you'd like, I can create a short demo or script as a no-pressure way to see how this could work for your team.
-
-You’ll find examples of our work in my signature. Let me know if you’d like to see something specific, or just reply “NO” if not.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Following up on my previous note about whiteboard animation at {company}.
-
-Many of our clients find these videos help explain their offerings faster and more clearly, which often leads to more meaningful conversations and better results.
-
-If it’s helpful, I’d be happy to draft a quick concept or short sample that fits your brand voice and messaging.
-
-You can reply anytime, and our portfolio is in the signature if you want to get a feel for what we do. If not interested, replying “NO” will stop future messages.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I wanted to check back in and remind you about the offer I shared earlier; a 10 second sketch that could spark some ideas.
-
-It’s a simple, no-strings way to explore how animation can support your {company}'s messaging and help your audience understand your value offerings more clearly.
-
-Feel free to reply if you want to see this, or browse some of our previous projects in my signature. Just reply “NO” if you’d rather I not follow up again.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just wanted to touch base after my last email about how {company} could benefit from whiteboard animation.
-
-This type of video storytelling often boosts engagement and helps simplify complicated topics; making your message more human and easier to remember.
-
-If you’re curious, I’d be glad to draft a short teaser or script for you to review.
-
-Please reply anytime. Not interested? A quick “NO” is fine.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Reaching out again about the opportunity for {company} to stand out using whiteboard animation.
-
-Whether it’s for pitching, explaining products, or internal training, these videos really hit the nail on the head.
-
-If you’re open to it, I can prepare a quick sketch or script sample tailored to your brand; no pressure at all.
-
-You’ll find examples of our previous work mentioned below. Let me know if you’d like to explore the fit, or reply “NO” if you’d rather pass.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Hope this finds you well. I’m following up on my previous note offering a quick, no-commitment demo to show how whiteboard animation might work for {company}.
-
-These animations are a great way to explain services or products in an engaging, easy-to-understand format.
-
-If you’d like me to put something together, just let me know. Some past examples are listed below too. Otherwise, feel free to reply “NO” if you’re not interested.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just reaching out again about the possibility of using whiteboard animation to enhance {company}’s messaging.
-
-This approach often helps businesses increase engagement, simplify communication, and improve conversion rates.
-
-If you’re curious, I’d be happy to draft a quick demo or script for you to review at your convenience.
-
-You can reply any time. If it’s not something you want to pursue, replying “NO” is totally fine.
-
-{signature}"""
+#--------------EMAIL 1 TEMPLATES---------------------------------------------------------------------------
+
+paragraph_1_variants = [
+    "Even the best teams burn money when the message gets fuzzy.",
+    "Mixed messages don’t scream — but they quietly steal your money.",
+    "No matter how skilled your team is, unclear messaging always costs you.",
+    "When everyone tells a different story, confusion gets expensive.",
+    "Great work can get lost if the message isn’t clear — and that's costly.",
+    "A clear story isn’t fluff — it’s how you save time and money.",
+    "Lost time and wasted effort come from messages that don’t land.",
+    "When your story slips, you lose money.",
+    "Confusion isn’t loud — it’s the quiet leak in your profits.",
+    "Unclear messaging turns good work into lost opportunities.",
+    "Your best work might fall flat when the message doesn’t click.",
+    "When your message wanders, so does your money.",
+    "Miscommunication may cost more than you think.",
+    "A strong story keeps everyone on the same page and your profits intact.",
+    "Mixed message chips away at your earnings and efficiency.",
+    "Clear messaging is the difference between wasted time and winning deals.",
+    "When the story isn’t clear, your money quietly slips away."
 ]
 
-# ---EMAIL 3 TEMPLATES---------------------------------------------------------------------------
-
-email3_templates = [
-    """{salutation} {name},
-
-Just circling back in case the timing makes more sense now. I still believe whiteboard animation could support something {company} is working on, whether that is a pitch, process, or product.
-
-If you would like to test the waters, I am happy to sketch something out to show what it might look like.
-
-You will find past examples in my signature. Feel free to reply if you would like to explore this.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I am still happy to share a quick sketch or demo if it is helpful. Many of our clients use animation to break down services, explain strategy, or walk users through dashboards and pages.
-
-If {company} has anything you are trying to simplify, I would love to help you explore it. Just reply if you want me to send something over.
-
-You will also find examples of past work in my signature below.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Thought I would check in one last time.
-
-If you are still curious what an animated whiteboard explainer might look like for {company}, I would be glad to share something rough, a short teaser, or a script to get the ball rolling.
-
-You can find our work in my signature. Reply anytime if you are interested.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just reaching out again before I close this thread. If you think animated storytelling could be of value to {company}, I would love to put something together.
-
-Even a 10-second sketch can be a useful way to explore what is possible.
-
-Feel free to reply at your convenience.
-
-{signature}""",
-
-    """{salutation} {name},
-
-If you are still considering creative ways to showcase {company}'s value offerings, animated storytelling could be the missing piece of the puzzle to accelerate those conversions.
-
-I would be happy to send over a short visual teaser to get the ideas flowing.
-
-No pressure, just a creative option to keep in mind. Reply anytime or take a peek at some of our previous work. It is in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Circling back once more before I close the loop.
-
-If there is anything at {company} you have been meaning to simplify, such as those boring quarterly reports your team never reads, then whiteboard animation could help bring that to life.
-
-I would be happy to sketch something if you want to see what that might look like. You can reply anytime or check out some of our previous work in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Reaching out one last time before I close the loop. If you are still exploring creative ways to showcase what {company} offers, this could be a great fit.
-
-I would be glad to put together a simple teaser or sketch if you are curious. Reply at your convenience or check out some of our past projects. You will find them in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I hope your week is going well. I am wrapping up some projects and wanted to reach out again before I close things out.
-
-If you would still like to explore using whiteboard videos to support {company}'s messaging, I would love to help. Simply reply or take a peek at some of our previous work. It is in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-A quick follow-up before I close out my list. If now is not the right time, no worries at all.
-
-But if you are a little curious about how whiteboard animation might help {company}, I am still open to sharing a quick demo. No pressure. You can reply anytime or skim through some of our previous projects to see what we have done for other businesses. They are in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just one last follow-up in case you missed my previous notes. I would still be happy to sketch a teaser for {company} if you are curious to see what whiteboard animation can do.
-
-It could help simplify one of your key offerings or assist with your latest project launch. If you are a little curious, just hit reply or check out some of our past work in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I just wanted to check in again and see if the idea of using whiteboard animation for {company} has sparked any interest. Animation can be a great way to highlight key messages and bring stories to life in a memorable way.
-
-If you'd like, I can put together a simple draft or a short sample video to show how this could work for you.
-
-You can also find examples of our previous work in my signature. Please don’t hesitate to reply if you want to explore this.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Following up once more because I think animation could really help {company} communicate ideas in a clear and compelling way. Many of our clients have seen great results from adding this creative touch to their messaging.
-
-I’d be happy to sketch out a quick teaser or draft a script that suits your brand and goals.
-
-Feel free to reply if you’d like to see what this might look like. You’ll find our past projects in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I hope this note finds you well. I’m reaching out again to offer a creative way for {company} to stand out using animated whiteboard videos.
-
-Even a short, simple animation can make complex ideas easier to understand and more engaging for your audience.
-
-If that sounds interesting, I’d be glad to prepare a brief sketch or a script to share with you.
-
-Please reply anytime. Past examples are in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just wanted to reconnect in case my previous notes got buried. If you have any questions or thoughts about using whiteboard animation at {company}, I'd be more than happy to answer them.
-
-It’s a creative way to explain your value offerings, and it can really help with marketing, training, or internal communications.
-
-If you’d like, I can send over a quick teaser or script sample.
-
-You’ll find some of our past work in my signature. I’m here if you want to chat.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Checking in again to share how whiteboard animation could help {company} communicate clearly and creatively with your audience.
-
-Animation can make even the most complicated topics accessible and engaging, which often leads to better engagement.
-
-If you’re open to it, I’d love to draft a short visual concept for you to review.
-
-Feel free to reply anytime, and you can see examples of our work in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I wanted to reach out once more to highlight the potential benefits of whiteboard animation for {company}.
-
-Whether it’s for sales, marketing, onboarding, or internal messaging, animation can be a great tool to simplify ideas and keep people interested.
-
-If you’re curious, I’d be happy to create a short sample or script that fits your goals.
-
-Please reply whenever you’re ready. Past projects are in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just following up again because I think animation could add real value to {company}’s messaging.
-
-It’s an engaging way to capture attention and explain what makes your business stand out.
-
-If it sounds useful, I’d be glad to prepare a quick teaser or script to show you what’s possible.
-
-You can reply anytime, and our portfolio is in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I’m checking in one last time about the opportunity to use whiteboard animation at {company}.
-
-Many teams find that even short animations help simplify their message and make content more digestible.
-
-If you’d like, I can put together a brief teaser or script to help you explore this option.
-
-Please feel free to reply at any time. Examples of our work are in my signature.
-
-{signature}""",
-
-    """{salutation} {name},
-
-Just wanted to follow up to see if you’ve had a chance to consider using whiteboard animation at {company}.
-
-It’s a creative way to bring your ideas to life and connect with your audience more effectively.
-
-If you’re interested, I’d be happy to share a quick demo or script tailored to your needs.
-
-You’ll find past examples in my signature. Reply whenever you’re ready.
-
-{signature}""",
-
-    """{salutation} {name},
-
-I wanted to check in one last time to offer support if you’re thinking about how {company} could benefit from whiteboard animation.
-
-We’ve helped many businesses explain their offerings clearly and creatively through short, engaging videos.
-
-If you’d like, I can draft a quick sample to show how this might work for you.
-
-Please don’t hesitate to reply. Our past projects are in my signature.
-
-{signature}"""
+paragraph_2_variants = [
+    "Unclear messaging causes extra calls, emails, and confusion.\n\nWhen it happens regularly, it quietly drains thousands from your revenue each year.",
+
+    "Every round of back-and-forth costs billable hours you won’t recover.\n\nIf you spend more time explaining than delivering, you’re losing significant income without realizing it.",
+
+    "It’s not the message that kills budgets — it’s ghosted leads, no-shows, and endless meetings that go nowhere.\n\nThose hidden losses pile up fast and shrink your profit margins.",
+
+    "Most teams don’t track how much billable time they lose re-explaining points.\n\nThose disappearing hours translate directly into real dollars slipping through cracks.",
+
+    "Those extra meetings that go nowhere and long calls drain your budget.\n\nYou can’t bill those lost hours, but they quietly add up.",
+
+    "One extra email here, a redundant meeting there.\n\nOver time, those billable hours never recovered hit your revenue hard.",
+
+    "Unclear communication slows teams and bleeds cash.\n\nHours lost to extra calls, emails, and pointless meetings are money you’ll never see again.",
+
+    "Every vague question or request triggers more emails, calls, and meetings.\n\nThat’s client time you won’t get paid for and profit leaking out unnoticed.",
+
+    "Miscommunication doesn’t just slow things — it kills revenue.\n\nMore calls, fixes, and fewer billable hours shrink margins you can’t afford to lose.",
+
+    "Confusion over simple details wastes hours and causes missed deadlines.\n\nThose lost hours multiply, costing thousands each year in revenue.",
+
+    "If your messaging isn’t clear, work slows down.\n\nDelays waste valuable billable time and shrink profits and growth potential.",
+
+    "If you spend time explaining instead of working, progress stalls.\n\nLost hours add up fast and cost thousands in missed income yearly.",
+
+    "Extra calls and emails to fix unclear points eat into your billable hours.\n\nThat lost time quietly drains revenue and growth.",
+
+    "When businesses spend hours clarifying confusion, they lose valuable working time.\n\nThose hours translate into money that never hits your bottom line.",
+
+    "Re-explaining the same things drains your business's productivity and your budget.\n\nThose invisible costs add up fast, quietly shrinking your profits.",
+
+    "Time wasted fixing avoidable misunderstandings means fewer billable hours and less income.\n\nIt’s a slow leak that damages your business’s financial health.",
+
+    "Lost billable hours from repeated explanations aren’t just frustrating — they’re expensive.\n\nEach missed hour chips away at potential revenue.",
+
+    "Every unclear email or message can trigger a costly chain of follow-ups.\n\nThose costs add up and weigh heavily on your bottom line.",
+
+    "When communication falls short, your business spends more time fixing problems than creating value.\n\nThat lost productivity hits your profits hard.",
+
+    "Misunderstandings cause a ripple effect of wasted time and missed revenue.\n\nThe price of poor messaging is far higher than most realize."
+]
+
+paragraph_3_variants = [
+    "To fix that, we help teams stop repeating themselves by putting the story into a whiteboard video everyone trusts.",
+    "That’s why our whiteboard explainers let the whole team speak with one voice — clear and confident every time.",
+    "We create whiteboard videos that turn complicated offers into simple stories your clients actually get.",
+    "That’s why we make whiteboard videos that give your business a reliable way to explain your offerings without fumbling.",
+    "Our whiteboard videos turn your core message into something that sticks, not slips away.",
+    "With one great whiteboard video, your business can ditch the script and still get it right every time.",
+    "We build whiteboard videos that let your message travel further and reach more people, clearly.",
+    "To cut down confusion, we build whiteboard explainers that help you save time by cutting down questions and back-and-forth.",
+    "Our whiteboard explainers act like a shortcut — they get your message across fast and clearly.",
+    "We can help you lock in your proposition with a whiteboard video that does most of the talking.",
+    "That’s why our whiteboard videos turn your boring bullet points into stories that prospects can’t forget.",
+    "This is why we build whiteboard videos designed to make onboarding and sales smoother and faster.",
+    "This is why we craft whiteboard videos that help your business sound consistent and confident every time.",
+    "With our whiteboard explainers, you get a message that stays sharp and clear — no matter who shares it.",
+    "That's why we create whiteboard videos that make your job easier by putting your story on repeat.",
+    "Our whiteboard videos simplify your message so you can focus on closing deals, not explaining.",
+    "That's why we make whiteboard videos that cut confusion and keep your clients and business on the same page.",
+    "With our whiteboard videos, you spend less time answering questions and more time moving deals forward.",
+]
+
+paragraph_4_variants = [
+    "I can sketch a 10-second teaser for you — keep it or toss it.\n\nIf it’s not your thing, just reply NO and I’ll quietly step away.",
+    "Happy to draft a short sample script if you want — no strings, just a gift.\n\nIf you’re not interested, reply NO and I won’t bother you again.",
+    "I’d be glad to put together a brief 10-second teaser for you — yours to keep or ignore.\n\nIf it’s not a fit, reply NO and I’ll disappear.",
+    "If you’re open to it, I can create a quick script draft — no pressure at all.\n\nIf you’d rather not, reply NO and I’ll back off.",
+    "I can send over a short 10-second teaser — whether you use it or not, it’s yours.\n\nIf you don’t want it, reply NO and I won’t follow up.",
+    "I enjoy making these — happy to draft a quick sample script for you.\n\nIf you don’t want it, a simple NO will end it.",
+    "I can put together a small teaser if you’re curious — no need to reply.\n\nIf it’s not useful, reply NO and I’ll go silent.",
+    "If you’re interested later, I can have a 10-second teaser ready for you.\n\nIf not, just say NO and I’ll stop messaging.",
+    "You don’t have to decide now — I can send a 10-second teaser when you want.\n\nIf you don’t want it, reply NO and I’ll step away.",
+    "I’d be happy to whip up a quick script for you — useful or not.\n\nIf it’s not your vibe, reply NO and I’ll take the hint.",
+    "If you want, I can sketch a sample script — no strings attached.\n\nIf you want no more, just say NO and I’ll disappear.",
+    "Just for reading, I can send over a rough 10-second teaser if you like.\n\nIf it’s not a fit, reply NO and I’ll bow out.",
+    "I can share a quick script idea — yours to ignore or use.\n\nIf it’s not for you, reply NO and I won’t bother you again.",
+    "I’d like to gift you a short teaser — no ask, no pressure.\n\nIf you don’t want it, just say NO and I’ll stop.",
+    "I can quietly sketch a 10-second teaser — totally optional for you.\n\nIf it’s not useful, reply NO and I’ll fade away.",
+    "If you’d like, I can put together a quick video script to get started.\n\nIf this isn’t a fit, reply NO and I’ll back off.",
+    "I can send a quick concept video script that’s easy to share.\n\nIf it’s not useful, reply NO and I’ll move on.",
+    "If you want a short script draft or a 10 second teaser, I can have one ready in no time.\n\nIf you don’t want it, reply NO and I’ll stop.",
+    "I’m happy to prepare a small script sample to help you better understand the idea.\n\nIf you’re not interested, reply NO and I’ll disappear."
+]
+
+#--------------EMAIL 2 TEMPLATES---------------------------------------------------------------------------
+
+fu1_paragraph_1_variants = [
+    "You might have missed my first note, so I’m sending it over once more.",
+    "Giving this another go in case it got lost in the pile.",
+    "This might’ve landed at the wrong moment, so I’m sending it again.",
+    "Sharing this one more time in case it’s still relevant.",
+    "Sending this again — maybe the timing was wrong.",
+    "Thought this might be worth a second look, so here it is again.",
+    "Giving this another shot before I set it aside.",
+    "Not sure if my earlier note reached you, so I’m trying again.",
+    "This might’ve slipped by earlier, so I’m passing it along again.",
+    "Thought it’d be worth sending this again.",
+    "Trying this again in case the first one didn’t land.",
+    "Resending this in case it got lost",
+    "Might’ve been a busy day when I first sent this — here’s another try.",
+    "This is the same note I sent earlier, just making sure it reached you.",
+    "Could be the first email missed you — here it is again.",
+    "This might be worth another look, so I’m sending it again.",
+    "Sending this one more time in case it’s still on your radar.",
+    "Just passing this along again if it got buried.",
+]
+
+fu1_paragraph_2_variants = [
+    "Like I said, every misread email or misunderstood deck quietly drains the budget — lost revenue or unbilled time.\n\nThat money isn’t theoretical, it’s gone.",
+    
+    "You may not realize this, but re-explaining the same point across calls and threads doesn’t just burn time — it chips away at profit, trust, and sanity.\n\nTighter messaging plugs those leaks.",
+    
+    "When I reached out before, I said even simple misunderstandings can derail deals. The lost revenue adds up fast.\n\nIt’s money you never see, but always feel.",
+    
+    "As I said, back-and-forths eat into billable hours you can’t charge for. If you're busy explaining, you’re not delivering.\n\nThat inefficiency bleeds money.",
+    
+    "Like I noted, the real waste isn’t emails — it’s ghosted leads, un-booked calls, and meetings that go nowhere.\n\nThat’s lost income, not just lost time.",
+        
+    "Here's the thing, most teams never track how much they lose repeating the same idea in different ways.\n\nBut those unbilled hours go somewhere — extra calls, another email there and one more useless meeting.",
+    
+    "Just as I said last time, extra unnecessary meetings and calls that go in circles cost more than they return.\n\nThat’s not just a clarity issue — it’s wasted revenue.",
+    
+    "Like I said, inefficiency doesn’t look dramatic — but it drains you anyway, one extra email and another meeting booked.\n\nIt’s not just annoying — it’s expensive. Billable hours lost.",
+
+    "Like I hinted — extra calls, emails, and meetings add up fast. Repetition feels harmless until you tally how much of your week it eats.\n\nEven two hours lost a week can cost thousands of dollars a year.",
+
+    "As I said, unclear communication slows everyone down and silently wastes money.\n\nThose extra calls, emails, and pointless meetings are hours your business will never bill for.",
+
+    "Like I hinted, the real cost of confusion hides in overtime, scope creep, and deals that never close.\n\nIt’s lost revenue that never hits your wallet.",
+
+    "Like I said, when teams spend more time explaining than creating, the clock keeps running.\n\nThose hours don’t build value — you can’t bill for them, and that’s lost revenue.",
+
+    "As I said, every unanswered question or fuzzy brief means more emails, calls, and meetings.\n\nThat’s unpaid time and profit quietly slipping away from your business.",
+
+    "Like I mentioned, unclear messaging causes extra follow-ups that waste time and money.\n\nThat slow drip of lost hours quickly adds up to real revenue lost.",
+
+    "You might not notice, but unclear offers force your business to spend hours explaining instead of closing deals.\n\nThose lost hours hit your bottom line harder than you think.",
+
+    "As I noted, repeating explanations in meetings and emails is unproductive.\n\nThose lost billable hours quietly drain your profits and slow down growth.",
+
+    "Like I said, vague or confusing info means more calls and longer sales cycles.\n\nThat’s money slipping out the backdoor without you seeing it.",
+
+    "You know those repeated questions and check-ins? They cost you more billable time than you realize.\n\nAnd time is money your business loses.",
+
+    "As I mentioned, unclear briefs or requests cause rework, extra meetings, and lost focus.\n\nThat’s unbilled work steadily chipping away at your revenue.",
+
+]
+
+fu1_paragraph_3_variants = [
+    "That’s why we create short whiteboard explainers that lock the message in — so your business doesn’t have to keep re-explaining it.",
+    "That’s where a clear, reusable whiteboard video comes in — one version of your story that lands every time.",
+    "To fix that, we build whiteboard videos your business can reuse across intros, pitches, and onboarding — no more starting from scratch.",
+    "That’s why we create short whiteboard videos that become the go-to explanation everyone can rally around.",
+    "To plug that leak, we turn your offer into a single whiteboard explainer that’s clear, fast, and impossible to miss.",
+    "That’s why we condense the whole pitch into a whiteboard video you and your prospects can watch once and actually remember.",
+    "To cut that waste, we create whiteboard explainers that make your value instantly obvious — in under two minutes.",
+    "That’s why we build whiteboard videos that keep everyone on the same page from day one.",
+    "To prevent that, we make whiteboard explainers that say it once, say it clearly, and make it stick.",
+    "That’s why we produce whiteboard videos that simplify the pitch and speed up decisions.",
+    "To stop that bleed, we create whiteboard explainers you can drop into any deck, proposal, or call.",
+    "That’s why we make whiteboard videos that explain your value so cleanly, you never have to fill in the gaps afterward.",
+    "To solve that, we build reusable whiteboard explainers — one crisp message, zero confusion.",
+    "That’s why we turn your offer into a short whiteboard video that does the explaining for you, every time.",
+    "We craft whiteboard videos that give your business a clear story to tell — no more guessing or mixed messages.",
+    "Our whiteboard explainers help your business hit the same note, every time you talk to clients.",
+    "Our whiteboard videos make your value obvious fast, so prospects don’t have to guess what you’re about.",
+    "We build whiteboard videos designed to cut through noise and get everyone aligned quickly.",
+    "With our whiteboard explainers, your business spends less time talking and more time being productive.",
+]
+
+fu1_paragraph_4_variants = [
+    "If it still feels relevant, I’ll draft a short script this week — no ask, just something to use if it helps.\n\nIf it’s not a fit, reply 'NO' and I’ll scram.",
+    "Totally happy to put together a 10-second teaser — whether you use it or not, it’s yours.\n\nIf you’d rather not, reply 'NO' and I’ll take you off my list.",
+    "Still glad to write up a snippet — no strings, no pitch, just a gift.\n\nIf this doesn’t click, reply 'NO' and I’ll disappear.",
+    "If you’re open to it, I’ll send over a quick script idea — just something to keep on hand if it clicks later.\n\nIf it’s a no, reply 'NO' and I’ll bow out.",
+    "If it’s helpful, I’ll draft a tiny teaser anyway — yours to keep, no pressure to respond.\n\nIf it’s not your cup of tea, reply 'NO' and I’ll leave you be.",
+    "Whether or not you’re in the market, I’d still enjoy putting together a short script.\n\nIf you’re not interested, reply 'NO' and I’ll quietly back away.",
+    "No follow-up needed — I’ll still write something quick if it’s even remotely useful.\n\nIf you’d prefer I didn’t, reply 'NO' and I’ll cross you off.",
+    "Happy to create a quick 10-second concept, whether or not we ever talk again.\n\nIf it’s not relevant, reply 'NO' and I’ll move along.",
+    "I can put together a quick script outline this week — no strings attached.\n\nIf this isn’t up your alley, reply 'NO' and I’ll vanish.",
+    "If it helps, I’ll make a short teaser for you to keep.\n\nIf it’s a pass, reply 'NO' and I’ll step aside.",
+    "I’m happy to send over a quick script idea — Use it however you like.\n\nIf you’re not feeling it, reply 'NO' and I’ll go quietly.",
+    "If you want, I’ll put together a short teaser just so you have it.\n\nIf it’s not for you, reply 'NO' and I’ll head out.",
+    "I could pull together a small script — no charge, no pitch.\n\nIf it’s not the right time, reply 'NO' and I’ll back off.",
+    "If it’s useful, I’ll make a quick 10-second teaser to keep on file.\n\nIf it’s not a fit, reply 'NO' and I’ll fade away.",
+    "Glad to mock up a short script draft for you — yours either way.\n\nIf you’d rather not, reply 'NO' and I’ll vanish.",
+    "I’ll happily whip up a 10-second teaser you can keep, no commitment needed on your end.\n\nIf you’re not interested, reply 'NO' and I’ll get out.",
+    "Happy to share a quick script outline that might make things easier.\n\nIf this isn’t your thing, reply 'NO' and I’ll step out.",
+    "I can throw together a short 10-second teaser — take it or leave it.\n\nIf you’re not into it, reply 'NO' and I’ll walk away.",
+    "I’ll write a short script and send it over, use it or ignore.\n\nIf it’s a no, reply 'NO' and I’ll drop it.",
+    "Always happy to make a small 10-second teaser that might help down the road.\n\nIf it’s not for you, reply 'NO' and I’ll bow out."
+]
+
+#--------------EMAIL 3 TEMPLATES---------------------------------------------------------------------------
+
+fu2_paragraph_1_variants = [
+    "Just sending this one last time in case it slipped through.",
+    "Before I close the loop, I wanted to send this one more time.",
+    "Last call to see if this might be helpful before I step back.",
+    "Sending this final note in case it’s still on your radar.",
+    "Wrapping up some projects — wanted to make sure you saw this.",
+    "One last quick message before I sign off.",
+    "This is my final check-in to see if you want to take a look.",
+    "Before I drop off your inbox, here’s a quick reminder.",
+    "Final pass on this — let me know if it’s worth a chat.",
+    "Just reaching out one last time to keep this top of mind.",
+    "Last try to get this on your radar before I bow out.",
+    "One last message to make sure you got this.",
+    "Sending a final note — just making sure it reaches you.",
+    "Before I step away, I wanted to share this one last time.",
+    "This is the last time you’ll hear from me on this — unless you want to chat.",
+    "Giving this one final attempt before I sign off.",
+    "Final message in case it got lost earlier.",
+    "Closing out with this quick reminder in case it helps."
+]
+
+fu2_paragraph_2_variants = [
+    "Like I said earlier, unclear messaging means every extra call or email eats away at billable hours — over time, that adds up to thousands lost without you realizing it.",
+    
+    "As mentioned before, repeated explanations mean your business spends less time delivering value and more time spinning wheels — quietly draining revenue week after week.",
+    
+    "As I mentioned, unclear communication creates confusion that leads to missed deadlines, stalled projects, and lost opportunities — hitting your bottom line harder than you expect.",
+    
+    "Like I pointed out, every no-show, ghosted lead, or wasted meeting isn’t just frustrating — it’s lost income piling up and shrinking your profit margins before you even notice.",
+    
+    "As I said before, endless back-and-forth emails and calls may seem minor, but they add up to lost billable hours your business can’t recover — quietly eating into growth and cash flow.",
+    
+    "Like I said earlier, a single unclear brief can trigger a chain reaction of extra work, calls, and emails that drag down productivity — costing thousands in lost labor each quarter.",
+    
+    "You may not notice this, but poor communication costs more than wasted time — it frustrates clients, misses opportunities, and steals revenue before it reaches your books.",
+    
+    "As I mentioned, unclear messaging slows your whole business down, forcing repeated explanations and avoidable questions — all taking time away from billable work and cutting revenue.",
+    
+    "Like I pointed out, when your offer isn’t clearly understood, your business spends valuable hours putting out fires instead of closing deals — causing a slow but steady revenue drain.",
+    
+    "As I said before, unclear or vague requests create extra work, follow-ups, and revisions — none of which you can bill for, yet all cost real money and wasted effort.",
+    
+    "Like I said earlier, the real price of miscommunication goes beyond lost hours — it’s deals that never close and clients who walk away before you even get started.",
+    
+    "Actually, when messaging falls short, your business gets stuck in cycles of explanation — losing actual billable time that could have been spent more productively.",
+    
+    "As I mentioned, the longer you spend fixing misunderstandings and answering avoidable questions, the more your profits shrink — quietly eating into your annual revenue.",
+
+    "As I said earlier, when your message isn’t clear, deals drag out or stall — costing you billable hours and money you won’t recover.",
+    
+    "You might not realize it, but poor communication often forces your business into overtime and last-minute fixes — burning valuable billable hours and cutting deeply into your profits.",
+
+    "Like I mentioned before, every unclear interaction leads to more back-and-forth emails and meetings — each one eating away at billable time and quietly shrinking your bottom line.",
+
+    "Actually, unclear messaging traps your business in endless explanations instead of productive work — those lost hours pile up fast and slam your revenue growth.",
+
+    "As I said, poor communication doesn’t just slow things down — it drains billable hours and fragments your business's focus, making hitting revenue targets harder than it should be.",
+
+    "Like I pointed out earlier, repeated explanations cost far more than just time — they chip away at your billable hours and put a real dent in your revenue potential.",
+
+    "You might not notice at first, but unclear messaging causes costly overtime and urgent firefighting that burn through your billable time and shrink your profits without warning."
+]
+
+fu2_paragraph_3_variants = [
+    "We create whiteboard videos that lock your message in—so you spend less time re-explaining and more time moving forward.",
+    "Our whiteboard videos turn your offer into one clear story you can use in pitches, onboarding, and sales without missing a beat.",
+    "We make short, reusable whiteboard explainers that show your value clearly and keep everyone on the same page.",
+    "To cut through the noise, our whiteboard videos simplify your complex services into something easy to share and understand—no guessing required.",
+    "We craft whiteboard explainers that become your go-to for consistent messaging, wherever your business or clients need it.",
+    "Our videos capture your core story so perfectly, you’ll spend less time explaining and more time closing deals.",
+    "We produce engaging whiteboard videos that get your value across fast, making sales and onboarding smoother for everyone.",
+    "Our whiteboard explainers are designed to cut down the back-and-forth, so you can focus on delivering results, not just talking.",
+    "We build polished whiteboard videos your team can rely on—saving time and cutting out mixed messages.",
+    "We tell your story with whiteboard videos that stick, helping you hit the right note every time with prospects.",
+    "Our whiteboard videos give you a clear, consistent narrative from the first hello all the way to the final close.",
+    "We make explainers that work everywhere—decks, calls, onboarding—so your message never gets lost in translation.",
+    "Our videos help your business say it right the first time, so you don’t have to repeat yourself or fix misunderstandings.",
+    "We design whiteboard explainers that speed up sales by making your key points instantly clear and easy to remember.",
+    "We turn complex ideas into simple stories with whiteboard videos, cutting confusion and boosting confidence in your offer.",
+    "Our whiteboard explainers make your value crystal clear, so prospects get it fast and your business runs smarter.",
+    "With our whiteboard videos, your messaging stays sharp and compelling, no matter who’s sharing it."
+]
+
+fu2_paragraph_4_variants = [
+    "I can sketch a 10-second teaser for you — keep it or toss it.\n\nNo pressure, just something to have on hand if it helps.",
+    "Happy to draft a short sample script if you want — no strings, just a gift.\n\nTotally up to you whether you use it or not.",
+    "I’d be glad to put together a brief 10-second teaser for you — yours to keep or ignore.\n\nJust letting you know it’s available if you want it.",
+    "If you’re open to it, I can create a quick script draft — no pressure at all.\n\nYou can decide if and when it’s useful.",
+    "I can send over a short 10-second teaser — whether you use it or not, it’s yours.\n\nNo follow-up needed from your side.",
+    "I enjoy making these — happy to sketch a quick sample script for you.\n\nUse it however you like.",
+    "I can put together a small teaser if you’re curious — no need to reply.\n\nJust something to keep if it’s helpful down the road.",
+    "If you’re interested later, I can have a 10-second teaser ready for you.\n\nNo rush or pressure, just here if it helps.",
+    "You don’t have to decide now — I can send a 10-second teaser whenever you want.\n\nJust keeping it open if it’s useful.",
+    "I’d be happy to whip up a quick script for you — useful or not.\n\nCompletely your call to keep or ignore.",
+    "If you want, I can sketch a sample script — no strings attached.\n\nJust a simple gesture to help if you need it.",
+    "Just for reading, I can send over a rough 10-second teaser if you like.\n\nNo obligations, just here to assist.",
+    "I can share a quick script idea — yours to ignore or use.\n\nNo pressure, just a little something in case it helps.",
+    "I’d like to gift you a short teaser — no ask, no pressure.\n\nJust putting it out there if it’s useful to you.",
+    "I can quietly sketch a 10-second teaser — totally optional.\n\nOnly if it feels right for you.",
+    "I can create a quick teaser for you to keep.\n\nNo pressure, just something ready if you want it.",
+    "Happy to put together a brief script idea.\n\nUse it if it works, ignore if it doesn’t.",
+    "I can draft a quick teaser and send it your way.\n\nNo strings, no follow-up required.",
+    "If you want, I can send over a short concept.\n\nUse it or not, up to you.",
+    "I’m happy to prepare a quick script you can keep.\n\nNo pressure, just offering it if it helps."
 ]
 
 # --- Rotators --------------------------------------------------------------
 
 rotators = {
+    # Salutations for email 2 and 3
+    "sal": VariantRotator(salutations),
+
+    # Email 1
     "o": VariantRotator(openers),
     "p1": VariantRotator(paragraph_1_variants),
     "p2": VariantRotator(paragraph_2_variants),
@@ -580,8 +390,20 @@ rotators = {
     "p4": VariantRotator(paragraph_4_variants),
     "p5": VariantRotator(paragraph_5_variants),
     "sig": VariantRotator(signatures),
-    "e2": VariantRotator(email2_templates),
-    "e3": VariantRotator(email3_templates),
+
+    # Email 2 (follow-up 1)
+    "fu1_p1": VariantRotator(fu1_paragraph_1_variants),
+    "fu1_p2": VariantRotator(fu1_paragraph_2_variants),
+    "fu1_p3": VariantRotator(fu1_paragraph_3_variants),
+    "fu1_p4": VariantRotator(fu1_paragraph_4_variants),
+    "fu1_p5": VariantRotator(fu1_paragraph_5_variants),
+
+    # Email 3 (follow-up 2)
+    "fu2_p1": VariantRotator(fu2_paragraph_1_variants),
+    "fu2_p2": VariantRotator(fu2_paragraph_2_variants),
+    "fu2_p3": VariantRotator(fu2_paragraph_3_variants),
+    "fu2_p4": VariantRotator(fu2_paragraph_4_variants),
+    "fu2_p5": VariantRotator(fu2_paragraph_5_variants),
 }
 
 # --- NDJSON Helpers --------------------------------------------------------
@@ -631,16 +453,32 @@ def build_email1(lead):
 def build_email2(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
-    salutation = random.choice(["Hey", "Hi", "Hello"])
-    signature = rotators["sig"].next()
-    return rotators["e2"].next().format(salutation=salutation, name=name, company=company, signature=signature)
+
+    salutation = rotators["sal"].next().format(name=name)
+    return (
+        f"{salutation},\n\n"
+        f"{rotators['fu1_p1'].next().format(name=name)}\n\n"
+        f"{rotators['fu1_p2'].next().format(company=company)}\n\n"
+        f"{rotators['fu1_p3'].next()}\n\n"
+        f"{rotators['fu1_p4'].next()}\n\n"
+        f"{rotators['fu1_p5'].next()}\n\n"
+        f"{rotators['sig'].next()}"
+    )
 
 def build_email3(lead):
     name = lead.get("first name", "there")
     company = lead.get("business name", "your company")
-    salutation = random.choice(["Hey", "Hi", "Hello"])
-    signature = rotators["sig"].next()
-    return rotators["e3"].next().format(salutation=salutation, name=name, company=company, signature=signature)
+
+    salutation = rotators["sal"].next().format(name=name)
+    return (
+        f"{salutation},\n\n"
+        f"{rotators['fu2_p1'].next().format(name=name)}\n\n"
+        f"{rotators['fu2_p2'].next().format(company=company)}\n\n"
+        f"{rotators['fu2_p3'].next()}\n\n"
+        f"{rotators['fu2_p4'].next()}\n\n"
+        f"{rotators['fu2_p5'].next()}\n\n"
+        f"{rotators['sig'].next()}"
+    )
 
 # --- Main ------------------------------------------------------------------
 
@@ -655,17 +493,18 @@ def main():
 
         if not lead.get("email 1", "").strip():
             try:
-                email1 = build_email1(lead)
-                lead["email 1"] = email1
+                lead["email 1"] = build_email1(lead)
                 updated1 += 1
             except Exception as e:
                 print(f"⚠️ Skipping email 1 for {lead.get('website url', '[no url]')}: {e}")
+
         if not lead.get("email 2", "").strip():
             try:
                 lead["email 2"] = build_email2(lead)
                 updated2 += 1
             except Exception as e:
                 print(f"⚠️ Skipping email 2 for {lead.get('website url', '[no url]')}: {e}")
+
         if not lead.get("email 3", "").strip():
             try:
                 lead["email 3"] = build_email3(lead)
