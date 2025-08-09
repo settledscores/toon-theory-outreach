@@ -383,7 +383,6 @@ rotators = {
     "sal": VariantRotator(salutations),
 
     # Email 1
-    "o": VariantRotator(openers),
     "p1": VariantRotator(paragraph_1_variants),
     "p2": VariantRotator(paragraph_2_variants),
     "p3": VariantRotator(paragraph_3_variants),
