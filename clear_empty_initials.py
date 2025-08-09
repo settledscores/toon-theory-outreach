@@ -32,7 +32,7 @@ def clean_emails(records):
         if "initial date" in block and block["initial date"].strip():
             continue  # keep as-is
         # Clear email fields
-        for field in ["email", "email 1", "email 2", "email 3"]:
+        for field in ["email 1", "email 2", "email 3"]:
             if field in block:
                 block[field] = ""
     return records
