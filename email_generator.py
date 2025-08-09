@@ -387,7 +387,6 @@ rotators = {
     "p2": VariantRotator(paragraph_2_variants),
     "p3": VariantRotator(paragraph_3_variants),
     "p4": VariantRotator(paragraph_4_variants),
-    "p5": VariantRotator(paragraph_5_variants),
     "sig": VariantRotator(signatures),
 
     # Email 2 (follow-up 1)
@@ -395,14 +394,12 @@ rotators = {
     "fu1_p2": VariantRotator(fu1_paragraph_2_variants),
     "fu1_p3": VariantRotator(fu1_paragraph_3_variants),
     "fu1_p4": VariantRotator(fu1_paragraph_4_variants),
-    "fu1_p5": VariantRotator(fu1_paragraph_5_variants),
 
     # Email 3 (follow-up 2)
     "fu2_p1": VariantRotator(fu2_paragraph_1_variants),
     "fu2_p2": VariantRotator(fu2_paragraph_2_variants),
     "fu2_p3": VariantRotator(fu2_paragraph_3_variants),
     "fu2_p4": VariantRotator(fu2_paragraph_4_variants),
-    "fu2_p5": VariantRotator(fu2_paragraph_5_variants),
 }
 
 # --- NDJSON Helpers --------------------------------------------------------
@@ -445,7 +442,6 @@ def build_email1(lead):
         f"{rotators['p2'].next().format(company=company)}\n\n"
         f"{rotators['p3'].next()}\n\n"
         f"{rotators['p4'].next().format(company=company)}\n\n"
-        f"{rotators['p5'].next()}\n\n"
         f"{rotators['sig'].next()}"
     )
 
@@ -460,7 +456,6 @@ def build_email2(lead):
         f"{rotators['fu1_p2'].next().format(company=company)}\n\n"
         f"{rotators['fu1_p3'].next()}\n\n"
         f"{rotators['fu1_p4'].next()}\n\n"
-        f"{rotators['fu1_p5'].next()}\n\n"
         f"{rotators['sig'].next()}"
     )
 
@@ -475,7 +470,6 @@ def build_email3(lead):
         f"{rotators['fu2_p2'].next().format(company=company)}\n\n"
         f"{rotators['fu2_p3'].next()}\n\n"
         f"{rotators['fu2_p4'].next()}\n\n"
-        f"{rotators['fu2_p5'].next()}\n\n"
         f"{rotators['sig'].next()}"
     )
 
