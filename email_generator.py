@@ -383,6 +383,7 @@ rotators = {
     "sal": VariantRotator(salutations),
 
     # Email 1
+    "o": VariantRotator(openers),  # <-- add this line
     "p1": VariantRotator(paragraph_1_variants),
     "p2": VariantRotator(paragraph_2_variants),
     "p3": VariantRotator(paragraph_3_variants),
@@ -437,6 +438,7 @@ def build_email1(lead):
     company = lead.get("business name", "your company")
 
     return (
+        f"{rotators['o'].next().format(name=name, company=company)}\n\n"
         f"{rotators['p1'].next()}\n\n"
         f"{rotators['p2'].next().format(company=company)}\n\n"
         f"{rotators['p3'].next()}\n\n"
