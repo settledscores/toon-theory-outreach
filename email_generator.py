@@ -437,7 +437,6 @@ def build_email1(lead):
     company = lead.get("business name", "your company")
 
     return (
-        f"{rotators['o'].next().format(name=name, company=company)}\n\n"
         f"{rotators['p1'].next()}\n\n"
         f"{rotators['p2'].next().format(company=company)}\n\n"
         f"{rotators['p3'].next()}\n\n"
