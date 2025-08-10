@@ -3,7 +3,6 @@ import json
 import smtplib
 import imaplib
 import email
-import re
 import random
 from email.message import EmailMessage
 from datetime import datetime, timedelta, time
@@ -26,10 +25,6 @@ BASE_START_TIME = time(13, 30)
 END_TIME = time(20, 30)
 FINAL_END_TIME = time(20, 30)
 
-if WEEKDAY >= 5:
-    print("[Skipped] Weekend detected — exiting.")
-    exit(0)
-
 # === Subject Pool ===
 initial_subjects = [
     "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
@@ -37,48 +32,32 @@ initial_subjects = [
     "You might like what I’ve been sketching", "This idea’s been stuck in my head",
     "Bet you haven’t tried this approach yet", "What if your next pitch was drawn?",
     "This has worked weirdly well for others", "A small idea that might punch above its weight",
-    "Something about {company} got me thinking", "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
+    "Is this a weird idea? Maybe.", "Is this worth trying? Probably.",
     "Thought of you while doodling", "This one might be a stretch, but could work",
     "Felt like this might be your kind of thing", "Kind of random, but hear me out",
     "If you're up for an odd idea", "Not a pitch, just something I had to share",
     "This one’s a bit out there", "Saw what you’re doing, had to send this",
     "Wanna try something weird?", "Ever tried sketching your message?",
-    "Quick thought: could sketches help?", "Something visual that might work for {company}",
-    "This stuck in my head after seeing {company}", "Quick idea you probably haven’t seen before",
+    "Quick thought: could sketches help?",
+    "This idea has been stuck in my head", "Quick idea you probably haven’t seen before",
     "Hope this doesn’t sound too off", "Could this work for your pitch?",
     "Bit of an odd angle, but may click", "Does this feel off-brand or on-point?",
-    "Just playing with this angle", "This made me think of {company}",
+    "Just playing with this angle",
 ]
 random.shuffle(initial_subjects)
-
-SIGNATURES = [
-    "Warmly,", "All the best,", "Cheers,", "Take care,", "Sincerely,", "Best wishes,", "Kind regards,",
-    "Respectfully,", "Warm regards,", "Regards,", "With gratitude,", "Yours truly,", "Faithfully,", "Thanks,"
-]
-
-def strip_signature(text):
-    lines = text.strip().splitlines()
-    stripped = []
-    count = 0
-    for line in reversed(lines):
-        if count < 4 and any(line.strip().startswith(sig) for sig in SIGNATURES):
-            count += 1
-            continue
-        if count > 0 and count < 4:
-            count += 1
-            continue
-        stripped.insert(0, line)
-    return "\n".join(stripped).strip()
 
 def read_multiline_ndjson(path):
     records, buffer = [], ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            if not line.strip(): continue
+            if not line.strip(): 
+                continue
             buffer += line
             if line.strip().endswith("}"):
-                try: records.append(json.loads(buffer))
-                except: pass
+                try:
+                    records.append(json.loads(buffer))
+                except:
+                    pass
                 buffer = ""
     return records
 
@@ -104,37 +83,25 @@ def next_subject(pool, **kwargs):
     pool.append(template)
     return template.format(**kwargs)
 
-def quote_previous_message(new_text, old_text, old_date, old_time, old_sender_name, old_sender_email):
-    dt = datetime.strptime(f"{old_date} {old_time}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
-    date_str = dt.strftime("%A, %b %d, %Y")
-    header = f"--- On {date_str}, {old_sender_name} <{old_sender_email}> wrote ---"
-    sep = "\n--\n"
-    quoted = "\n".join(["> " + line for line in old_text.strip().splitlines()])
-    return f"{new_text}{sep}{header}\n{quoted}"
-
-def weekday_offset(start_date, days):
-    current = start_date
-    added = 0
-    while added < days:
-        current += timedelta(days=1)
-        if current.weekday() < 5:
-            added += 1
-    return current
-
 def can_send_initial(lead):
     return not lead.get("initial date") and lead.get("email") and lead.get("email 1")
 
 def can_send_followup(lead, step):
     if lead.get("reply", "no reply") != "no reply" or not lead.get("email"):
         return False
-    if step == 2:
-        if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2"):
-            return False
-        return TODAY >= weekday_offset(datetime.strptime(lead["initial date"], "%Y-%m-%d").date(), 3)
-    elif step == 3:
-        if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3"):
-            return False
-        return TODAY >= weekday_offset(datetime.strptime(lead["follow-up 1 date"], "%Y-%m-%d").date(), 4)
+    try:
+        if step == 2:
+            if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2"):
+                return False
+            last_dt = datetime.strptime(f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M")
+            return NOW >= last_dt + timedelta(minutes=5)
+        elif step == 3:
+            if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3"):
+                return False
+            last_dt = datetime.strptime(f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}", "%Y-%m-%d %H:%M")
+            return NOW >= last_dt + timedelta(minutes=5)
+    except:
+        return False
     return False
 
 def detect_reply_status(leads):
@@ -145,10 +112,12 @@ def detect_reply_status(leads):
             for folder in ['INBOX', 'SPAM']:
                 mail.select(folder)
                 result, data = mail.search(None, 'ALL')
-                if result != "OK": continue
+                if result != "OK": 
+                    continue
                 for num in data[0].split():
                     res, msg_data = mail.fetch(num, "(RFC822)")
-                    if res != "OK": continue
+                    if res != "OK": 
+                        continue
                     raw = email.message_from_bytes(msg_data[0][1])
                     from_addr = email.utils.parseaddr(raw.get("From", ""))[1].lower()
                     subject = (raw.get("Subject") or "").lower()
@@ -161,7 +130,8 @@ def detect_reply_status(leads):
                         body = raw.get_payload(decode=True).decode(errors="ignore")
                     for lead in leads:
                         lead_email = lead.get("email", "").lower()
-                        if not lead_email: continue
+                        if not lead_email: 
+                            continue
                         matched = (
                             lead_email in from_addr or
                             lead_email in subject or
@@ -192,7 +162,8 @@ def send_email(to, subject, content):
 # === Load and preprocess leads ===
 leads = read_multiline_ndjson(LEADS_FILE)
 for lead in leads:
-    if is_minimal_url_only(lead): continue
+    if is_minimal_url_only(lead):
+        continue
     for f in ["email", "email 1", "email 2", "email 3", "business name", "first name", "subject",
               "initial date", "follow-up 1 date", "follow-up 2 date",
               "initial time", "follow-up 1 time", "follow-up 2 time", "reply"]:
@@ -244,7 +215,8 @@ for step, label in [(3, "fu2"), (2, "fu1"), (0, "initial")]:
         elif label == "fu2" and can_send_followup(lead, 3):
             queue = [("fu2", lead)]
             break
-    if queue: break
+    if queue:
+        break
 
 print(f"[Process] {len(queue)} message(s) to send...")
 
@@ -258,44 +230,12 @@ for kind, lead in queue:
             lead["initial time"] = NOW_TIME
         elif kind == "fu1":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just checking in"
-            content = quote_previous_message(
-                new_text=lead["email 2"],
-                old_text=strip_signature(lead["email 1"]),
-                old_date=lead["initial date"],
-                old_time=lead["initial time"],
-                old_sender_name="Trent",
-                old_sender_email=FROM_EMAIL
-            )
-            send_email(lead["email"], subject, content)
+            send_email(lead["email"], subject, lead["email 2"])
             lead["follow-up 1 date"] = TODAY.isoformat()
             lead["follow-up 1 time"] = NOW_TIME
         elif kind == "fu2":
             subject = f"Re: {lead['subject']}" if lead["subject"] else "Just circling back"
-            initial_quoted = quote_previous_message(
-                new_text=strip_signature(lead["email 1"]),
-                old_text="",
-                old_date=lead["initial date"],
-                old_time=lead["initial time"],
-                old_sender_name="Trent",
-                old_sender_email=FROM_EMAIL
-            ).strip()
-            fu1_quoted = quote_previous_message(
-                new_text=strip_signature(lead["email 2"]),
-                old_text=initial_quoted,
-                old_date=lead["follow-up 1 date"],
-                old_time=lead["follow-up 1 time"],
-                old_sender_name="Trent",
-                old_sender_email=FROM_EMAIL
-            )
-            content = quote_previous_message(
-                new_text=lead["email 3"],
-                old_text=fu1_quoted,
-                old_date=TODAY.isoformat(),
-                old_time=NOW_TIME,
-                old_sender_name="Trent",
-                old_sender_email=FROM_EMAIL
-            )
-            send_email(lead["email"], subject, content)
+            send_email(lead["email"], subject, lead["email 3"])
             lead["follow-up 2 date"] = TODAY.isoformat()
             lead["follow-up 2 time"] = NOW_TIME
     except Exception as e:
