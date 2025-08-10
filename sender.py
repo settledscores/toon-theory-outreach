@@ -87,26 +87,68 @@ def can_send_initial(lead):
     return not lead.get("initial date") and lead.get("email") and lead.get("email 1")
 
 def can_send_followup(lead, step):
-    if lead.get("reply", "no reply").strip().lower() != "no reply":
+    """
+    Determine if a follow-up can be sent.
+    step = 2 → FU1
+    step = 3 → FU2
+    """
+
+    def is_empty(value):
+        return value is None or str(value).strip() == ""
+
+    # Skip if there's any reply
+    if str(lead.get("reply", "no reply")).strip().lower() != "no reply":
+        print(f"[SKIP FU{step}] Lead {lead.get('email')} already replied.")
         return False
-    if not lead.get("email", "").strip():
+
+    # Skip if main email missing
+    if is_empty(lead.get("email")):
+        print(f"[SKIP FU{step}] Lead missing primary email.")
         return False
 
     try:
-        if step == 2:
-            if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2", "").strip():
+        if step == 2:  # FU1 rules
+            if is_empty(lead.get("initial date")):
+                print(f"[SKIP FU1] Missing initial date for {lead.get('email')}.")
                 return False
-            last_dt = datetime.strptime(f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M")
-            return NOW >= last_dt + timedelta(minutes=5)
+            if not is_empty(lead.get("follow-up 1 date")):
+                print(f"[SKIP FU1] Already sent FU1 to {lead.get('email')}.")
+                return False
+            if is_empty(lead.get("email 2")):
+                print(f"[SKIP FU1] Missing 'email 2' for {lead.get('email')}.")
+                return False
 
-        elif step == 3:
-            if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3", "").strip():
+            last_dt = datetime.strptime(
+                f"{lead['initial date']} {lead['initial time']}",
+                "%Y-%m-%d %H:%M"
+            )
+            if NOW < last_dt + timedelta(minutes=5):
+                print(f"[SKIP FU1] Too early for FU1 to {lead.get('email')}.")
                 return False
-            last_dt = datetime.strptime(f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}", "%Y-%m-%d %H:%M")
-            return NOW >= last_dt + timedelta(minutes=5)
+            return True
+
+        elif step == 3:  # FU2 rules
+            if is_empty(lead.get("follow-up 1 date")):
+                print(f"[SKIP FU2] Missing FU1 date for {lead.get('email')}.")
+                return False
+            if not is_empty(lead.get("follow-up 2 date")):
+                print(f"[SKIP FU2] Already sent FU2 to {lead.get('email')}.")
+                return False
+            if is_empty(lead.get("email 3")):
+                print(f"[SKIP FU2] Missing 'email 3' for {lead.get('email')}.")
+                return False
+
+            last_dt = datetime.strptime(
+                f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}",
+                "%Y-%m-%d %H:%M"
+            )
+            if NOW < last_dt + timedelta(minutes=5):
+                print(f"[SKIP FU2] Too early for FU2 to {lead.get('email')}.")
+                return False
+            return True
 
     except Exception as e:
-        print(f"[Follow-up check error] Step {step} for {lead.get('email')}: {e}")
+        print(f"[ERROR FU{step}] {lead.get('email')}: {e}")
         return False
 
     return False
