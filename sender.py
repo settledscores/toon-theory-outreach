@@ -28,10 +28,6 @@ BASE_START_TIME = time(13, 30)
 END_TIME = time(20, 30)
 FINAL_END_TIME = time(20, 30)
 
-if WEEKDAY >= 5:
-    print("[Skipped] Weekend detected — exiting.")
-    exit(0)
-
 # === Subject Pool ===
 initial_subjects = [
     "Ever seen a pitch drawn out?", "You’ve probably never gotten an email like this",
