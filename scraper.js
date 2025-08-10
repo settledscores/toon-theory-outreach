@@ -7,6 +7,23 @@ import path from 'path';
 
 puppeteer.use(StealthPlugin());
 
+// Time safeguard settings
+const START_TIME = Date.now();
+const MAX_RUNTIME_MS = (5 * 60 * 60 * 1000) + (50 * 60 * 1000); // 5h 50m
+
+function timeExceeded() {
+  return Date.now() - START_TIME >= MAX_RUNTIME_MS;
+}
+
+async function checkTimeAndExit(browser) {
+  if (timeExceeded()) {
+    console.log('⏹ Time limit reached. Saving leads and exiting gracefully...');
+    await browser.close();
+    await saveAllLeads();
+    process.exit(0);
+  }
+}
+
 const SEARCH_URLS = [
   'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
   'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
@@ -18,6 +35,22 @@ const SEARCH_URLS = [
   'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
   'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
   'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
+
+  // Burlington, VT
+  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Payroll+Services&find_entity=60647-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+
+  // Manchester, NH
+  'https://www.bbb.org/search?find_text=Payroll+Services&find_entity=&find_type=&find_loc=Manchester%2C+NH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Manchester%2C+NH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Manchester%2C+NH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Manchester%2C+NH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Manchester%2C+NH&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Manchester%2C+NH&find_country=USA',
 ];
 
 const leadsPath = path.join('leads', 'scraped_leads.ndjson');
@@ -181,26 +214,27 @@ async function saveAllLeads() {
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    protocolTimeout: 120000 // Prevent Network.enable timeout
+    protocolTimeout: 120000
   });
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
 
-  // Wait for DevTools session to fully establish
   await delay(2000);
 
   for (const baseUrl of SEARCH_URLS) {
+    await checkTimeAndExit(browser);
+
     const urlMatch = baseUrl.match(/page=(\d+)/);
     let pageNum = urlMatch ? parseInt(urlMatch[1]) : 1;
 
     while (true) {
+      await checkTimeAndExit(browser);
+
       const paginatedUrl = urlMatch
         ? baseUrl.replace(/page=\d+/, `page=${pageNum}`)
         : `${baseUrl}&page=${pageNum}`;
       console.log(`🌐 Visiting: ${paginatedUrl}`);
-
-      let newLeadsThisPage = 0;
 
       try {
         await page.goto(paginatedUrl, { waitUntil: 'networkidle2', timeout: 90000 });
@@ -229,11 +263,12 @@ async function saveAllLeads() {
       }
 
       for (const link of profileLinks) {
+        await checkTimeAndExit(browser);
+
         const rec = await scrapeProfile(page, link);
         const added = rec && storeNewLead(rec);
 
         if (rec && added) {
-          newLeadsThisPage++;
           console.log(`✅ Added: ${rec['business name']}`);
         } else if (rec && !added) {
           console.log(`⏭ Duplicate: ${rec['business name']}`);
