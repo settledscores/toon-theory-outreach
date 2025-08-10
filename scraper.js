@@ -25,20 +25,7 @@ async function checkTimeAndExit(browser) {
 }
 
 const SEARCH_URLS = [
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
-  'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=New+Jerusalem%2C+PA&find_country=USA',
-  'https://www.bbb.org/search?find_text=Legal+Services&find_entity=&find_type=&find_loc=Newark%2C+NJ&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
-  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
-  'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Newark%2C+NJ&find_country=USA',
-
-  // Burlington, VT
-  'https://www.bbb.org/search?find_text=Accountant&find_entity=60005-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
-  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
+  'https://www.bbb.org/search?find_text=Business+Consultants&find_entity=60172-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA&page=15',
   'https://www.bbb.org/search?find_text=Human+Resources&find_entity=60451-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
   'https://www.bbb.org/search?find_text=Legal+Services&find_entity=60509-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
   'https://www.bbb.org/search?find_text=Tax+Consultant&find_entity=60858-000&find_type=Category&find_loc=Burlington%2C+VT&find_country=USA',
