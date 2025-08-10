@@ -1,4 +1,3 @@
-
 import os
 import json
 import smtplib
@@ -369,12 +368,20 @@ def has_recent_reply_or_bounce(lead, since_dt):
 def can_send_initial(lead):
     return not lead.get("initial date") and lead.get("email") and lead.get("email 1")
 
+def is_weekend(date_obj):
+    return date_obj.weekday() >= 5  # 5=Sat,6=Sun
+
+def next_monday(date_obj):
+    # Given a date, return the next Monday date
+    days_ahead = 7 - date_obj.weekday()
+    return date_obj + timedelta(days=days_ahead)
+
 def can_send_followup(lead, step):
     """
     Determine if a follow-up can be sent.
     step = 2 → FU1
     step = 3 → FU2
-    Note: this function assumes detect_reply_status() has been run earlier,
+    This function assumes detect_reply_status() has been run earlier,
     but still checks the 'reply' field.
     """
 
@@ -403,17 +410,24 @@ def can_send_followup(lead, step):
                 print(f"[SKIP FU1] Missing 'email 2' for {lead.get('email')}.")
                 return False
 
-            last_dt = datetime.strptime(
-                f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M"
-            ).replace(tzinfo=TIMEZONE)
-            if NOW < last_dt + timedelta(minutes=5):
-                print(f"[SKIP FU1] Too early for FU1 to {lead.get('email')}.")
+            # FU1 should be sent 3 days after initial date, skip weekends
+            initial_date = datetime.strptime(lead['initial date'], "%Y-%m-%d").date()
+            scheduled_date = initial_date + timedelta(days=3)
+            if is_weekend(scheduled_date):
+                scheduled_date = next_monday(scheduled_date)
+
+            if TODAY < scheduled_date:
+                print(f"[SKIP FU1] Too early for FU1 to {lead.get('email')} (scheduled for {scheduled_date}).")
                 return False
+            if TODAY > scheduled_date:
+                # It's past scheduled date, send anyway
+                return True
+            # TODAY == scheduled_date
             return True
 
         elif step == 3:  # FU2 rules
-            if is_empty(lead.get("follow-up 1 date")):
-                print(f"[SKIP FU2] Missing FU1 date for {lead.get('email')}.")
+            if is_empty(lead.get("initial date")):
+                print(f"[SKIP FU2] Missing initial date for {lead.get('email')}.")
                 return False
             if not is_empty(lead.get("follow-up 2 date")):
                 print(f"[SKIP FU2] Already sent FU2 to {lead.get('email')}.")
@@ -422,12 +436,19 @@ def can_send_followup(lead, step):
                 print(f"[SKIP FU2] Missing 'email 3' for {lead.get('email')}.")
                 return False
 
-            last_dt = datetime.strptime(
-                f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}", "%Y-%m-%d %H:%M"
-            ).replace(tzinfo=TIMEZONE)
-            if NOW < last_dt + timedelta(minutes=5):
-                print(f"[SKIP FU2] Too early for FU2 to {lead.get('email')}.")
+            # FU2 should be sent 4 days after initial date, skip weekends
+            initial_date = datetime.strptime(lead['initial date'], "%Y-%m-%d").date()
+            scheduled_date = initial_date + timedelta(days=4)
+            if is_weekend(scheduled_date):
+                scheduled_date = next_monday(scheduled_date)
+
+            if TODAY < scheduled_date:
+                print(f"[SKIP FU2] Too early for FU2 to {lead.get('email')} (scheduled for {scheduled_date}).")
                 return False
+            if TODAY > scheduled_date:
+                # It's past scheduled date, send anyway
+                return True
+            # TODAY == scheduled_date
             return True
 
     except Exception as e:
@@ -467,25 +488,20 @@ for lead in leads:
 # Run a bulk IMAP scan to update reply/bounce status before we pick a queue
 detect_reply_status(leads)
 
-# === Quota logic (unchanged) ===
+# === Quota logic ===
 BASE_QUOTA = 50
 backlogs = sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
-recent_initials = sum(
-    1 for l in leads
-    if l.get("initial date") in [
-        (TODAY - timedelta(days=d)).isoformat()
-        for d in range(1, 6) if (TODAY - timedelta(days=d)).weekday() < 5
-    ]
-)
+
+# Removed extra 20 for recent initials - only base quota + backlogs capped at 20
 extra_quota = min(20, backlogs)
-if recent_initials < 20:
-    extra_quota += 20
+
 DAILY_QUOTA = BASE_QUOTA + extra_quota
+
 sent_today = sum(1 for l in leads if TODAY.isoformat() in [
     l.get("initial date"), l.get("follow-up 1 date"), l.get("follow-up 2 date")
 ])
 
-print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}, Recent Initials: {recent_initials}")
+print(f"[Quota] Base: {BASE_QUOTA}, Backlogs: {backlogs}")
 print(f"[Quota] Extra: {extra_quota}, Total: {DAILY_QUOTA}")
 print(f"[Quota] Sent Today: {sent_today}")
 
@@ -518,23 +534,21 @@ for kind, lead in queue:
     try:
         # Determine since_dt for per-lead check:
         if kind == "initial":
-            # For initial sends, check the last 30 days for inbound messages from the lead
             since_dt = NOW - timedelta(days=30)
         elif kind == "fu1":
-            # FU1 should check since the initial send time
             try:
                 since_dt = datetime.strptime(f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
             except:
                 since_dt = NOW - timedelta(days=30)
         elif kind == "fu2":
             try:
-                since_dt = datetime.strptime(f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
+                since_dt = datetime.strptime(f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M").replace(tzinfo=TIMEZONE)
             except:
                 since_dt = NOW - timedelta(days=30)
         else:
             since_dt = NOW - timedelta(days=30)
 
-        # Quick per-lead mailbox check to be extra-safe (catches replies that arrived after the bulk scan)
+        # Quick per-lead mailbox check (catches replies after bulk scan)
         found, reason = has_recent_reply_or_bounce(lead, since_dt)
         if found:
             lead["reply"] = reason
