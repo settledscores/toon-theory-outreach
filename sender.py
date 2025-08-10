@@ -87,21 +87,28 @@ def can_send_initial(lead):
     return not lead.get("initial date") and lead.get("email") and lead.get("email 1")
 
 def can_send_followup(lead, step):
-    if lead.get("reply", "no reply") != "no reply" or not lead.get("email"):
+    if lead.get("reply", "no reply").strip().lower() != "no reply":
         return False
+    if not lead.get("email", "").strip():
+        return False
+
     try:
         if step == 2:
-            if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2"):
+            if not lead.get("initial date") or lead.get("follow-up 1 date") or not lead.get("email 2", "").strip():
                 return False
             last_dt = datetime.strptime(f"{lead['initial date']} {lead['initial time']}", "%Y-%m-%d %H:%M")
             return NOW >= last_dt + timedelta(minutes=5)
+
         elif step == 3:
-            if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3"):
+            if not lead.get("follow-up 1 date") or lead.get("follow-up 2 date") or not lead.get("email 3", "").strip():
                 return False
             last_dt = datetime.strptime(f"{lead['follow-up 1 date']} {lead['follow-up 1 time']}", "%Y-%m-%d %H:%M")
             return NOW >= last_dt + timedelta(minutes=5)
-    except:
+
+    except Exception as e:
+        print(f"[Follow-up check error] Step {step} for {lead.get('email')}: {e}")
         return False
+
     return False
 
 def detect_reply_status(leads):
