@@ -395,13 +395,11 @@ def can_send_followup(lead, step):
 
     # Skip if main email missing
     if is_empty(lead.get("email")):
-        print(f"[SKIP FU{step}] Lead missing primary email.")
         return False
 
     try:
         if step == 2:  # FU1 rules
             if is_empty(lead.get("initial date")):
-                print(f"[SKIP FU1] Missing initial date for {lead.get('email')}.")
                 return False
             if not is_empty(lead.get("follow-up 1 date")):
                 print(f"[SKIP FU1] Already sent FU1 to {lead.get('email')}.")
@@ -427,7 +425,6 @@ def can_send_followup(lead, step):
 
         elif step == 3:  # FU2 rules
             if is_empty(lead.get("initial date")):
-                print(f"[SKIP FU2] Missing initial date for {lead.get('email')}.")
                 return False
             if not is_empty(lead.get("follow-up 2 date")):
                 print(f"[SKIP FU2] Already sent FU2 to {lead.get('email')}.")
