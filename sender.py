@@ -25,8 +25,8 @@ TODAY = NOW.date()
 NOW_TIME = NOW.strftime("%H:%M")
 WEEKDAY = TODAY.weekday()
 BASE_START_TIME = time(14, 0)
-END_TIME = time(14, 0)
-FINAL_END_TIME = time(14, 0)
+END_TIME = time(20, 0)
+FINAL_END_TIME = time(20, 0)
 
 if WEEKDAY >= 5:
     print("[Skipped] Weekend detected — exiting.")
