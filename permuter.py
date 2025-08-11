@@ -15,12 +15,16 @@ def extract_domain(url):
         return ""
 
 def generate_permutations(first, last, domain):
-    first = first.lower()
-    last = last.lower()
+    first, last = first.lower(), last.lower()
     return [
-        f"{first}@{domain}",
-        f"{first}.{last}@{domain}",
-        f"{first}{last}@{domain}"
+        f"{first[0]}.{last}@{domain}",
+        f"{first}.{last[0]}@{domain}",
+        f"{last}.{first}@{domain}",
+        f"{last}@{domain}",
+        f"{last}{first[0]}@{domain}",
+        f"{first[0]}{last}@{domain}",
+        f"{first}{last[0]}@{domain}",
+        f"{first[0]}{last[0]}@{domain}"
     ]
 
 def load_domains_from_perms_and_emails(*paths):
