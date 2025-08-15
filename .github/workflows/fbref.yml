@@ -18,9 +18,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install Playwright
         run: |
-          npm install puppeteer-extra puppeteer-extra-plugin-stealth cheerio
+          npm install playwright
+          npx playwright install --with-deps
 
       - name: 🕷️ Run FBref Scraper
         run: node fbref.js
