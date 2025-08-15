@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs';
-import cheerio from 'cheerio';
+import { load } from 'cheerio';
 
 puppeteer.use(StealthPlugin());
 
@@ -36,7 +36,7 @@ const TABLE_IDS = [
   console.log(`🌐 Visiting: ${TARGET_URL}`);
   await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 90000 });
 
-  // Wait for summary block to ensure page loaded
+  // Wait for summary block to load
   await page.waitForSelector('div[data-template="Partials/Teams/Summary"]', { timeout: 15000 });
 
   console.log('📋 Extracting summary...');
@@ -48,14 +48,14 @@ const TABLE_IDS = [
     return { title, details: paras };
   });
 
-  console.log('📜 Getting full HTML and uncommenting hidden tables...');
-  let fullHTML = await page.content();
+  console.log('📄 Getting full HTML with comments...');
+  const rawHTML = await page.content();
 
-  // FBref hides some tables inside HTML comments <!-- -->
-  fullHTML = fullHTML.replace(/<!--/g, '').replace(/-->/g, '');
+  // Remove comment tags so hidden tables become visible
+  const uncommentedHTML = rawHTML.replace(/<!--/g, '').replace(/-->/g, '');
 
-  // Load cleaned HTML into Cheerio for parsing
-  const $ = cheerio.load(fullHTML);
+  // Parse with cheerio
+  const $ = load(uncommentedHTML);
 
   console.log('📊 Extracting tables...');
   const tablesData = {};
@@ -65,12 +65,12 @@ const TABLE_IDS = [
       tablesData[tableId] = table.html();
       console.log(`✅ Found table: ${tableId}`);
     } else {
-      console.warn(`⚠ Table not found: ${tableId}`);
       tablesData[tableId] = '';
+      console.warn(`⚠ Table not found: ${tableId}`);
     }
   }
 
-  console.log('💾 Saving data to leads/data.txt...');
+  console.log('💾 Saving data to data.txt...');
   let output = '';
   output += `=== SUMMARY ===\n${summaryData.title}\n\n`;
   summaryData.details.forEach(line => { output += `${line}\n`; });
@@ -78,7 +78,6 @@ const TABLE_IDS = [
   for (const [id, html] of Object.entries(tablesData)) {
     output += `\n--- ${id} ---\n${html}\n`;
   }
-
   fs.writeFileSync('leads/data.txt', output, 'utf-8');
 
   await browser.close();
