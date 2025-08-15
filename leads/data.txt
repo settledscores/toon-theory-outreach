@@ -1,28 +1,10 @@
 === SUMMARY ===
 2024-2025 Huddersfield Town Stats
 
-Record:
-    19-7-20, 
-    64 points
-    (1.39 per game),
-    10th
-    in League One
-    
-        (3rd Tier)
-Home Record: 
-    10-4-9, 
-    34 points
-    
-    Away Record:
-    9-3-11, 
-    30 points
-Goals: 58 (1.26 per game), 
-        Goals Against: 55 (1.20 per game),
-        Diff: 3
-Governing Country:
-    England
-    
-    eng
+Record: 19-7-20, 64 points (1.39 per game), 10th in League One (3rd Tier)
+Home Record: 10-4-9, 34 points Away Record: 9-3-11, 30 points
+Goals: 58 (1.26 per game), Goals Against: 55 (1.20 per game), Diff: 3
+Governing Country: England eng
 Gender: Male
 FA Cup: Lost First round proper to Tamworth
 EFL Cup: Lost Second round to Walsall
@@ -30,7 +12,6 @@ EFL Cup: Lost Second round to Walsall
 === TABLES (All Competitions) ===
 
 --- stats_standard_combined ---
-		Playing Time	Performance	Per 90 Minutes	
 Player	Nation	Pos	Age	MP	Starts	Min	90s	Gls	Ast	G+A	G-PK	PK	PKatt	CrdY	CrdR	Gls	Ast	G+A	G-PK	G+A-PK	Matches
 Ben Wiles	eng ENG	MF	25	48	41	3,604	40.0	8	6	14	8	0	0	1	0	0.20	0.15	0.35	0.20	0.35	Matches
 Callum Marshall	nir NIR	FW,MF	19	46	33	2,833	31.5	10	4	14	10	0	0	2	1	0.32	0.13	0.44	0.32	0.44	Matches
@@ -57,8 +38,6 @@ Ruben Roosken	nl NED	MF	24	14	11	893	9.9	2	3	5	2	0	0	1	1	0.20	0.30	0.50	0.20	0.5
 Danny Ward	eng ENG	FW	32	16	11	775	8.6	1	1	2	1	0	0	0	1	0.12	0.12	0.23	0.12	0.23	Matches
 Radinio Balker	sr SUR	DF	25	14	10	774	8.6	0	0	0	0	0	0	1	0	0.00	0.00	0.00	0.00	0.00	Matches
 Joseph Taylor	wls WAL	FW,MF	21	15	8	646	7.2	2	0	2	2	0	0	2	0	0.28	0.00	0.28	0.28	0.28	Matches
-		Playing Time	Performance	Per 90 Minutes	
-Player	Nation	Pos	Age	MP	Starts	Min	90s	Gls	Ast	G+A	G-PK	PK	PKatt	CrdY	CrdR	Gls	Ast	G+A	G-PK	G+A-PK	Matches
 Tawanda Chirewa	zw ZIM	MF	20	13	8	575	6.4	0	0	0	0	0	0	0	0	0.00	0.00	0.00	0.00	0.00	Matches
 Jaheim Headley	eng ENG	MF	22	10	6	561	6.2	1	0	1	1	0	0	3	0	0.16	0.00	0.16	0.16	0.16	Matches
 Freddie Ladapo	eng ENG	FW	31	22	1	474	5.3	0	0	0	0	0	0	0	0	0.00	0.00	0.00	0.00	0.00	Matches
@@ -76,66 +55,63 @@ Omari Mrisho	eng ENG	DF	18	0	0																Matches
 
 --- matchlogs_for ---
 Date	Time	Comp	Round	Day	Venue	Result	GF	GA	Opponent	Poss	Attendance	Captain	Formation	Opp Formation	Referee	Match Report	Notes
-2024-08-10	17:30 (16:30)	League One	Matchweek 1	Sat	Away	W	2	0	P'borough Utd	46	10,627	Jonathan Hogg	3-1-4-2	4-2-3-1	Sunny Singh	Match Report	
-2024-08-13	19:45 (18:45)	EFL Cup	First round	Tue	Home	W	3	0	Morecambe	70	5,111	Michał Helik	3-5-2	5-4-1		Match Report	
-2024-08-17	15:00 (14:00)	League One	Matchweek 2	Sat	Home	W	2	1	Stevenage	62	18,529	Jonathan Hogg	3-1-4-2	4-3-3	Andrew Davies	Match Report	
-2024-08-24	15:00 (14:00)	League One	Matchweek 3	Sat	Home	W	1	0	Shrewsbury	69	18,205	Jonathan Hogg	3-5-2	4-1-4-1	Tom Reeves	Match Report	
-2024-08-27	19:45 (18:45)	EFL Cup	Second round	Tue	Away	L	2	3	Walsall	62	3,378	Jonathan Hogg	3-5-2	3-5-2		Match Report	
-2024-08-31	12:30 (11:30)	League One	Matchweek 4	Sat	Away	L	1	2	Rotherham Utd	51	10,404	Jonathan Hogg	3-1-4-2	4-3-1-2	Seb Stockbridge	Match Report	
-2024-09-14	15:00 (14:00)	League One	Matchweek 6	Sat	Away	W	4	0	Bolton	49	22,532	Jonathan Hogg	3-1-4-2	3-4-3	Alex Chilowicz	Match Report	
-2024-09-21	15:00 (14:00)	League One	Matchweek 7	Sat	Home	L	1	3	Northampton	66	18,417	Jonathan Hogg	3-1-4-2	4-4-2	Sunny Gill	Match Report	
-2024-09-24	19:45 (18:45)	League One	Matchweek 5	Tue	Home	L	0	2	Blackpool	51	17,068	Michał Helik	3-1-4-2	4-4-2	Ben Speedie	Match Report	
-2024-09-28	12:30 (11:30)	League One	Matchweek 8	Sat	Away	L	1	2	Reading	52	11,181	Jonathan Hogg	3-1-4-2	4-3-3	Scott Oldham	Match Report	
-2024-10-01	19:45 (18:45)	League One	Matchweek 9	Tue	Away	L	0	1	Birmingham City	30	24,757	Tom Lees	5-3-2	4-2-3-1	Ben Toner	Match Report	
-2024-10-05	12:30 (11:30)	League One	Matchweek 10	Sat	Home	W	2	0	Barnsley	57	19,523	Matty Pearson	3-1-4-2	3-4-3	David Rock	Match Report	
-2024-10-19	15:00 (14:00)	League One	Matchweek 12	Sat	Home	W	3	1	Bristol Rovers	58	18,179	Tom Lees	3-1-4-2	3-1-4-2	Dean Whitestone	Match Report	
-2024-10-22	19:45 (18:45)	League One	Matchweek 13	Tue	Away	D	0	0	Wrexham	50	12,894	Tom Lees	3-1-4-2	5-3-2	Adam Herczeg	Match Report	
-2024-10-26	15:00 (14:00)	League One	Matchweek 14	Sat	Home	W	2	0	Exeter City	48	17,890	Tom Lees	3-1-4-2	5-3-2	Elliot Bell	Match Report	
-2024-11-01	19:45	FA Cup	First round proper	Fri	Away	L	0	1	Tamworth		3,533	Tom Lees	3-1-4-2	4-4-1-1	Ben Speedie	Match Report	
-2024-11-09	15:00	League One	Matchweek 15	Sat	Away	D	2	2	Crawley Town	56	4,752	Tom Lees	3-5-2	3-4-3	Scott Simpson	Match Report	
-2024-11-23	15:00	League One	Matchweek 17	Sat	Home	W	2	1	Charlton Ath	67	18,550	Tom Lees	3-5-2	5-3-2	Simon Mather	Match Report	
-2024-11-26	19:45	League One	Matchweek 11	Tue	Away	W	2	0	Leyton Orient	49	7,541	Michał Helik	3-4-1-2	4-2-3-1	Lee Swabey	Match Report	
-2024-12-03	20:00	League One	Matchweek 18	Tue	Home	W	1	0	Wigan Athletic	40	17,036	Michał Helik	4-2-3-1	4-1-4-1	Scott Oldham	Match Report	
-2024-12-07	15:00	League One	Matchweek 19	Sat	Away	W	2	1	Mansfield Town	43	8,568	Michał Helik	3-4-1-2	3-5-1-1	Adam Herczeg	Match Report	
-2024-12-14	15:00	League One	Matchweek 20	Sat	Home	D	2	2	Lincoln City	58	18,675	Michał Helik	3-5-2	4-3-3	Alan Young	Match Report	
-2024-12-20	19:45	League One	Matchweek 21	Fri	Away	W	4	0	Cambridge Utd	63	6,949	Michał Helik	3-5-2	3-4-3	Oliver Yates	Match Report	
-2024-12-26	15:00	League One	Matchweek 22	Thu	Home	W	1	0	Stockport	36	21,657	Michał Helik	3-5-2	3-4-3	Will Finnie	Match Report	
-2024-12-29	15:00	League One	Matchweek 23	Sun	Home	D	1	1	Burton Albion	70	18,842	Michał Helik	3-5-2	5-3-2	Ben Toner	Match Report	
-Date	Time	Comp	Round	Day	Venue	Result	GF	GA	Opponent	Poss	Attendance	Captain	Formation	Opp Formation	Referee	Match Report	Notes
-2025-01-04	15:00	League One	Matchweek 25	Sat	Home	D	0	0	Rotherham Utd	58	18,353	Michał Helik	3-5-2	4-4-2	Alex Chilowicz	Match Report	
-2025-01-07	19:45	League One	Matchweek 16	Tue	Away	W	1	0	Wycombe	40	4,095	Tom Lees	3-5-2	3-4-1-2	Thomas Kirk	Match Report	
-2025-01-18	12:30	League One	Matchweek 27	Sat	Away	D	2	2	Blackpool	50	10,410	Tom Lees	3-5-2	4-4-2	Martin Coy	Match Report	
-2025-01-25	12:30	League One	Matchweek 28	Sat	Home	L	0	1	Bolton	67	19,999	Jonathan Hogg	3-5-2	5-3-2	Paul Howard	Match Report	
-2025-01-28	20:00	League One	Matchweek 29	Tue	Home	L	0	1	Birmingham City	47	19,138	Jonathan Hogg	3-5-2	3-5-2	Adam Herczeg	Match Report	
-2025-02-01	15:00	League One	Matchweek 30	Sat	Away	L	2	3	Northampton	68	6,933	Jonathan Hogg	3-5-2	3-4-3	Ben Speedie	Match Report	
-2025-02-08	15:00	League One	Matchweek 31	Sat	Home	D	0	0	Reading	55	18,385	Jonathan Hogg	4-2-3-1	4-3-3	Scott Tallis	Match Report	
-2025-02-15	15:00	League One	Matchweek 32	Sat	Away	W	2	1	Barnsley	49	15,600	Tom Lees	4-4-2	3-4-1-2	David Rock	Match Report	
-2025-02-18	19:45	League One	Matchweek 26	Tue	Away	W	1	0	Shrewsbury	59	6,862	Jonathan Hogg	4-2-3-1	5-3-2	James Oldham	Match Report	
-2025-02-22	15:00	League One	Matchweek 33	Sat	Home	L	0	1	P'borough Utd	53	18,977	Jonathan Hogg	4-4-2	4-2-3-1	Darren Drysdale	Match Report	
-2025-02-25	19:45	League One	Matchweek 24	Tue	Away	L	1	2	Wigan Athletic	54	10,049	Lee Nicholls	4-2-3-1	4-2-3-1	Ross Joyce	Match Report	
-2025-03-01	15:00	League One	Matchweek 34	Sat	Away	W	2	1	Stevenage	51	4,373	Lee Nicholls	3-4-1-2	4-2-3-1	James Linington	Match Report	
-2025-03-04	19:45	League One	Matchweek 35	Tue	Home	L	0	1	Wrexham	60	20,502	Lee Nicholls	3-4-1-2	3-5-1-1	Farai Hallam	Match Report	
-2025-03-08	15:00	League One	Matchweek 36	Sat	Away	L	0	1	Bristol Rovers	67	7,705	Lee Nicholls	3-4-1-2	5-4-1	Tom Reeves	Match Report	
-2025-03-15	15:00	League One	Matchweek 37	Sat	Home	W	5	1	Crawley Town	57	18,516	Lee Nicholls	4-2-2-2	3-5-1-1	Seb Stockbridge	Match Report	
-2025-03-29	12:30	League One	Matchweek 39	Sat	Away	L	0	4	Charlton Ath	57	17,278	Lee Nicholls	4-2-3-1	4-2-3-1	Declan Bourne	Match Report	
-2025-04-01	19:45 (18:45)	League One	Matchweek 40	Tue	Away	L	0	1	Lincoln City	64	8,755	Jonathan Hogg	4-3-3	4-2-3-1	Ruebyn Ricardo	Match Report	
-2025-04-05	15:00 (14:00)	League One	Matchweek 41	Sat	Home	W	2	1	Mansfield Town	50	19,986	Lee Nicholls	4-2-3-1	4-4-2	Martin Coy	Match Report	
-2025-04-08	19:45 (18:45)	League One	Matchweek 38	Tue	Home	L	0	1	Wycombe	65	17,297	Jonathan Hogg	4-2-3-1	5-4-1	Scott Oldham	Match Report	
-2025-04-12	15:00 (14:00)	League One	Matchweek 42	Sat	Away	L	0	3	Burton Albion	65	4,278	Jonathan Hogg	4-2-3-1	3-4-1-2	Scott Jackson	Match Report	
-2025-04-18	15:00 (14:00)	League One	Matchweek 43	Fri	Home	L	1	2	Cambridge Utd	66	18,289	Jonathan Hogg	4-1-4-1	4-2-3-1	Samuel Allison	Match Report	
-2025-04-21	15:00 (14:00)	League One	Matchweek 44	Mon	Away	L	1	2	Stockport	45	10,346	Jonathan Hogg	4-2-3-1	4-1-3-2	Alex Chilowicz	Match Report	
-2025-04-26	15:00 (14:00)	League One	Matchweek 45	Sat	Away	L	1	3	Exeter City	52	7,276	Matty Pearson	4-2-3-1	3-4-3	Oliver Yates	Match Report	
-2025-05-03	15:00 (14:00)	League One	Matchweek 46	Sat	Home	L	1	4	Leyton Orient	58	20,774	Jonathan Hogg	4-2-3-1	3-4-3	Dean Whitestone	Match Report	
+	17:30 (16:30)	League One	Matchweek 1	Sat	Away	W	2	0	P'borough Utd	46	10,627	Jonathan Hogg	3-1-4-2	4-2-3-1	Sunny Singh	Match Report	
+	19:45 (18:45)	EFL Cup	First round	Tue	Home	W	3	0	Morecambe	70	5,111	Michał Helik	3-5-2	5-4-1		Match Report	
+	15:00 (14:00)	League One	Matchweek 2	Sat	Home	W	2	1	Stevenage	62	18,529	Jonathan Hogg	3-1-4-2	4-3-3	Andrew Davies	Match Report	
+	15:00 (14:00)	League One	Matchweek 3	Sat	Home	W	1	0	Shrewsbury	69	18,205	Jonathan Hogg	3-5-2	4-1-4-1	Tom Reeves	Match Report	
+	19:45 (18:45)	EFL Cup	Second round	Tue	Away	L	2	3	Walsall	62	3,378	Jonathan Hogg	3-5-2	3-5-2		Match Report	
+	12:30 (11:30)	League One	Matchweek 4	Sat	Away	L	1	2	Rotherham Utd	51	10,404	Jonathan Hogg	3-1-4-2	4-3-1-2	Seb Stockbridge	Match Report	
+	15:00 (14:00)	League One	Matchweek 6	Sat	Away	W	4	0	Bolton	49	22,532	Jonathan Hogg	3-1-4-2	3-4-3	Alex Chilowicz	Match Report	
+	15:00 (14:00)	League One	Matchweek 7	Sat	Home	L	1	3	Northampton	66	18,417	Jonathan Hogg	3-1-4-2	4-4-2	Sunny Gill	Match Report	
+	19:45 (18:45)	League One	Matchweek 5	Tue	Home	L	0	2	Blackpool	51	17,068	Michał Helik	3-1-4-2	4-4-2	Ben Speedie	Match Report	
+	12:30 (11:30)	League One	Matchweek 8	Sat	Away	L	1	2	Reading	52	11,181	Jonathan Hogg	3-1-4-2	4-3-3	Scott Oldham	Match Report	
+	19:45 (18:45)	League One	Matchweek 9	Tue	Away	L	0	1	Birmingham City	30	24,757	Tom Lees	5-3-2	4-2-3-1	Ben Toner	Match Report	
+	12:30 (11:30)	League One	Matchweek 10	Sat	Home	W	2	0	Barnsley	57	19,523	Matty Pearson	3-1-4-2	3-4-3	David Rock	Match Report	
+	15:00 (14:00)	League One	Matchweek 12	Sat	Home	W	3	1	Bristol Rovers	58	18,179	Tom Lees	3-1-4-2	3-1-4-2	Dean Whitestone	Match Report	
+	19:45 (18:45)	League One	Matchweek 13	Tue	Away	D	0	0	Wrexham	50	12,894	Tom Lees	3-1-4-2	5-3-2	Adam Herczeg	Match Report	
+	15:00 (14:00)	League One	Matchweek 14	Sat	Home	W	2	0	Exeter City	48	17,890	Tom Lees	3-1-4-2	5-3-2	Elliot Bell	Match Report	
+	19:45	FA Cup	First round proper	Fri	Away	L	0	1	Tamworth		3,533	Tom Lees	3-1-4-2	4-4-1-1	Ben Speedie	Match Report	
+	15:00	League One	Matchweek 15	Sat	Away	D	2	2	Crawley Town	56	4,752	Tom Lees	3-5-2	3-4-3	Scott Simpson	Match Report	
+	15:00	League One	Matchweek 17	Sat	Home	W	2	1	Charlton Ath	67	18,550	Tom Lees	3-5-2	5-3-2	Simon Mather	Match Report	
+	19:45	League One	Matchweek 11	Tue	Away	W	2	0	Leyton Orient	49	7,541	Michał Helik	3-4-1-2	4-2-3-1	Lee Swabey	Match Report	
+	20:00	League One	Matchweek 18	Tue	Home	W	1	0	Wigan Athletic	40	17,036	Michał Helik	4-2-3-1	4-1-4-1	Scott Oldham	Match Report	
+	15:00	League One	Matchweek 19	Sat	Away	W	2	1	Mansfield Town	43	8,568	Michał Helik	3-4-1-2	3-5-1-1	Adam Herczeg	Match Report	
+	15:00	League One	Matchweek 20	Sat	Home	D	2	2	Lincoln City	58	18,675	Michał Helik	3-5-2	4-3-3	Alan Young	Match Report	
+	19:45	League One	Matchweek 21	Fri	Away	W	4	0	Cambridge Utd	63	6,949	Michał Helik	3-5-2	3-4-3	Oliver Yates	Match Report	
+	15:00	League One	Matchweek 22	Thu	Home	W	1	0	Stockport	36	21,657	Michał Helik	3-5-2	3-4-3	Will Finnie	Match Report	
+	15:00	League One	Matchweek 23	Sun	Home	D	1	1	Burton Albion	70	18,842	Michał Helik	3-5-2	5-3-2	Ben Toner	Match Report	
+	15:00	League One	Matchweek 25	Sat	Home	D	0	0	Rotherham Utd	58	18,353	Michał Helik	3-5-2	4-4-2	Alex Chilowicz	Match Report	
+	19:45	League One	Matchweek 16	Tue	Away	W	1	0	Wycombe	40	4,095	Tom Lees	3-5-2	3-4-1-2	Thomas Kirk	Match Report	
+	12:30	League One	Matchweek 27	Sat	Away	D	2	2	Blackpool	50	10,410	Tom Lees	3-5-2	4-4-2	Martin Coy	Match Report	
+	12:30	League One	Matchweek 28	Sat	Home	L	0	1	Bolton	67	19,999	Jonathan Hogg	3-5-2	5-3-2	Paul Howard	Match Report	
+	20:00	League One	Matchweek 29	Tue	Home	L	0	1	Birmingham City	47	19,138	Jonathan Hogg	3-5-2	3-5-2	Adam Herczeg	Match Report	
+	15:00	League One	Matchweek 30	Sat	Away	L	2	3	Northampton	68	6,933	Jonathan Hogg	3-5-2	3-4-3	Ben Speedie	Match Report	
+	15:00	League One	Matchweek 31	Sat	Home	D	0	0	Reading	55	18,385	Jonathan Hogg	4-2-3-1	4-3-3	Scott Tallis	Match Report	
+	15:00	League One	Matchweek 32	Sat	Away	W	2	1	Barnsley	49	15,600	Tom Lees	4-4-2	3-4-1-2	David Rock	Match Report	
+	19:45	League One	Matchweek 26	Tue	Away	W	1	0	Shrewsbury	59	6,862	Jonathan Hogg	4-2-3-1	5-3-2	James Oldham	Match Report	
+	15:00	League One	Matchweek 33	Sat	Home	L	0	1	P'borough Utd	53	18,977	Jonathan Hogg	4-4-2	4-2-3-1	Darren Drysdale	Match Report	
+	19:45	League One	Matchweek 24	Tue	Away	L	1	2	Wigan Athletic	54	10,049	Lee Nicholls	4-2-3-1	4-2-3-1	Ross Joyce	Match Report	
+	15:00	League One	Matchweek 34	Sat	Away	W	2	1	Stevenage	51	4,373	Lee Nicholls	3-4-1-2	4-2-3-1	James Linington	Match Report	
+	19:45	League One	Matchweek 35	Tue	Home	L	0	1	Wrexham	60	20,502	Lee Nicholls	3-4-1-2	3-5-1-1	Farai Hallam	Match Report	
+	15:00	League One	Matchweek 36	Sat	Away	L	0	1	Bristol Rovers	67	7,705	Lee Nicholls	3-4-1-2	5-4-1	Tom Reeves	Match Report	
+	15:00	League One	Matchweek 37	Sat	Home	W	5	1	Crawley Town	57	18,516	Lee Nicholls	4-2-2-2	3-5-1-1	Seb Stockbridge	Match Report	
+	12:30	League One	Matchweek 39	Sat	Away	L	0	4	Charlton Ath	57	17,278	Lee Nicholls	4-2-3-1	4-2-3-1	Declan Bourne	Match Report	
+	19:45 (18:45)	League One	Matchweek 40	Tue	Away	L	0	1	Lincoln City	64	8,755	Jonathan Hogg	4-3-3	4-2-3-1	Ruebyn Ricardo	Match Report	
+	15:00 (14:00)	League One	Matchweek 41	Sat	Home	W	2	1	Mansfield Town	50	19,986	Lee Nicholls	4-2-3-1	4-4-2	Martin Coy	Match Report	
+	19:45 (18:45)	League One	Matchweek 38	Tue	Home	L	0	1	Wycombe	65	17,297	Jonathan Hogg	4-2-3-1	5-4-1	Scott Oldham	Match Report	
+	15:00 (14:00)	League One	Matchweek 42	Sat	Away	L	0	3	Burton Albion	65	4,278	Jonathan Hogg	4-2-3-1	3-4-1-2	Scott Jackson	Match Report	
+	15:00 (14:00)	League One	Matchweek 43	Fri	Home	L	1	2	Cambridge Utd	66	18,289	Jonathan Hogg	4-1-4-1	4-2-3-1	Samuel Allison	Match Report	
+	15:00 (14:00)	League One	Matchweek 44	Mon	Away	L	1	2	Stockport	45	10,346	Jonathan Hogg	4-2-3-1	4-1-3-2	Alex Chilowicz	Match Report	
+	15:00 (14:00)	League One	Matchweek 45	Sat	Away	L	1	3	Exeter City	52	7,276	Matty Pearson	4-2-3-1	3-4-3	Oliver Yates	Match Report	
+	15:00 (14:00)	League One	Matchweek 46	Sat	Home	L	1	4	Leyton Orient	58	20,774	Jonathan Hogg	4-2-3-1	3-4-3	Dean Whitestone	Match Report	
 
 --- stats_keeper_combined ---
-	Playing Time	Performance	Penalty Kicks	
 Player	Nation	Pos	Age	MP	Starts	Min	90s	GA	GA90	SoTA	Saves	Save%	W	D	L	CS	CS%	PKatt	PKA	PKsv	PKm	Save%	Matches
 Jacob Chapman	au AUS	GK	23	23	23	2,070	23.0	24	1.04	66	43	65.2	10	6	7	9	39.1	1	1	0	0	0.0	Matches
 Lee Nicholls	eng ENG	GK	31	23	23	2,070	23.0	30	1.30	75	48	64.0	9	1	13	5	21.7	3	3	0	0	0.0	Matches
 Chris Maxwell	wls WAL	GK	34	3	3	270	3.0	4	1.33	5	3	40.0	1	0	2	1	33.3	1	0	1	0	100.0	Matches
 
 --- stats_shooting_combined ---
-	Standard	
 Player	Nation	Pos	Age	90s	Gls	Sh	SoT	SoT%	Sh/90	SoT/90	G/Sh	G/SoT	Dist	PK	PKatt	Matches
 Ben Wiles	eng ENG	MF	25	40.0	8	76	25	32.9	1.95	0.64	0.11	0.32		0	0	Matches
 Callum Marshall	nir NIR	FW,MF	19	31.5	10	78	36	46.2	2.52	1.16	0.13	0.28		0	0	Matches
@@ -162,8 +138,6 @@ Ruben Roosken	nl NED	MF	24	9.9	2	10	4	40.0	1.01	0.40	0.20	0.50		0	0	Matches
 Danny Ward	eng ENG	FW	32	8.6	1	19	5	26.3	2.34	0.62	0.05	0.20		0	0	Matches
 Radinio Balker	sr SUR	DF	25	8.6	0	3	1	33.3	0.35	0.12	0.00	0.00		0	0	Matches
 Joseph Taylor	wls WAL	FW,MF	21	7.2	2	14	5	35.7	1.95	0.70	0.14	0.40		0	0	Matches
-	Standard	
-Player	Nation	Pos	Age	90s	Gls	Sh	SoT	SoT%	Sh/90	SoT/90	G/Sh	G/SoT	Dist	PK	PKatt	Matches
 Tawanda Chirewa	zw ZIM	MF	20	6.4	0	12	0	0.0	1.88	0.00	0.00			0	0	Matches
 Jaheim Headley	eng ENG	MF	22	6.2	1	6	1	16.7	1.09	0.18	0.17	1.00		0	0	Matches
 Freddie Ladapo	eng ENG	FW	31	5.3	0	9	1	11.1	1.73	0.19	0.00	0.00		0	0	Matches
@@ -176,7 +150,6 @@ Patrick Jones	wls WAL	FW	21	0.1	0	0	0		0.00	0.00				0	0	Matches
 Conor Falls	nir NIR	MF	20	0.0	0	0	0		0.00	0.00				0	0	Matches
 
 --- stats_playing_time_combined ---
-		Playing Time	Starts	Subs	Team Success	
 Player	Nation	Pos	Age	MP	Min	Mn/MP	Min%	90s	Starts	Mn/Start	Compl	Subs	Mn/Sub	unSub	PPM	onG	onGA	+/-	+/-90	On-Off	Matches
 Ben Wiles	eng ENG	MF	25	48	3,604	75	81.7	40.0	41	84	28	7	23	0	1.39	51	44	+7	+0.17	+0.51	Matches
 Callum Marshall	nir NIR	FW,MF	19	46	2,833	62	64.2	31.5	33	74	12	13	31	0	1.39	42	26	+16	+0.51	+1.19	Matches
@@ -203,8 +176,6 @@ Ruben Roosken	nl NED	MF	24	14	893	64	21.6	9.9	11	77	5	3	14	0	0.71	10	16	-6	-0.60
 Danny Ward	eng ENG	FW	32	16	775	48	17.6	8.6	11	59	0	5	24	0	2.06	17	7	+10	+1.16	+1.31	Matches
 Radinio Balker	sr SUR	DF	25	14	774	55	18.7	8.6	10	68	3	4	23	0	1.00	4	11	-7	-0.81	-1.08	Matches
 Joseph Taylor	wls WAL	FW,MF	21	15	646	43	15.6	7.2	8	63	1	7	20	0	0.67	8	17	-9	-1.25	-1.56	Matches
-		Playing Time	Starts	Subs	Team Success	
-Player	Nation	Pos	Age	MP	Min	Mn/MP	Min%	90s	Starts	Mn/Start	Compl	Subs	Mn/Sub	unSub	PPM	onG	onGA	+/-	+/-90	On-Off	Matches
 Tawanda Chirewa	zw ZIM	MF	20	13	575	44	13.9	6.4	8	62	0	5	16	2	1.23	5	5	0	0.00	-0.08	Matches
 Jaheim Headley	eng ENG	MF	22	10	561	56	12.7	6.2	6	77	3	4	26	11	1.30	10	12	-2	-0.32	-0.46	Matches
 Freddie Ladapo	eng ENG	FW	31	22	474	22	11.2	5.3	1	69	0	21	19	6	1.78	7	5	+2	+0.38	+0.38	Matches
@@ -221,7 +192,6 @@ Loick Ayina	cg CGO	DF	21	0					0		0	0		6							Matches
 Omari Mrisho	eng ENG	DF	18	0					0		0	0		1							Matches
 
 --- stats_misc_combined ---
-	Performance	
 Player	Nation	Pos	Age	90s	CrdY	CrdR	2CrdY	Fls	Fld	Off	Crs	Int	TklW	PKwon	PKcon	OG	Matches
 Ben Wiles	eng ENG	MF	25	40.0	1	0	0	12	41	3	175	5	30			0	Matches
 Callum Marshall	nir NIR	FW,MF	19	31.5	2	1	0	60	18	8	47	17	41			0	Matches
@@ -248,8 +218,6 @@ Ruben Roosken	nl NED	MF	24	9.9	1	1	0	14	11	6	66	5	15			0	Matches
 Danny Ward	eng ENG	FW	32	8.6	0	1	0	5	6	3	12	2	4			0	Matches
 Radinio Balker	sr SUR	DF	25	8.6	1	0	0	4	6	0	1	9	8			0	Matches
 Joseph Taylor	wls WAL	FW,MF	21	7.2	2	0	0	14	5	3	4	0	4			0	Matches
-	Performance	
-Player	Nation	Pos	Age	90s	CrdY	CrdR	2CrdY	Fls	Fld	Off	Crs	Int	TklW	PKwon	PKcon	OG	Matches
 Tawanda Chirewa	zw ZIM	MF	20	6.4	0	0	0	3	11	3	20	4	7			0	Matches
 Jaheim Headley	eng ENG	MF	22	6.2	3	0	0	10	8	0	39	1	10			0	Matches
 Freddie Ladapo	eng ENG	FW	31	5.3	0	0	0	14	4	3	1	1	1			0	Matches
@@ -261,8 +229,51 @@ Kian Harratt	eng ENG	FW	22	0.6	0	0	0	0	1	0	0	0	0			0	Matches
 Patrick Jones	wls WAL	FW	21	0.1	0	0	0	0	1	0	0	0	0			0	Matches
 Conor Falls	nir NIR	MF	20	0.0	0	0	0	0	0	0	0	0	0			0	Matches
 
---- stats_summary_combined ---
+--- stats_player_summary ---
+Player	Nation	Pos	Age	MP	Min	Gls	Ast	MP	Min	Gls	Ast	MP	Min	Gls	Ast	MP	Min	Gls	Ast	MP
+Ben Wiles	eng ENG	MF	25	45	3,418	8	5	1	90	0	0	2	96	0	1	48	3,604	8	6	Matches
+Callum Marshall	nir NIR	FW,MF	19	43	2,673	9	3	1	45	0	0	2	115	1	1	46	2,833	10	4	Matches
+Brodie Gilmore	nir NIR	DF,MF	20	33	2,531	3	2					1	90	0	0	34	2,621	3	2	Matches
+David Kasumu	eng ENG	MF	24	32	2,345	3	1	1	90	0	0	1	90	0	0	34	2,525	3	1	Matches
+Tom Lees	eng ENG	DF	33	29	2,424	0	1	1	90	0	0					30	2,514	0	1	Matches
+Josh Koroma	sl SLE	FW,MF	25	37	2,400	11	2					2	86	1	0	39	2,486	12	2	Matches
+Matty Pearson	eng ENG	DF	30	29	2,206	5	0	1	90	0	0	2	131	0	0	32	2,427	5	0	Matches
+Lasse Sørensen	dk DEN	MF,DF	24	32	2,058	0	3					2	105	0	1	34	2,163	0	4	Matches
+Oliver Turton	eng ENG	MF,DF	31	28	1,854	1	0	1	90	0	0	2	135	0	0	31	2,079	1	0	Matches
+Lee Nicholls	eng ENG	GK	31	23	2,070	0	0									23	2,070	0	0	Matches
+Jacob Chapman	au AUS	GK	23	23	2,070	0	0									23	2,070	0	0	Matches
+Antony Evans	eng ENG	MF	25	34	1,952	2	5					1	84	0	1	35	2,036	2	6	Matches
+Herbie Kane	eng ENG	MF	25	28	1,885	3	5	1	25	0	0	1	90	0	0	30	2,000	3	5	Matches
+Jonathan Hogg	eng ENG	MF	35	34	1,833	1	0					2	120	0	0	36	1,953	1	0	Matches
+Nigel Lonwijk	nl NED	DF	21	21	1,699	1	1	1	90	0	0					22	1,789	1	1	Matches
+Josh Ruffels	eng ENG	DF	30	22	1,427	0	0					1	90	1	0	23	1,517	1	0	Matches
+Michał Helik	pl POL	DF	28	17	1,344	2	0					2	90	0	0	19	1,434	2	0	Matches
+Mickel Miller	eng ENG	MF,DF	28	18	1,288	0	3	1	25	0	0					19	1,313	0	3	Matches
+Joseph Hodge	ie IRL	MF	21	27	1,196	1	0									27	1,196	1	0	Matches
+Dion Charles	nir NIR	FW	28	18	1,135	0	2									18	1,135	0	2	Matches
+Bojan Radulovic	rs SRB	FW	24	17	855	1	0	1	83	0	0					18	938	1	0	Matches
+Ruben Roosken	nl NED	MF	24	14	893	2	3									14	893	2	3	Matches
+Danny Ward	eng ENG	FW	32	13	615	0	1	1	45	0	0	2	115	1	0	16	775	1	1	Matches
+Radinio Balker	sr SUR	DF	25	14	774	0	0									14	774	0	0	Matches
+Joseph Taylor	wls WAL	FW,MF	21	15	646	2	0									15	646	2	0	Matches
+Tawanda Chirewa	zw ZIM	MF	20	13	575	0	0									13	575	0	0	Matches
+Jaheim Headley	eng ENG	MF	22	7	316	0	0	1	65	0	0	2	180	1	0	10	561	1	0	Matches
+Freddie Ladapo	eng ENG	FW	31	21	467	0	0	1	7	0	0					22	474	0	0	Matches
+Rhys Healey	wls WAL	FW	29	9	290	1	0									9	290	1	0	Matches
+Chris Maxwell	wls WAL	GK	34					1	90	0	0	2	180	0	0	3	270	0	0	Matches
+Tom Iorpenda	eng ENG	MF	19	5	62	0	0	1	65	0	0	2	84	0	0	8	211	0	0	Matches
+Neo Eccleston	eng ENG	DF	20	3	195	0	0									3	195	0	0	Matches
+Kian Harratt	eng ENG	FW	22	2	14	0	0					2	44	0	0	4	58	0	0	Matches
+Patrick Jones	wls WAL	FW	21									1	6	0	0	1	6	0	0	Matches
+Conor Falls	nir NIR	MF	20	1	1	0	0									1	1	0	0	Matches
+Francis Hurl	eng ENG	GK	18																	Matches
+Omari Mrisho	eng ENG	DF	18																	Matches
+Loick Ayina	cg CGO	DF	21																	Matches
+Cameron Ashia		DF																		Matches
 
-
---- stats_keeper_summary_combined ---
-
+--- stats_keeper_summary ---
+Player	Nation	Pos	Age	MP	Min	GA	CS	MP	Min	GA	CS	MP	Min	GA	CS	MP	Min	GA	CS	MP
+Jacob Chapman	au AUS	GK	23	23	2,070	24	9									23	2,070	24	9	Matches
+Lee Nicholls	eng ENG	GK	31	23	2,070	30	5									23	2,070	30	5	Matches
+Chris Maxwell	wls WAL	GK	34					1	90	1	0	2	180	3	1	3	270	4	1	Matches
+Francis Hurl	eng ENG	GK	18																	Matches
