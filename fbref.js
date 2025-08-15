@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs';
+import cheerio from 'cheerio';
 
 puppeteer.use(StealthPlugin());
 
@@ -35,7 +36,7 @@ const TABLE_IDS = [
   console.log(`🌐 Visiting: ${TARGET_URL}`);
   await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 90000 });
 
-  // Wait for summary block
+  // Wait for summary block to ensure page loaded
   await page.waitForSelector('div[data-template="Partials/Teams/Summary"]', { timeout: 15000 });
 
   console.log('📋 Extracting summary...');
@@ -47,21 +48,29 @@ const TABLE_IDS = [
     return { title, details: paras };
   });
 
+  console.log('📜 Getting full HTML and uncommenting hidden tables...');
+  let fullHTML = await page.content();
+
+  // FBref hides some tables inside HTML comments <!-- -->
+  fullHTML = fullHTML.replace(/<!--/g, '').replace(/-->/g, '');
+
+  // Load cleaned HTML into Cheerio for parsing
+  const $ = cheerio.load(fullHTML);
+
   console.log('📊 Extracting tables...');
   const tablesData = {};
   for (const tableId of TABLE_IDS) {
-    try {
-      await page.waitForSelector(`table#${tableId}`, { timeout: 5000 });
-      const html = await page.$eval(`table#${tableId}`, el => el.outerHTML);
-      tablesData[tableId] = html;
+    const table = $(`table#${tableId}`);
+    if (table.length) {
+      tablesData[tableId] = table.html();
       console.log(`✅ Found table: ${tableId}`);
-    } catch {
+    } else {
       console.warn(`⚠ Table not found: ${tableId}`);
       tablesData[tableId] = '';
     }
   }
 
-  console.log('💾 Saving data to data.txt...');
+  console.log('💾 Saving data to leads/data.txt...');
   let output = '';
   output += `=== SUMMARY ===\n${summaryData.title}\n\n`;
   summaryData.details.forEach(line => { output += `${line}\n`; });
@@ -69,6 +78,7 @@ const TABLE_IDS = [
   for (const [id, html] of Object.entries(tablesData)) {
     output += `\n--- ${id} ---\n${html}\n`;
   }
+
   fs.writeFileSync('leads/data.txt', output, 'utf-8');
 
   await browser.close();
