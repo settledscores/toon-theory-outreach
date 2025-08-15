@@ -1,11 +1,12 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import fs from 'fs';
 import { load } from 'cheerio';
+import fs from 'fs';
 
 puppeteer.use(StealthPlugin());
 
-const TARGET_URL = 'https://fbref.com/en/squads/f5922ca5/2024-2025/all_comps/Huddersfield-Town-Stats-All-Competitions';
+const TARGET_URL =
+  'https://fbref.com/en/squads/f5922ca5/2024-2025/all_comps/Huddersfield-Town-Stats-All-Competitions';
 
 const TABLE_IDS = [
   'matchlogs_for',
@@ -36,48 +37,68 @@ const TABLE_IDS = [
   console.log(`🌐 Visiting: ${TARGET_URL}`);
   await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 90000 });
 
-  // Wait for summary block to load
-  await page.waitForSelector('div[data-template="Partials/Teams/Summary"]', { timeout: 15000 });
+  // Get the rendered HTML after JS loads
+  const html = await page.content();
+  const $ = load(html);
 
   console.log('📋 Extracting summary...');
-  const summaryData = await page.evaluate(() => {
-    const container = document.querySelector('div[data-template="Partials/Teams/Summary"]');
-    if (!container) return {};
-    const title = container.querySelector('h1 span')?.innerText || '';
-    const paras = Array.from(container.querySelectorAll('p')).map(p => p.innerText.trim());
-    return { title, details: paras };
-  });
-
-  console.log('📄 Getting full HTML with comments...');
-  const rawHTML = await page.content();
-
-  // Remove comment tags so hidden tables become visible
-  const uncommentedHTML = rawHTML.replace(/<!--/g, '').replace(/-->/g, '');
-
-  // Parse with cheerio
-  const $ = load(uncommentedHTML);
+  const summaryContainer = $('div[data-template="Partials/Teams/Summary"]');
+  const summaryTitle = summaryContainer.find('h1 span').first().text().trim();
+  const summaryDetails = summaryContainer
+    .find('p')
+    .map((_, p) => $(p).text().trim())
+    .get();
 
   console.log('📊 Extracting tables...');
   const tablesData = {};
+
   for (const tableId of TABLE_IDS) {
-    const table = $(`table#${tableId}`);
-    if (table.length) {
-      tablesData[tableId] = table.html();
+    // FBref sometimes hides tables inside HTML comments, so check and parse them too
+    let tableElement = $(`table#${tableId}`);
+    if (!tableElement.length) {
+      $('*')
+        .contents()
+        .each((_, el) => {
+          if (el.type === 'comment' && el.data.includes(`<table id="${tableId}"`)) {
+            const $comment = load(el.data);
+            if ($comment(`table#${tableId}`).length) {
+              tableElement = $comment(`table#${tableId}`);
+            }
+          }
+        });
+    }
+
+    if (tableElement.length) {
+      // Convert table to plain text (TSV format)
+      const rows = [];
+      tableElement.find('tr').each((_, row) => {
+        const cells = [];
+        $(row)
+          .find('th, td')
+          .each((_, cell) => {
+            cells.push($(cell).text().trim());
+          });
+        if (cells.length > 0) rows.push(cells.join('\t'));
+      });
+      tablesData[tableId] = rows.join('\n');
       console.log(`✅ Found table: ${tableId}`);
     } else {
-      tablesData[tableId] = '';
       console.warn(`⚠ Table not found: ${tableId}`);
+      tablesData[tableId] = '';
     }
   }
 
   console.log('💾 Saving data to data.txt...');
   let output = '';
-  output += `=== SUMMARY ===\n${summaryData.title}\n\n`;
-  summaryData.details.forEach(line => { output += `${line}\n`; });
+  output += `=== SUMMARY ===\n${summaryTitle}\n\n`;
+  summaryDetails.forEach(line => {
+    output += `${line}\n`;
+  });
   output += `\n=== TABLES ===\n`;
-  for (const [id, html] of Object.entries(tablesData)) {
-    output += `\n--- ${id} ---\n${html}\n`;
+  for (const [id, text] of Object.entries(tablesData)) {
+    output += `\n--- ${id} ---\n${text}\n`;
   }
+
   fs.writeFileSync('leads/data.txt', output, 'utf-8');
 
   await browser.close();
