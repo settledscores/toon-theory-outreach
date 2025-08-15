@@ -19,7 +19,8 @@ jobs:
           node-version: 20
 
       - name: 📦 Install dependencies
-        run: npm install puppeteer-extra puppeteer-extra-plugin-stealth
+        run: |
+          npm install puppeteer-extra puppeteer-extra-plugin-stealth cheerio
 
       - name: 🕷️ Run FBref Scraper
         run: node fbref.js
