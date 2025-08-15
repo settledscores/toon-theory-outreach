@@ -1,36 +1,70 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import * as cheerio from 'cheerio';
 import fs from 'fs';
-import { load } from 'cheerio';
 
 puppeteer.use(StealthPlugin());
 
 const TARGET_URL = 'https://fbref.com/en/squads/f5922ca5/2024-2025/all_comps/Huddersfield-Town-Stats-All-Competitions';
 
-// All "All Competitions" tables we want
+// ✅ Correct IDs for the *All Competitions* page
 const TABLE_IDS = [
-  'stats_standard_combined',        // Standard Stats
-  'matchlogs_for',                   // Scores & Fixtures
-  'stats_keeper_combined',           // Goalkeeping
-  'stats_shooting_combined',         // Shooting
-  'stats_playing_time_combined',     // Playing Time
-  'stats_misc_combined',             // Misc Stats
-  'stats_summary_combined',          // Player Summary
-  'stats_keeper_summary_combined'    // Goalkeeper Summary
+  'stats_standard_combined',     // Standard Stats
+  'matchlogs_for',               // Scores & Fixtures
+  'stats_keeper_combined',       // Goalkeeping
+  'stats_shooting_combined',     // Shooting
+  'stats_playing_time_combined', // Playing Time
+  'stats_misc_combined',         // Miscellaneous
+  'stats_player_summary',        // Player Summary  (commented)
+  'stats_keeper_summary'         // GK Summary      (commented)
 ];
 
-// Convert HTML table to TSV plain text
-function tableToTSV(table) {
-  let rows = [];
-  table.find('tr').each((_, row) => {
-    let cells = [];
-    table.find(row).children('th, td').each((_, cell) => {
-      let text = table.find(cell).text().trim().replace(/\s+/g, ' ');
-      cells.push(text);
-    });
-    if (cells.length > 0) rows.push(cells.join('\t'));
+// Convert one FBref table HTML to TSV, aligning by data-stat keys
+function tableHtmlToTSV(tableHtml) {
+  const $ = cheerio.load(tableHtml);
+
+  // use the last thead row with actual labels
+  const headerRows = $('thead tr');
+  let header = headerRows.last();
+  if (header.hasClass('over_header') && headerRows.length > 1) {
+    header = headerRows.eq(headerRows.length - 2);
+  }
+
+  // column order + keys (data-stat)
+  const cols = [];
+  header.find('th,td').each((_, cell) => {
+    const $cell = $(cell);
+    const key = $cell.attr('data-stat') || '';
+    const name = $cell.text().replace(/\s+/g, ' ').trim();
+    if (name || key) cols.push({ key, name: name || key || '' });
   });
-  return rows.join('\n');
+
+  const headerLine = cols.map(c => c.name).join('\t');
+  const lines = [headerLine];
+
+  $('tbody tr').each((_, tr) => {
+    const $tr = $(tr);
+    if ($tr.hasClass('thead')) return; // skip header repeat rows
+
+    const row = cols.map(({ key }) => {
+      let txt = '';
+      if (!key) {
+        txt = $tr.find('th,td').first().text();
+      } else if (key === 'player') {
+        const $cell = $tr.find('th[data-stat="player"]');
+        txt = $cell.find('a').first().text() || $cell.text(); // full name
+      } else {
+        const $cell = $tr.find(`td[data-stat="${key}"]`);
+        txt = $cell.text();
+      }
+      return txt.replace(/\s+/g, ' ').trim();
+    });
+
+    if (row.every(v => v === '')) return;
+    lines.push(row.join('\t'));
+  });
+
+  return lines.join('\n');
 }
 
 (async () => {
@@ -45,44 +79,68 @@ function tableToTSV(table) {
   await page.setViewport({ width: 1280, height: 800 });
 
   console.log(`🌐 Visiting: ${TARGET_URL}`);
-  await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 90000 });
+  await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 120000 });
 
-  // FBref hides tables in HTML comments → remove them
-  const html = await page.content();
-  const uncommentedHtml = html.replace(/<!--/g, '').replace(/-->/g, '');
-  const $ = load(uncommentedHtml);
+  await page.waitForSelector('div[data-template="Partials/Teams/Summary"]', { timeout: 20000 });
 
-  // Extract summary block
   console.log('📋 Extracting summary...');
-  const summaryBlock = $('div[data-template="Partials/Teams/Summary"]');
-  const title = summaryBlock.find('h1 span').first().text().trim();
-  const summaryLines = summaryBlock.find('p').map((_, p) => $(p).text().trim()).get();
+  const summaryData = await page.evaluate(() => {
+    const el = document.querySelector('div[data-template="Partials/Teams/Summary"]');
+    const title = el?.querySelector('h1 span')?.textContent?.trim() || '';
+    const lines = Array.from(el?.querySelectorAll('p') || []).map(p => p.innerText.trim());
+    return { title, lines };
+  });
 
-  // Extract each table
-  console.log('📊 Extracting tables...');
-  const tablesData = {};
-  for (const tableId of TABLE_IDS) {
-    const table = $(`table#${tableId}`);
-    if (table.length) {
-      tablesData[tableId] = tableToTSV(table);
-      console.log(`✅ Found table: ${tableId}`);
-    } else {
-      tablesData[tableId] = '';
-      console.warn(`⚠ Table not found: ${tableId}`);
+  // Get table HTML whether visible or wrapped in an HTML comment under #all_<id>
+  async function getTableHtml(id) {
+    const live = await page.$(`table#${id}`);
+    if (live) return page.$eval(`table#${id}`, el => el.outerHTML);
+
+    const wrapperSel = `#all_${id}`;
+    const wrapper = await page.$(wrapperSel);
+    if (!wrapper) return '';
+
+    const html = await page.$eval(wrapperSel, el => {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_COMMENT, null);
+      let n = w.nextNode();
+      while (n) {
+        const txt = n.data || '';
+        if (txt.includes('<table') && txt.includes(`id="${el.id.replace('all_', '')}"`)) {
+          return txt;
+        }
+        n = w.nextNode();
+      }
+      return '';
+    });
+    return html;
+  }
+
+  console.log('📊 Extracting tables (All Competitions)...');
+  const out = [];
+  out.push('=== SUMMARY ===');
+  out.push(summaryData.title);
+  out.push('');
+  summaryData.lines.forEach(l => out.push(l));
+  out.push('');
+  out.push('=== TABLES (All Competitions) ===');
+
+  for (const id of TABLE_IDS) {
+    let html = await getTableHtml(id);
+    if (!html) {
+      console.warn(`⚠ Table not found: ${id}`);
+      out.push(`\n--- ${id} (NOT FOUND) ---`);
+      continue;
     }
+    // if it came from a comment, strip markers
+    html = html.replace(/^<!--\s*|\s*-->$/g, '');
+    const tsv = tableHtmlToTSV(html);
+    out.push(`\n--- ${id} ---\n${tsv}`);
+    console.log(`✅ Parsed: ${id}`);
   }
 
-  // Save as plain text
-  console.log('💾 Saving data to data.txt...');
-  let output = '';
-  output += `=== SUMMARY ===\n${title}\n\n`;
-  summaryLines.forEach(line => output += `${line}\n`);
-  output += `\n=== TABLES (All Competitions) ===\n`;
-  for (const [id, tsv] of Object.entries(tablesData)) {
-    output += `\n--- ${id} ---\n${tsv}\n`;
-  }
-  fs.writeFileSync('leads/data.txt', output, 'utf-8');
+  fs.mkdirSync('leads', { recursive: true });
+  fs.writeFileSync('leads/data.txt', out.join('\n'), 'utf-8');
 
   await browser.close();
-  console.log('🎉 Done! Data saved to leads/data.txt');
+  console.log('🎉 Done! Saved to leads/data.txt');
 })();
