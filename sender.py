@@ -486,7 +486,7 @@ for lead in leads:
 detect_reply_status(leads)
 
 # === Quota logic ===
-BASE_QUOTA = 50
+BASE_QUOTA = 70
 backlogs = sum(1 for l in leads if can_send_followup(l, 2) or can_send_followup(l, 3))
 
 # Removed extra 20 for recent initials - only base quota + backlogs capped at 20
